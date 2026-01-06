@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-from typing import TYPE_CHECKING
+from typing import Any
 
 from rich.console import Console
 from rich.progress import (
@@ -11,18 +10,12 @@ from rich.progress import (
     DownloadColumn,
     Progress,
     SpinnerColumn,
-    TaskID,
     TextColumn,
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
 from rich.table import Table
 from rich.theme import Theme
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-    from contextlib import contextmanager
-
 
 # Custom theme for music-commander
 THEME = Theme(
@@ -88,7 +81,7 @@ def create_progress() -> Progress:
     )
 
 
-def create_table(title: str | None = None, **kwargs: object) -> Table:
+def create_table(title: str | None = None, **kwargs: Any) -> Table:
     """Create a styled table.
 
     Args:
@@ -119,7 +112,8 @@ def print_track(
 
     if prefix:
         console.print(
-            f"{prefix} [track.artist]{artist_str}[/track.artist] - [track.title]{title_str}[/track.title]"
+            f"{prefix} [track.artist]{artist_str}[/track.artist] - "
+            f"[track.title]{title_str}[/track.title]"
         )
     else:
         console.print(
