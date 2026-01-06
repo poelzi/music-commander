@@ -85,7 +85,6 @@ def cli(
     # Configure console output
     if no_color:
         console.no_color = True
-        console.force_terminal = False
 
     # Load configuration
     try:

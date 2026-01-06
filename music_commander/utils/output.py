@@ -88,7 +88,7 @@ def create_progress() -> Progress:
     )
 
 
-def create_table(title: str | None = None, **kwargs) -> Table:
+def create_table(title: str | None = None, **kwargs: object) -> Table:
     """Create a styled table.
 
     Args:
