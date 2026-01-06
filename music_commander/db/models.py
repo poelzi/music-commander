@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
-    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -157,7 +156,10 @@ class PlaylistTrack(Base):
     track: Mapped[Track | None] = relationship("Track", back_populates="playlist_entries")
 
     def __repr__(self) -> str:
-        return f"<PlaylistTrack(playlist_id={self.playlist_id}, track_id={self.track_id}, position={self.position})>"
+        return (
+            f"<PlaylistTrack(playlist_id={self.playlist_id}, "
+            f"track_id={self.track_id}, position={self.position})>"
+        )
 
 
 class Crate(Base):

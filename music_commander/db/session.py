@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator
 
 import sqlalchemy.engine
 from sqlalchemy import create_engine, text
@@ -114,8 +114,8 @@ def get_session(db_path: Path) -> Generator[Session, None, None]:
             raise
         raise DatabaseConnectionError(f"Failed to connect: {e}") from e
 
-    SessionLocal = sessionmaker(bind=engine)
-    session = SessionLocal()
+    session_factory = sessionmaker(bind=engine)
+    session = session_factory()
 
     try:
         # Validate schema on first query
