@@ -7,7 +7,7 @@ subtasks:
   - "T014"
 title: "CLI Framework & Output"
 phase: "Phase 2 - Core Components"
-lane: "doing"
+lane: "for_review"
 assignee: "claude"
 agent: "claude"
 shell_pid: "1112538"
@@ -24,6 +24,11 @@ history:
     agent: "claude"
     shell_pid: "1112538"
     action: "Started implementation of CLI framework and output helpers"
+  - timestamp: "2026-01-06T20:30:00Z"
+    lane: "for_review"
+    agent: "claude"
+    shell_pid: "1112538"
+    action: "Completed implementation. All tasks (T011-T014) done. Tests: mypy and ruff pass, CLI --help works."
 ---
 
 # Work Package Prompt: WP04 – CLI Framework & Output
