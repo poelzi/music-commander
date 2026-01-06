@@ -5,7 +5,7 @@ subtasks:
   - "T006"
 title: "Configuration & Exceptions"
 phase: "Phase 1 - Foundation"
-lane: "doing"
+lane: "for_review"
 assignee: "claude"
 agent: "claude"
 shell_pid: "1112538"
@@ -22,6 +22,11 @@ history:
     agent: "claude"
     shell_pid: "1112538"
     action: "Started implementation of configuration and exceptions"
+  - timestamp: "2026-01-06T20:00:00Z"
+    lane: "for_review"
+    agent: "claude"
+    shell_pid: "1112538"
+    action: "Completed implementation. All tasks (T005-T006) done. Tests: mypy and ruff both pass."
 ---
 
 # Work Package Prompt: WP02 – Configuration & Exceptions
