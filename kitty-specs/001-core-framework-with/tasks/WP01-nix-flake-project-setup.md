@@ -7,7 +7,7 @@ subtasks:
   - "T004"
 title: "Nix Flake & Project Setup"
 phase: "Phase 1 - Foundation"
-lane: "doing"
+lane: "for_review"
 assignee: "claude"
 agent: "claude"
 shell_pid: "1112538"
@@ -24,6 +24,11 @@ history:
     agent: "claude"
     shell_pid: "1112538"
     action: "Started implementation of Nix flake and project setup"
+  - timestamp: "2026-01-06T19:50:00Z"
+    lane: "for_review"
+    agent: "claude"
+    shell_pid: "1112538"
+    action: "Completed implementation. All tasks (T001-T004) done. Tests: nix run --version and --help both work."
 ---
 
 # Work Package Prompt: WP01 – Nix Flake & Project Setup
