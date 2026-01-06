@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
+import sqlalchemy.engine
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -27,7 +28,7 @@ REQUIRED_TABLES = {
 }
 
 
-def get_engine(db_path: Path):
+def get_engine(db_path: Path) -> sqlalchemy.engine.Engine:
     """Create SQLAlchemy engine for Mixxx database.
 
     Args:
