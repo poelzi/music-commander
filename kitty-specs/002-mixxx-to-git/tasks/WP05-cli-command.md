@@ -10,12 +10,12 @@ subtasks:
   - "T030"
 title: "CLI Command & Options"
 phase: "Phase 1 - MVP"
-lane: "for_review"
+lane: "planned"
 assignee: ""
-agent: "claude"
-shell_pid: "1395416"
-review_status: ""
-reviewed_by: ""
+agent: "claude-reviewer"
+shell_pid: "$$"
+review_status: "has_feedback"
+reviewed_by: "claude-reviewer"
 history:
   - timestamp: "2026-01-07T14:30:00Z"
     lane: "planned"
@@ -23,6 +23,30 @@ history:
     shell_pid: ""
     action: "Prompt generated via /spec-kitty.tasks"
 ---
+
+## Review Feedback
+
+**Status**: ❌ **Needs Changes**
+
+**Key Issues**:
+1. **Blocked by WP04 issues** - WP05 uses `sync_metadata.py` which has the same mypy errors identified in WP04 review. The command cannot be tested (`music-commander sync-metadata --help` fails with ImportError).
+
+2. **Same 3 mypy errors as WP04**:
+   - Line 18: `create_session` should be `get_session`
+   - Line 264: Null safety on `last_sync_timestamp.timestamp()`
+   - Line 296: Variable `track` shadows `rich.progress.track` import
+
+**What Was Done Well**:
+- All CLI options properly defined (`--all`, `--dry-run`, `--batch-size`)
+- PATHS argument supports multiple paths with `nargs=-1`
+- Docstring includes helpful usage examples
+- Sync exceptions properly defined in `exceptions.py` (T030 complete)
+- Exit codes defined per spec
+
+**Action Items** (must complete before re-review):
+- [ ] Fix WP04 issues first (same file) - see WP04 review feedback
+- [ ] After fixes, verify `music-commander sync-metadata --help` works
+- [ ] Verify command appears in `music-commander --help` list
 
 # Work Package Prompt: WP05 – CLI Command & Options
 
@@ -280,3 +304,4 @@ class AnnexMetadataError(SyncError):
 
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
 - 2026-01-07T15:17:36Z – claude – shell_pid=1395416 – lane=for_review – Completed
+- 2026-01-07T17:15:00Z – claude-reviewer – shell_pid=$$ – lane=planned – Code review: needs changes - blocked by WP04 issues (same file), CLI cannot be tested due to import error
