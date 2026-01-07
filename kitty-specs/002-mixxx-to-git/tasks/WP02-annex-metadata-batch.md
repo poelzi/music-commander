@@ -9,10 +9,10 @@ subtasks:
   - "T011"
 title: "Git-Annex Metadata Batch Wrapper"
 phase: "Phase 0 - Foundation"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "1395416"
 review_status: ""
 reviewed_by: ""
 history:
@@ -223,3 +223,4 @@ def transform_rating(rating: int | None) -> str | None:
 ## Activity Log
 
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
+- 2026-01-07T15:13:55Z – claude – shell_pid=1395416 – lane=doing – Started implementation - Git-annex metadata batch wrapper
