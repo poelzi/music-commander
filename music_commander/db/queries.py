@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from music_commander.db.models import (
@@ -345,7 +345,8 @@ def get_changed_tracks(
     """Query tracks modified since a timestamp.
 
     Uses source_synchronized_ms field for change detection. Tracks with
-    source_synchronized_ms > since_timestamp_ms are considered changed.
+    source_synchronized_ms > since_timestamp_ms OR NULL source_synchronized_ms
+    are considered changed (NULL is treated as "unknown/changed").
 
     Args:
         session: Active database session.
@@ -360,7 +361,10 @@ def get_changed_tracks(
         .options(joinedload(Track.track_location))
         .where(
             Track.mixxx_deleted != 1,
-            Track.source_synchronized_ms > since_timestamp_ms,
+            or_(
+                Track.source_synchronized_ms > since_timestamp_ms,
+                Track.source_synchronized_ms.is_(None),  # Treat NULL as changed
+            ),
         )
         .order_by(Track.id)
     )

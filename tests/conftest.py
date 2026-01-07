@@ -106,7 +106,8 @@ def sample_mixxx_db(temp_dir: Path) -> Path:
             grouping TEXT DEFAULT '',
             album_artist TEXT DEFAULT '',
             color INTEGER,
-            last_played_at DATETIME
+            last_played_at DATETIME,
+            source_synchronized_ms INTEGER
         );
 
         CREATE TABLE Playlists (
