@@ -27,10 +27,10 @@
 **Prompt**: `tasks/WP01-nix-flake-project-setup.md`
 
 ### Included Subtasks
-- [ ] T001 Create flake.nix with Python 3.11, Click, Rich, SQLAlchemy, tomli-w, pytest, ruff, mypy
-- [ ] T002 Create pyproject.toml with package metadata and entry point
-- [ ] T003 Create music_commander/__init__.py with __version__
-- [ ] T004 Create music_commander/__main__.py entry point
+- [X] T001 Create flake.nix with Python 3.11, Click, Rich, SQLAlchemy, tomli-w, pytest, ruff, mypy
+- [X] T002 Create pyproject.toml with package metadata and entry point
+- [X] T003 Create music_commander/__init__.py with __version__
+- [X] T004 Create music_commander/__main__.py entry point
 
 ### Implementation Notes
 - flake.nix must provide: packages.default (buildPythonApplication), devShells.default, checks.default
@@ -55,8 +55,8 @@
 **Prompt**: `tasks/WP02-config-and-exceptions.md`
 
 ### Included Subtasks
-- [ ] T005 Create music_commander/exceptions.py with exception hierarchy
-- [ ] T006 Create music_commander/config.py with TOML loading, defaults, validation
+- [X] T005 Create music_commander/exceptions.py with exception hierarchy
+- [X] T006 Create music_commander/config.py with TOML loading, defaults, validation
 
 ### Implementation Notes
 - Use tomllib (stdlib) for reading, tomli-w for writing
@@ -82,11 +82,11 @@
 **Prompt**: `tasks/WP03-database-orm-layer.md`
 
 ### Included Subtasks
-- [ ] T007 [P] Create music_commander/db/__init__.py with exports
-- [ ] T008 [P] Create music_commander/db/models.py with all ORM models (Track, TrackLocation, Playlist, PlaylistTrack, Crate, CrateTrack, Cue)
-- [ ] T009 [P] Create music_commander/db/session.py with get_session(), WAL mode handling
-- [ ] T010 [P] Create music_commander/db/queries.py with read operations (query_tracks, list_playlists, list_crates, etc.)
-- [ ] T010a [P] Add write operations to music_commander/db/queries.py (update_track, add/remove playlist tracks, manage crate membership)
+- [X] T007 [P] Create music_commander/db/__init__.py with exports
+- [X] T008 [P] Create music_commander/db/models.py with all ORM models (Track, TrackLocation, Playlist, PlaylistTrack, Crate, CrateTrack, Cue)
+- [X] T009 [P] Create music_commander/db/session.py with get_session(), WAL mode handling
+- [X] T010 [P] Create music_commander/db/queries.py with read operations (query_tracks, list_playlists, list_crates, etc.)
+- [X] T010a [P] Add write operations to music_commander/db/queries.py (update_track, add/remove playlist tracks, manage crate membership)
 
 ### Implementation Notes
 - Use SQLAlchemy 2.0 declarative style with type hints
@@ -115,10 +115,10 @@
 **Prompt**: `tasks/WP04-cli-framework-output.md`
 
 ### Included Subtasks
-- [ ] T011 [P] Create music_commander/cli.py with Click group, global options (--config, --no-color, --verbose, --quiet)
-- [ ] T012 [P] Create music_commander/commands/__init__.py with command auto-discovery
-- [ ] T013 [P] Create music_commander/utils/__init__.py
-- [ ] T014 [P] Create music_commander/utils/output.py with Rich console, error/success/info helpers, progress bar wrapper
+- [X] T011 [P] Create music_commander/cli.py with Click group, global options (--config, --no-color, --verbose, --quiet)
+- [X] T012 [P] Create music_commander/commands/__init__.py with command auto-discovery
+- [X] T013 [P] Create music_commander/utils/__init__.py
+- [X] T014 [P] Create music_commander/utils/output.py with Rich console, error/success/info helpers, progress bar wrapper
 
 ### Implementation Notes
 - Click group with @click.pass_context for shared state
@@ -144,9 +144,9 @@
 **Prompt**: `tasks/WP05-git-utilities.md`
 
 ### Included Subtasks
-- [ ] T015 [P] Create music_commander/utils/git.py with get_files_from_revision()
-- [ ] T016 [P] Implement is_annexed() file detection in utils/git.py
-- [ ] T017 [P] Implement annex_get_files() with Rich progress in utils/git.py
+- [X] T015 [P] Create music_commander/utils/git.py with get_files_from_revision()
+- [X] T016 [P] Implement is_annexed() file detection in utils/git.py
+- [X] T017 [P] Implement annex_get_files() with Rich progress in utils/git.py
 
 ### Implementation Notes
 - Use subprocess for git commands
@@ -173,7 +173,7 @@
 **Prompt**: `tasks/WP06-get-commit-files-command.md`
 
 ### Included Subtasks
-- [ ] T018 Create music_commander/commands/get_commit_files.py with full implementation
+- [X] T018 Create music_commander/commands/get_commit_files.py with full implementation
 
 ### Implementation Notes
 - Accept REVISION argument (required)
@@ -203,12 +203,12 @@
 **Prompt**: `tasks/WP07-test-suite-fixtures.md`
 
 ### Included Subtasks
-- [ ] T019 Create tests/conftest.py with shared fixtures
-- [ ] T020 Create tests/fixtures/mixxxdb_sample.sqlite with sample data
-- [ ] T021 Create tests/unit/test_config.py
-- [ ] T022 [P] Create tests/unit/test_models.py
-- [ ] T023 [P] Create tests/unit/test_git_utils.py
-- [ ] T024 Create tests/integration/test_get_commit_files.py
+- [X] T019 Create tests/conftest.py with shared fixtures
+- [X] T020 Create tests/fixtures/mixxxdb_sample.sqlite with sample data
+- [X] T021 Create tests/unit/test_config.py
+- [X] T022 [P] Create tests/unit/test_models.py
+- [X] T023 [P] Create tests/unit/test_git_utils.py
+- [X] T024 Create tests/integration/test_get_commit_files.py
 
 ### Implementation Notes
 - conftest.py: temp directory fixture, mock Mixxx DB, mock git-annex repo
@@ -235,10 +235,10 @@
 **Prompt**: `tasks/WP08-documentation-polish.md`
 
 ### Included Subtasks
-- [ ] T025 Create README.md with installation, configuration, usage examples
-- [ ] T026 Review and refine all --help text for clarity
-- [ ] T027 Validate quickstart.md scenarios work end-to-end
-- [ ] T028 Add .gitignore for Python/Nix artifacts
+- [X] T025 Create README.md with installation, configuration, usage examples
+- [X] T026 Review and refine all --help text for clarity
+- [X] T027 Validate quickstart.md scenarios work end-to-end
+- [X] T028 Add .gitignore for Python/Nix artifacts
 
 ### Implementation Notes
 - README: badges, installation via nix, config file example, command examples
