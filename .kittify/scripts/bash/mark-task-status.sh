@@ -74,7 +74,7 @@ if [[ ! -f "$TASKS_FILE" ]]; then
     exit 1
 fi
 
-python3 - "$TASK_ID" "$STATUS" "$TASKS_FILE" <<'PY'
+/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python - "$TASK_ID" "$STATUS" "$TASKS_FILE" <<'PY'
 import re
 import sys
 from pathlib import Path

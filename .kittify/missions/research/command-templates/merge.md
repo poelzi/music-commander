@@ -23,7 +23,7 @@ Before running this command:
 Before merging, verify you are in the correct working directory by running the shared pre-flight validation:
 
 ```python
-from specify_cli.guards import validate_worktree_location
+import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.guards import validate_worktree_location
 
 # Validate location
 result = validate_worktree_location()
@@ -48,7 +48,7 @@ Before merging research to main, perform final validation:
 # Quick citation validation
 python -c "
 from pathlib import Path
-from specify_cli.validators.research import validate_citations, validate_source_register
+import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.validators.research import validate_citations, validate_source_register
 
 feature_dir = Path('kitty-specs/$FEATURE_SLUG')
 evidence = feature_dir / 'research' / 'evidence-log.csv'

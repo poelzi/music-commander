@@ -20,7 +20,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 Before proceeding with implementation, verify you are in the correct working directory by running the shared pre-flight validation:
 
 ```python
-from specify_cli.guards import validate_worktree_location
+import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.guards import validate_worktree_location
 
 # Validate location
 result = validate_worktree_location()
@@ -122,14 +122,14 @@ As you conduct research and gather evidence, you MUST maintain proper citation t
    - Calculate overall status:
      * **PASS**: All checklists have 0 incomplete items
      * **FAIL**: One or more checklists have incomplete items
-   
+
    - **If any checklist is incomplete**:
      * Display the table with incomplete item counts
      * **STOP** and ask: "Some checklists are incomplete. Do you want to proceed with implementation anyway? (yes/no)"
      * Wait for user response before continuing
      * If user says "no" or "wait" or "stop", halt execution
      * If user says "yes" or "proceed" or "continue", proceed to step 3
-   
+
    - **If all checklists are complete**:
      * Display the table showing all checklists passed
      * Automatically proceed to step 3

@@ -80,7 +80,7 @@ elif [[ -f "$TARGET_SCRIPT_ROOT/tasks_cli.py" ]]; then
   cp "$TARGET_SCRIPT_ROOT/tasks_cli.py" "$LEGACY_BACKUP"
 fi
 
-python3 - "$SOURCE_TASK_DIR" "$TARGET_TASK_DIR" <<'PY'
+/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python - "$SOURCE_TASK_DIR" "$TARGET_TASK_DIR" <<'PY'
 import shutil
 import sys
 from pathlib import Path

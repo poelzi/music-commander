@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "Error: python3 is required but was not found on PATH." >&2
+if ! command -v /nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python >/dev/null 2>&1; then
+  echo "Error: /nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python is required but was not found on PATH." >&2
   exit 1
 fi
 
@@ -14,4 +14,4 @@ if [[ ! -f "$PY_HELPER" ]]; then
   exit 1
 fi
 
-python3 "$PY_HELPER" rollback "$@"
+/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python "$PY_HELPER" rollback "$@"

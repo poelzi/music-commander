@@ -19,21 +19,21 @@ get_current_branch() {
         echo "$SPECIFY_FEATURE"
         return
     fi
-    
+
     # Then check git if available
     if git rev-parse --abbrev-ref HEAD >/dev/null 2>&1; then
         git rev-parse --abbrev-ref HEAD
         return
     fi
-    
+
     # For non-git repos, try to find the latest feature directory
     local repo_root=$(get_repo_root)
     local specs_dir="$repo_root/kitty-specs"
-    
+
     if [[ -d "$specs_dir" ]]; then
         local latest_feature=""
         local highest=0
-        
+
         for dir in "$specs_dir"/*; do
             if [[ -d "$dir" ]]; then
                 local dirname=$(basename "$dir")
@@ -47,13 +47,13 @@ get_current_branch() {
                 fi
             fi
         done
-        
+
         if [[ -n "$latest_feature" ]]; then
             echo "$latest_feature"
             return
         fi
     fi
-    
+
     echo "main"  # Final fallback
 }
 
@@ -157,7 +157,7 @@ get_mission_exports() {
     local repo_root="$1"
     local feature_dir="${2:-}"  # Optional feature directory for per-feature mission lookup
 
-    # Use python3 for mission detection to keep logic in sync with CLI behavior
+    # Use /nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python for mission detection to keep logic in sync with CLI behavior
     local python_bin="python3"
     if ! command -v "$python_bin" >/dev/null 2>&1; then
         python_bin="python"
@@ -352,7 +352,7 @@ get_feature_paths() {
     local mission_exports
     # Pass feature_dir to enable per-feature mission lookup from meta.json
     mission_exports=$(get_mission_exports "$repo_root" "$feature_dir") || return 1
-    
+
     cat <<EOF
 REPO_ROOT='$repo_root'
 CURRENT_BRANCH='$current_branch'
