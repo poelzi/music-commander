@@ -7,7 +7,7 @@ subtasks:
   - "T028"
 title: "Documentation & Polish"
 phase: "Phase 3 - Integration"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: ""
 shell_pid: ""
