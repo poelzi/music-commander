@@ -10,11 +10,11 @@ subtasks:
   - "T023"
 title: "Core Sync Logic"
 phase: "Phase 1 - MVP"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: "claude"
 shell_pid: "$$"
-review_status: "has_feedback"
+review_status: "addressed"
 reviewed_by: "claude-reviewer"
 history:
   - timestamp: "2026-01-07T14:30:00Z"
@@ -44,9 +44,9 @@ history:
 - Summary reporting with table output
 
 **Action Items** (must complete before re-review):
-- [ ] Fix import: change `create_session` to `get_session` on line 18
-- [ ] Fix null safety: add `assert sync_state.last_sync_timestamp is not None` before line 264, or restructure logic
-- [ ] Fix variable shadowing: rename loop variable `track` to avoid shadowing `rich.progress.track` import
+- [x] Fix import: change `create_session` to `get_session` on line 18
+- [x] Fix null safety: add `assert sync_state.last_sync_timestamp is not None` before line 264, or restructure logic
+- [x] Fix variable shadowing: rename loop variable `track` to avoid shadowing `rich.progress.track` import
 
 # Work Package Prompt: WP04 – Core Sync Logic 🎯 MVP
 

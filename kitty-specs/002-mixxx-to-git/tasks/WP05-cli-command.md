@@ -10,11 +10,11 @@ subtasks:
   - "T030"
 title: "CLI Command & Options"
 phase: "Phase 1 - MVP"
-lane: "planned"
+lane: "for_review"
 assignee: ""
-agent: "claude-reviewer"
+agent: "claude"
 shell_pid: "$$"
-review_status: "has_feedback"
+review_status: "addressed"
 reviewed_by: "claude-reviewer"
 history:
   - timestamp: "2026-01-07T14:30:00Z"
@@ -44,9 +44,9 @@ history:
 - Exit codes defined per spec
 
 **Action Items** (must complete before re-review):
-- [ ] Fix WP04 issues first (same file) - see WP04 review feedback
-- [ ] After fixes, verify `music-commander sync-metadata --help` works
-- [ ] Verify command appears in `music-commander --help` list
+- [x] Fix WP04 issues first (same file) - see WP04 review feedback
+- [x] After fixes, verify `music-commander sync-metadata --help` works
+- [x] Verify command appears in `music-commander --help` list
 
 # Work Package Prompt: WP05 – CLI Command & Options
 
