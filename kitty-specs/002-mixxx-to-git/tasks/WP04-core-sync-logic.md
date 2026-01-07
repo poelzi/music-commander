@@ -10,10 +10,10 @@ subtasks:
   - "T023"
 title: "Core Sync Logic"
 phase: "Phase 1 - MVP"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "1395416"
 review_status: ""
 reviewed_by: ""
 history:
@@ -291,3 +291,4 @@ All files processed successfully!
 ## Activity Log
 
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
+- 2026-01-07T15:15:34Z – claude – shell_pid=1395416 – lane=doing – Started - Core sync logic

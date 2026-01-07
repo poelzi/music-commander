@@ -73,6 +73,51 @@ music-commander get-commit-files --remote nas HEAD~1
 
 ## Usage
 
+### sync-metadata Command
+
+Sync track metadata from your Mixxx library to git-annex metadata.
+
+Synchronizes metadata fields including rating, BPM, color, key, artist, title, album, genre, year, tracknumber, comment, and crate memberships from Mixxx to git-annex metadata on annexed files. By default, only tracks modified since the last sync are updated.
+
+**Options:**
+
+- `--all`, `-a`: Sync all tracks, ignoring change detection
+- `--dry-run`, `-n`: Show what would be synced without making changes
+- `--batch-size`, `-b`: Commit every N files (default: single commit at end)
+- `PATHS`: Optional file or directory paths to filter sync
+
+**Examples:**
+
+```bash
+# Sync tracks changed since last sync
+music-commander sync-metadata
+
+# Force sync all tracks (initial setup)
+music-commander sync-metadata --all
+
+# Preview changes without syncing
+music-commander sync-metadata --dry-run
+
+# Sync only a specific directory
+music-commander sync-metadata ./darkpsy/
+
+# Sync with commits every 1000 files
+music-commander sync-metadata --all --batch-size 1000
+```
+
+**After syncing**, query tracks with git-annex:
+
+```bash
+# Find all 5-star tracks
+git annex find --metadata rating=5
+
+# Find tracks in a specific crate
+git annex find --metadata crate="Festival Sets"
+
+# Find tracks by BPM range
+git annex find --metadata bpm=140.*
+```
+
 ### get-commit-files Command
 
 Fetch git-annexed files from any git revision.
