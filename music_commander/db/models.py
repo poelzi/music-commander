@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -88,6 +90,7 @@ class Track(Base):
     album_artist: Mapped[str | None] = mapped_column(Text, default="")
     color: Mapped[int | None] = mapped_column(Integer)
     last_played_at: Mapped[datetime | None] = mapped_column(DateTime)
+    source_synchronized_ms: Mapped[int | None] = mapped_column(Integer)
 
     # Relationships
     track_location: Mapped[TrackLocation | None] = relationship(
@@ -225,3 +228,61 @@ class Cue(Base):
 
     def __repr__(self) -> str:
         return f"<Cue(id={self.id}, track_id={self.track_id}, hotcue={self.hotcue})>"
+
+
+# =============================================================================
+# Data Transfer Objects for Sync Operations
+# =============================================================================
+
+
+@dataclass
+class TrackMetadata:
+    """Metadata for a single track extracted from Mixxx database."""
+
+    file_path: Path
+    relative_path: Path | None
+    rating: int | None
+    bpm: float | None
+    color: int | None
+    key: str | None
+    artist: str | None
+    title: str | None
+    album: str | None
+    genre: str | None
+    year: str | None
+    tracknumber: str | None
+    comment: str | None
+    crates: list[str] = field(default_factory=list)
+    source_synchronized_ms: int | None = None
+
+
+@dataclass
+class SyncState:
+    """Persisted sync state stored in git-annex metadata."""
+
+    last_sync_timestamp: datetime | None
+    tracks_synced: int = 0
+
+    @property
+    def is_first_sync(self) -> bool:
+        """Check if this is the first sync."""
+        return self.last_sync_timestamp is None
+
+
+@dataclass
+class SyncResult:
+    """Result of a sync operation."""
+
+    synced: list[Path] = field(default_factory=list)
+    skipped: list[tuple[Path, str]] = field(default_factory=list)
+    failed: list[tuple[Path, str]] = field(default_factory=list)
+
+    @property
+    def total_requested(self) -> int:
+        """Total files attempted."""
+        return len(self.synced) + len(self.skipped) + len(self.failed)
+
+    @property
+    def success(self) -> bool:
+        """True if no files failed."""
+        return len(self.failed) == 0
