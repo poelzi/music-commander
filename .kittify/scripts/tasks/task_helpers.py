@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python
 """Standalone helpers for Spec Kitty task prompt management."""
 
 from __future__ import annotations

@@ -13,3 +13,4 @@
 .github/copilot/
 tmp
 *.pyc
+.worktrees/

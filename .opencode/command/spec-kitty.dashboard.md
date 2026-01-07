@@ -71,7 +71,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from specify_cli.dashboard import ensure_dashboard_running, stop_dashboard
+import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.dashboard import ensure_dashboard_running, stop_dashboard
 
 # CRITICAL: Find the main repository root, not worktree
 current_dir = Path.cwd()

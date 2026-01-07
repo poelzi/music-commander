@@ -1,4 +1,4 @@
-#!/nix/store/3lll9y925zz9393sa59h653xik66srjb-python3-3.13.9/bin/python3
+#!/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python
 """
 Validate and fix UTF-8 encoding in Spec Kitty markdown files.
 
