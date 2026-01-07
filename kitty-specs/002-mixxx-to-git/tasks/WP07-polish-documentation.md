@@ -9,9 +9,9 @@ subtasks:
   - "T040"
 title: "Polish & Documentation"
 phase: "Phase 2 - Enhancement"
-lane: "for_review"
+lane: "done"
 assignee: ""
-agent: "claude"
+agent: "claude-reviewer"
 shell_pid: "1395416"
 review_status: ""
 reviewed_by: ""
@@ -247,3 +247,4 @@ After syncing, query tracks with git-annex:
 
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
 - 2026-01-07T15:17:36Z – claude – shell_pid=1395416 – lane=for_review – Completed
+- 2026-01-07T17:06:23Z – claude-reviewer – shell_pid=1395416 – lane=done – Approved - all edge cases handled (file not in repo, special chars, truncation), README and quickstart.md updated, help text includes examples. Depends on WP04/WP05 fixes to test CLI help.
