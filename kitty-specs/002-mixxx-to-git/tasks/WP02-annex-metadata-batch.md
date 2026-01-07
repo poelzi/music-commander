@@ -9,12 +9,12 @@ subtasks:
   - "T011"
 title: "Git-Annex Metadata Batch Wrapper"
 phase: "Phase 0 - Foundation"
-lane: "for_review"
+lane: "planned"
 assignee: ""
-agent: "claude"
-shell_pid: "1395416"
-review_status: ""
-reviewed_by: ""
+agent: "claude-reviewer"
+shell_pid: "$$"
+review_status: "has_feedback"
+reviewed_by: "claude-reviewer"
 history:
   - timestamp: "2026-01-07T14:30:00Z"
     lane: "planned"
@@ -22,6 +22,36 @@ history:
     shell_pid: ""
     action: "Prompt generated via /spec-kitty.tasks"
 ---
+
+## Review Feedback
+
+**Status**: ❌ **Needs Changes**
+
+**Key Issues**:
+1. **Mypy strict mode failures** - 4 type errors in `annex_metadata.py`:
+   - Line 63: `__exit__` missing type annotations for parameters and has invalid return type `bool` (should be `Literal[False]` or `None`)
+   - Line 121: `set_metadata` returns `Any` from `response.get("success", False)`
+   - Line 155: `get_metadata` returns `Any` from `response.get("fields", {})`
+
+2. **No unit tests** - The Definition of Done requires passing tests. No tests exist for:
+   - `transform_rating()`, `transform_color()`, `transform_bpm()`
+   - `build_annex_fields()`
+   - `sanitize_metadata_value()`, `sanitize_crate_name()`
+
+**What Was Done Well**:
+- Core `AnnexMetadataBatch` class structure is correct
+- Context manager lifecycle properly starts subprocess and commits on exit
+- `set_metadata()` and `get_metadata()` implement correct JSON protocol
+- `annex.alwayscommit=false` correctly passed to subprocess
+- All field transformations implemented with proper logic
+- Extra sanitization helpers added for robustness
+- Crates handled as multi-value field correctly
+
+**Action Items** (must complete before re-review):
+- [ ] Fix `__exit__` signature: add type annotations `(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None) -> Literal[False]`
+- [ ] Fix `set_metadata` return: cast `response.get("success", False)` to `bool`
+- [ ] Fix `get_metadata` return: properly type the response parsing
+- [ ] Add unit tests for transformation functions
 
 # Work Package Prompt: WP02 – Git-Annex Metadata Batch Wrapper
 
@@ -225,3 +255,4 @@ def transform_rating(rating: int | None) -> str | None:
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
 - 2026-01-07T15:13:55Z – claude – shell_pid=1395416 – lane=doing – Started implementation - Git-annex metadata batch wrapper
 - 2026-01-07T15:15:01Z – claude – shell_pid=1395416 – lane=for_review – Completed implementation - ready for review
+- 2026-01-07T17:05:00Z – claude-reviewer – shell_pid=$$ – lane=planned – Code review: needs changes - mypy strict failures (4 errors), missing unit tests for transformations
