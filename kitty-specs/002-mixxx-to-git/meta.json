@@ -1,7 +1,25 @@
 {
+  "accept_commit": null,
+  "acceptance_history": [
+    {
+      "accepted_at": "2026-01-07T20:35:33Z",
+      "accepted_by": "claude",
+      "accepted_from_commit": "27b3580fa751641adedc555b2723c1b1edfe0d17",
+      "branch": "002-mixxx-to-git",
+      "mode": "local",
+      "validation_commands": [
+        "nix develop --command mypy music_commander/db/queries.py music_commander/utils/annex_metadata.py music_commander/commands/sync_metadata.py --strict",
+        "nix develop --command pytest tests/ -v"
+      ]
+    }
+  ],
+  "acceptance_mode": "local",
+  "accepted_at": "2026-01-07T20:35:33Z",
+  "accepted_by": "claude",
+  "accepted_from_commit": "27b3580fa751641adedc555b2723c1b1edfe0d17",
+  "created_at": "2026-01-07T13:00:19Z",
   "feature_number": "002",
-  "slug": "002-mixxx-to-git",
   "friendly_name": "Mixxx to Git-Annex Metadata Sync",
-  "source_description": "Sync Mixxx library metadata (rating, BPM, color, name, artist, title, album, crates) to git-annex metadata on music files. One-way sync from Mixxx to git-annex, designed for future bidirectional support. Manual CLI command trigger. Default to tracks changed since last sync, with option for full resync or specific files. Always overwrite git-annex metadata with Mixxx values. Research and implement efficient batching to minimize git history bloat.",
-  "created_at": "2026-01-07T13:00:19Z"
+  "slug": "002-mixxx-to-git",
+  "source_description": "Sync Mixxx library metadata (rating, BPM, color, name, artist, title, album, crates) to git-annex metadata on music files. One-way sync from Mixxx to git-annex, designed for future bidirectional support. Manual CLI command trigger. Default to tracks changed since last sync, with option for full resync or specific files. Always overwrite git-annex metadata with Mixxx values. Research and implement efficient batching to minimize git history bloat."
 }
