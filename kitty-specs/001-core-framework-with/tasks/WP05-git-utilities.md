@@ -6,7 +6,7 @@ subtasks:
   - "T017"
 title: "Git Utilities"
 phase: "Phase 2 - Core Components"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: ""
 shell_pid: ""
