@@ -7,10 +7,10 @@ subtasks:
   - "T034"
 title: "Crate Sync & Multi-Value Fields"
 phase: "Phase 2 - Enhancement"
-lane: "planned"
+lane: "for_review"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "1395416"
 review_status: ""
 reviewed_by: ""
 history:
@@ -186,3 +186,4 @@ def build_annex_fields(track: TrackMetadata) -> dict[str, list[str]]:
 ## Activity Log
 
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
+- 2026-01-07T15:17:36Z – claude – shell_pid=1395416 – lane=for_review – Completed
