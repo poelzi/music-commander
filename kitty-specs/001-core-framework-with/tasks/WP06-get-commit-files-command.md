@@ -4,7 +4,7 @@ subtasks:
   - "T018"
 title: "get-commit-files Command"
 phase: "Phase 3 - Integration"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: ""
 shell_pid: ""
