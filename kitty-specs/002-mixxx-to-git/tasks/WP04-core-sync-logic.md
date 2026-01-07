@@ -10,7 +10,7 @@ subtasks:
   - "T023"
 title: "Core Sync Logic"
 phase: "Phase 1 - MVP"
-lane: "for_review"
+lane: "done"
 assignee: ""
 agent: "claude"
 shell_pid: "$$"

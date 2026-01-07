@@ -8,11 +8,11 @@ subtasks:
   - "T005"
 title: "Mixxx Database Queries"
 phase: "Phase 0 - Foundation"
-lane: "for_review"
+lane: "done"
 assignee: ""
 agent: "claude"
 shell_pid: "1428338"
-review_status: "has_feedback"
+review_status: "addressed"
 reviewed_by: "claude-reviewer"
 history:
   - timestamp: "2026-01-07T14:30:00Z"
@@ -41,8 +41,8 @@ history:
 - NULL handling is graceful for optional fields
 
 **Action Items** (must complete before re-review):
-- [ ] Update `tests/conftest.py` to add `source_synchronized_ms INTEGER` column to the `library` table schema in `sample_mixxx_db` fixture
-- [ ] Fix `get_changed_tracks()` to include tracks where `source_synchronized_ms IS NULL` (treat as changed per T003 spec)
+- [x] Update `tests/conftest.py` to add `source_synchronized_ms INTEGER` column to the `library` table schema in `sample_mixxx_db` fixture
+- [x] Fix `get_changed_tracks()` to include tracks where `source_synchronized_ms IS NULL` (treat as changed per T003 spec)
 
 # Work Package Prompt: WP01 – Mixxx Database Queries
 
