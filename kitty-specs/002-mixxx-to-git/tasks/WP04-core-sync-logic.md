@@ -10,12 +10,12 @@ subtasks:
   - "T023"
 title: "Core Sync Logic"
 phase: "Phase 1 - MVP"
-lane: "for_review"
+lane: "planned"
 assignee: ""
-agent: "claude"
-shell_pid: "1395416"
-review_status: ""
-reviewed_by: ""
+agent: "claude-reviewer"
+shell_pid: "$$"
+review_status: "has_feedback"
+reviewed_by: "claude-reviewer"
 history:
   - timestamp: "2026-01-07T14:30:00Z"
     lane: "planned"
@@ -23,6 +23,30 @@ history:
     shell_pid: ""
     action: "Prompt generated via /spec-kitty.tasks"
 ---
+
+## Review Feedback
+
+**Status**: ❌ **Needs Changes**
+
+**Key Issues**:
+1. **Wrong import name** (Line 18) - `from music_commander.db.session import create_session` should be `get_session` (the function is named `get_session` in session.py)
+
+2. **Null safety error** (Line 264) - `sync_state.last_sync_timestamp.timestamp()` is called but `last_sync_timestamp` can be `None`. While the logic flow ensures this branch only runs when `sync_all=False` and not first sync, mypy can't verify this. Add an assertion or guard.
+
+3. **Variable shadowing** (Line 296) - `for i, track in track(tracks, ...)` uses `track` as both the loop variable and the imported `rich.progress.track` function. Rename the loop variable to `t` or `item`.
+
+**What Was Done Well**:
+- Core sync workflow is well-structured
+- `matches_paths()` filter logic is correct
+- `SyncResult` dataclass properly defined in models.py
+- Dry-run mode implemented
+- Progress tracking with Rich integrated
+- Summary reporting with table output
+
+**Action Items** (must complete before re-review):
+- [ ] Fix import: change `create_session` to `get_session` on line 18
+- [ ] Fix null safety: add `assert sync_state.last_sync_timestamp is not None` before line 264, or restructure logic
+- [ ] Fix variable shadowing: rename loop variable `track` to avoid shadowing `rich.progress.track` import
 
 # Work Package Prompt: WP04 – Core Sync Logic 🎯 MVP
 
@@ -293,3 +317,4 @@ All files processed successfully!
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
 - 2026-01-07T15:15:34Z – claude – shell_pid=1395416 – lane=doing – Started - Core sync logic
 - 2026-01-07T15:17:36Z – claude – shell_pid=1395416 – lane=for_review – Completed
+- 2026-01-07T17:12:00Z – claude-reviewer – shell_pid=$$ – lane=planned – Code review: needs changes - wrong import (create_session→get_session), null safety on timestamp, variable shadowing in loop
