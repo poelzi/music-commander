@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
 from rich.progress import track
 
 from music_commander.cli import Context, pass_context
 from music_commander.config import Config
-from music_commander.db.models import SyncResult, TrackMetadata
+from music_commander.db.models import SyncResult, SyncState, TrackMetadata
 from music_commander.db.queries import (
     get_all_tracks,
     get_changed_tracks,
 )
-from music_commander.db.session import create_session
+from music_commander.db.session import get_session
 from music_commander.exceptions import (
     DatabaseNotFoundError,
     MixxxDatabaseError,
@@ -39,10 +38,6 @@ from music_commander.utils.sync_state import (
     read_sync_state,
     write_sync_state,
 )
-
-if TYPE_CHECKING:
-    from music_commander.db.models import SyncState
-
 
 # Exit codes per CLI contract
 EXIT_SUCCESS = 0
@@ -256,11 +251,13 @@ def sync_tracks(
         info(f"Syncing tracks changed since {last_sync}")
 
     # Query Mixxx database
-    with create_session(config.mixxx_db) as session:
+    with get_session(config.mixxx_db) as session:
         if sync_all:
             tracks_iter = get_all_tracks(session, config.music_repo)
         else:
             # Get timestamp in milliseconds (Mixxx format)
+            # Note: sync_all is True when is_first_sync, so last_sync_timestamp is not None here
+            assert sync_state.last_sync_timestamp is not None
             since_ms = int(sync_state.last_sync_timestamp.timestamp() * 1000)
             tracks_iter = get_changed_tracks(session, config.music_repo, since_ms)
 
@@ -285,57 +282,57 @@ def sync_tracks(
     # Dry-run mode: show what would be synced
     if dry_run:
         info("[Dry Run] Would sync the following tracks:")
-        for track in tracks[:10]:  # Show first 10
-            console.print(f"  [path]{track.relative_path}[/path]")
+        for t in tracks[:10]:  # Show first 10
+            console.print(f"  [path]{t.relative_path}[/path]")
         if len(tracks) > 10:
             console.print(f"  ... and {len(tracks) - 10} more")
         return result
 
     # Write metadata via batch subprocess
     with AnnexMetadataBatch(config.music_repo) as batch:
-        for i, track in track(
+        for t in track(
             tracks,
             description="Syncing metadata...",
             console=console,
         ):
             # Skip tracks without relative path (shouldn't happen after filtering)
-            if track.relative_path is None:
-                result.skipped.append((track.file_path, "Not under music_repo"))
+            if t.relative_path is None:
+                result.skipped.append((t.file_path, "Not under music_repo"))
                 continue
 
             # Check if file exists in repository
-            full_path = config.music_repo / track.relative_path
+            full_path = config.music_repo / t.relative_path
             if not full_path.exists():
-                result.skipped.append((track.relative_path, "File not in repository"))
+                result.skipped.append((t.relative_path, "File not in repository"))
                 continue
 
             # Transform metadata to git-annex format
             try:
-                fields = build_annex_fields(track)
+                fields = build_annex_fields(t)
             except Exception as e:
-                result.failed.append((track.relative_path, f"Transform error: {e}"))
+                result.failed.append((t.relative_path, f"Transform error: {e}"))
                 continue
 
             # Skip if no fields to sync (all None/empty)
             if not fields or all(not v for v in fields.values()):
-                result.skipped.append((track.relative_path, "No metadata to sync"))
+                result.skipped.append((t.relative_path, "No metadata to sync"))
                 continue
 
             # Write metadata
             try:
-                success_flag = batch.set_metadata(track.relative_path, fields)
+                success_flag = batch.set_metadata(t.relative_path, fields)
 
                 if success_flag:
-                    result.synced.append(track.relative_path)
+                    result.synced.append(t.relative_path)
                 else:
-                    result.failed.append((track.relative_path, "Git-annex error"))
+                    result.failed.append((t.relative_path, "Git-annex error"))
             except Exception as e:
-                result.failed.append((track.relative_path, f"Write error: {e}"))
+                result.failed.append((t.relative_path, f"Write error: {e}"))
                 continue
 
-            # Intermediate commit if batch_size specified
-            if batch_size and (i + 1) % batch_size == 0:
-                batch.commit()
+        # Intermediate commit if batch_size specified
+        if batch_size and len(result.synced) % batch_size == 0:
+            batch.commit()
 
     # Update sync state with new timestamp
     new_state = SyncState(
