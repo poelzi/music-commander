@@ -9,7 +9,7 @@ subtasks:
 title: "Sync State Management"
 phase: "Phase 0 - Foundation"
 lane: "done"
-assignee: ""
+assignee: "claude"
 agent: "claude-reviewer"
 shell_pid: "1395416"
 review_status: ""

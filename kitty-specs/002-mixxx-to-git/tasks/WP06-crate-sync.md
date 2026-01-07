@@ -8,7 +8,7 @@ subtasks:
 title: "Crate Sync & Multi-Value Fields"
 phase: "Phase 2 - Enhancement"
 lane: "done"
-assignee: ""
+assignee: "claude"
 agent: "claude-reviewer"
 shell_pid: "1395416"
 review_status: ""

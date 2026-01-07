@@ -10,7 +10,7 @@ subtasks:
 title: "Polish & Documentation"
 phase: "Phase 2 - Enhancement"
 lane: "done"
-assignee: ""
+assignee: "claude"
 agent: "claude-reviewer"
 shell_pid: "1395416"
 review_status: ""

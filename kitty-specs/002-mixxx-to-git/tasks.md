@@ -22,11 +22,11 @@
 **Prompt**: `tasks/WP01-mixxx-database-queries.md`
 
 ### Included Subtasks
-- [ ] T001 Create `music_commander/db/queries.py` with track metadata query function
-- [ ] T002 Add crate membership query joining `crate_tracks` and `crates` tables
-- [ ] T003 Add change detection query filtering by `source_synchronized_ms`
-- [ ] T004 Create `TrackMetadata` dataclass in `music_commander/db/models.py`
-- [ ] T005 Add path matching logic to convert absolute Mixxx paths to relative repo paths
+- [x] T001 Create `music_commander/db/queries.py` with track metadata query function
+- [x] T002 Add crate membership query joining `crate_tracks` and `crates` tables
+- [x] T003 Add change detection query filtering by `source_synchronized_ms`
+- [x] T004 Create `TrackMetadata` dataclass in `music_commander/db/models.py`
+- [x] T005 Add path matching logic to convert absolute Mixxx paths to relative repo paths
 
 ### Implementation Notes
 - Use existing SQLAlchemy session from `music_commander/db/mixxx.py`
@@ -53,12 +53,12 @@
 **Prompt**: `tasks/WP02-annex-metadata-batch.md`
 
 ### Included Subtasks
-- [ ] T006 Create `music_commander/utils/annex_metadata.py` with batch process manager
-- [ ] T007 Implement `AnnexMetadataBatch` context manager for subprocess lifecycle
-- [ ] T008 Add `set_metadata(file, fields)` method with JSON stdin/stdout handling
-- [ ] T009 Add `get_metadata(file)` method for reading existing metadata
-- [ ] T010 Implement commit control with `annex.alwayscommit=false` and manual merge
-- [ ] T011 Add field value transformation (rating int→str, color int→hex, bpm float→str)
+- [x] T006 Create `music_commander/utils/annex_metadata.py` with batch process manager
+- [x] T007 Implement `AnnexMetadataBatch` context manager for subprocess lifecycle
+- [x] T008 Add `set_metadata(file, fields)` method with JSON stdin/stdout handling
+- [x] T009 Add `get_metadata(file)` method for reading existing metadata
+- [x] T010 Implement commit control with `annex.alwayscommit=false` and manual merge
+- [x] T011 Add field value transformation (rating int→str, color int→hex, bpm float→str)
 
 ### Implementation Notes
 - Start subprocess with `git -c annex.alwayscommit=false annex metadata --batch --json`
@@ -85,11 +85,11 @@
 **Prompt**: `tasks/WP03-sync-state-management.md`
 
 ### Included Subtasks
-- [ ] T012 Add `SyncState` dataclass with `last_sync_timestamp` and `tracks_synced` fields
-- [ ] T013 Implement `read_sync_state(repo_path)` function using annex metadata
-- [ ] T014 Implement `write_sync_state(repo_path, state)` function
-- [ ] T015 Create `.music-commander-sync-state` sentinel file if not exists
-- [ ] T016 Add ISO 8601 timestamp serialization/deserialization
+- [x] T012 Add `SyncState` dataclass with `last_sync_timestamp` and `tracks_synced` fields
+- [x] T013 Implement `read_sync_state(repo_path)` function using annex metadata
+- [x] T014 Implement `write_sync_state(repo_path, state)` function
+- [x] T015 Create `.music-commander-sync-state` sentinel file if not exists
+- [x] T016 Add ISO 8601 timestamp serialization/deserialization
 
 ### Implementation Notes
 - Use batch wrapper from WP02 to read/write sentinel file metadata
@@ -116,13 +116,13 @@
 **Prompt**: `tasks/WP04-core-sync-logic.md`
 
 ### Included Subtasks
-- [ ] T017 Create `music_commander/commands/sync_metadata.py` with core sync function
-- [ ] T018 Implement track filtering: changed since last sync OR all tracks
-- [ ] T019 Implement path matching: filter to tracks within repo, skip others with warning
-- [ ] T020 Implement metadata transformation: Mixxx fields → annex fields
-- [ ] T021 Implement batch write loop with progress tracking
-- [ ] T022 Create `SyncResult` dataclass for tracking synced/skipped/failed
-- [ ] T023 Implement summary reporting at sync completion
+- [x] T017 Create `music_commander/commands/sync_metadata.py` with core sync function
+- [x] T018 Implement track filtering: changed since last sync OR all tracks
+- [x] T019 Implement path matching: filter to tracks within repo, skip others with warning
+- [x] T020 Implement metadata transformation: Mixxx fields → annex fields
+- [x] T021 Implement batch write loop with progress tracking
+- [x] T022 Create `SyncResult` dataclass for tracking synced/skipped/failed
+- [x] T023 Implement summary reporting at sync completion
 
 ### Implementation Notes
 - Use generator pattern: query → filter → transform → write (streaming)
@@ -149,13 +149,13 @@
 **Prompt**: `tasks/WP05-cli-command.md`
 
 ### Included Subtasks
-- [ ] T024 Add `sync-metadata` command to `music_commander/commands/sync_metadata.py`
-- [ ] T025 Implement `--all` / `-a` flag for full resync
-- [ ] T026 Implement `--dry-run` / `-n` flag for preview mode
-- [ ] T027 Implement `--batch-size` / `-b` option for commit chunking
-- [ ] T028 Implement positional `PATHS` argument for filtering to specific files/directories
-- [ ] T029 Register command in `music_commander/commands/__init__.py`
-- [ ] T030 Add sync-specific exceptions to `music_commander/exceptions.py`
+- [x] T024 Add `sync-metadata` command to `music_commander/commands/sync_metadata.py`
+- [x] T025 Implement `--all` / `-a` flag for full resync
+- [x] T026 Implement `--dry-run` / `-n` flag for preview mode
+- [x] T027 Implement `--batch-size` / `-b` option for commit chunking
+- [x] T028 Implement positional `PATHS` argument for filtering to specific files/directories
+- [x] T029 Register command in `music_commander/commands/__init__.py`
+- [x] T030 Add sync-specific exceptions to `music_commander/exceptions.py`
 
 ### Implementation Notes
 - Follow pattern from existing `get_commit_files.py` command
@@ -181,10 +181,10 @@
 **Prompt**: `tasks/WP06-crate-sync.md`
 
 ### Included Subtasks
-- [ ] T031 Extend Mixxx query to include crate membership per track
-- [ ] T032 Add crate name sanitization for git-annex compatibility
-- [ ] T033 Implement multi-value field handling in annex batch wrapper
-- [ ] T034 Handle crate removal: set empty array to remove old crates
+- [x] T031 Extend Mixxx query to include crate membership per track
+- [x] T032 Add crate name sanitization for git-annex compatibility
+- [x] T033 Implement multi-value field handling in annex batch wrapper
+- [x] T034 Handle crate removal: set empty array to remove old crates
 
 ### Implementation Notes
 - Query joins: `library` → `crate_tracks` → `crates`
@@ -210,12 +210,12 @@
 **Prompt**: `tasks/WP07-polish-documentation.md`
 
 ### Included Subtasks
-- [ ] T035 Handle edge case: file in Mixxx but not in repo (skip with warning)
-- [ ] T036 Handle edge case: special characters in metadata values
-- [ ] T037 Handle edge case: very long metadata values (truncate with warning)
-- [ ] T038 Validate quickstart.md scenarios work end-to-end
-- [ ] T039 Update README.md with sync-metadata command documentation
-- [ ] T040 Add example usage to `--help` output
+- [x] T035 Handle edge case: file in Mixxx but not in repo (skip with warning)
+- [x] T036 Handle edge case: special characters in metadata values
+- [x] T037 Handle edge case: very long metadata values (truncate with warning)
+- [x] T038 Validate quickstart.md scenarios work end-to-end
+- [x] T039 Update README.md with sync-metadata command documentation
+- [x] T040 Add example usage to `--help` output
 
 ### Implementation Notes
 - Test with real-world Mixxx database if available
