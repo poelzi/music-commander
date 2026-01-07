@@ -6,7 +6,8 @@ import json
 import re
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from music_commander.db.models import TrackMetadata
@@ -60,7 +61,12 @@ class AnnexMetadataBatch:
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
         """Exit context manager - cleanup subprocess and commit changes."""
         if self._proc:
             # Close stdin to signal EOF
@@ -117,8 +123,8 @@ class AnnexMetadataBatch:
             return False
 
         try:
-            response = json.loads(response_line)
-            return response.get("success", False)
+            response: dict[str, Any] = json.loads(response_line)
+            return bool(response.get("success", False))
         except json.JSONDecodeError:
             return False
 
@@ -151,8 +157,12 @@ class AnnexMetadataBatch:
             return None
 
         try:
-            response = json.loads(response_line)
-            return response.get("fields", {})
+            response: dict[str, Any] = json.loads(response_line)
+            fields = response.get("fields")
+            if fields is None:
+                return {}
+            # Ensure we return the expected type
+            return dict(fields)
         except json.JSONDecodeError:
             return None
 
