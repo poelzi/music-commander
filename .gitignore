@@ -78,3 +78,4 @@ result-*
 *.sqlite
 *.db
 config.toml
+__pycache__
