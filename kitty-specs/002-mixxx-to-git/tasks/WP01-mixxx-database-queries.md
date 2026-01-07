@@ -8,12 +8,12 @@ subtasks:
   - "T005"
 title: "Mixxx Database Queries"
 phase: "Phase 0 - Foundation"
-lane: "for_review"
+lane: "planned"
 assignee: ""
-agent: "claude"
-shell_pid: "1395416"
-review_status: ""
-reviewed_by: ""
+agent: "claude-reviewer"
+shell_pid: "$$"
+review_status: "has_feedback"
+reviewed_by: "claude-reviewer"
 history:
   - timestamp: "2026-01-07T14:30:00Z"
     lane: "planned"
@@ -21,6 +21,28 @@ history:
     shell_pid: ""
     action: "Prompt generated via /spec-kitty.tasks"
 ---
+
+## Review Feedback
+
+**Status**: ❌ **Needs Changes**
+
+**Key Issues**:
+1. **Test fixture missing `source_synchronized_ms` column** - The `conftest.py` sample database fixture does not include the `source_synchronized_ms` column in the `library` table schema. This causes tests to fail with `sqlite3.OperationalError: no such column: library.source_synchronized_ms`.
+
+2. **T003: NULL handling not implemented** - The `get_changed_tracks()` function filters by `source_synchronized_ms > since_timestamp_ms`, but the task specifies that tracks with NULL `source_synchronized_ms` should be treated as changed. Currently, NULL values are excluded.
+
+**What Was Done Well**:
+- All required functions (`get_all_tracks`, `get_track_crates`, `get_changed_tracks`, `to_relative_path`) are implemented correctly in `queries.py`
+- `TrackMetadata` dataclass is properly defined with correct types in `models.py`
+- Type hints pass mypy strict mode
+- Query joins are correct per Mixxx schema
+- Path matching handles edge cases correctly with `resolve()` before `relative_to()`
+- Iterator pattern used for memory efficiency
+- NULL handling is graceful for optional fields
+
+**Action Items** (must complete before re-review):
+- [ ] Update `tests/conftest.py` to add `source_synchronized_ms INTEGER` column to the `library` table schema in `sample_mixxx_db` fixture
+- [ ] Fix `get_changed_tracks()` to include tracks where `source_synchronized_ms IS NULL` (treat as changed per T003 spec)
 
 # Work Package Prompt: WP01 – Mixxx Database Queries
 
@@ -192,3 +214,4 @@ def to_relative_path(absolute_path: Path, music_repo: Path) -> Path | None:
 - 2026-01-07T14:30:00Z – system – lane=planned – Prompt created.
 - 2026-01-07T14:36:50Z – claude – shell_pid=1380800 – lane=doing – Started implementation
 - 2026-01-07T15:13:41Z – claude – shell_pid=1395416 – lane=for_review – Completed implementation - ready for review
+- 2026-01-07T16:58:00Z – claude-reviewer – shell_pid=$$ – lane=planned – Code review: needs changes - test fixture missing source_synchronized_ms column, get_changed_tracks missing NULL handling
