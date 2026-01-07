@@ -9,7 +9,7 @@ subtasks:
   - "T024"
 title: "Test Suite & Fixtures"
 phase: "Phase 3 - Integration"
-lane: "planned"
+lane: "doing"
 assignee: ""
 agent: ""
 shell_pid: ""
