@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Convenience wrapper to run music-commander from the dev shell
+cd "$(dirname "$0")"
+
+# If already in nix develop shell, run directly
+if [[ -n "$IN_NIX_SHELL" ]]; then
+    exec python -m music_commander "$@"
+else
+    exec nix develop --command python -m music_commander "$@"
+fi

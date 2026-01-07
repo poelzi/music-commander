@@ -31,6 +31,12 @@ pass_context = click.make_pass_decorator(Context, ensure=True)
     help="Path to config file (default: ~/.config/music-commander/config.toml)",
 )
 @click.option(
+    "--repo",
+    "-R",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    help="Path to git-annex music repository (overrides config)",
+)
+@click.option(
     "--no-color",
     is_flag=True,
     default=False,
@@ -55,6 +61,7 @@ pass_context = click.make_pass_decorator(Context, ensure=True)
 def cli(
     ctx: click.Context,
     config: Path | None,
+    repo: Path | None,
     no_color: bool,
     verbose: bool,
     quiet: bool,
@@ -89,6 +96,10 @@ def cli(
     try:
         loaded_config, warnings = load_config(config)
         app_ctx.config = loaded_config
+
+        # Override music_repo if --repo is specified
+        if repo is not None:
+            loaded_config.music_repo = repo.expanduser().resolve()
 
         # Apply config settings
         if not no_color and not loaded_config.colored_output:

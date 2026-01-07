@@ -1,0 +1,17 @@
+# music-commander configuration
+# Copy this file to ~/.config/music-commander/config.toml
+
+[paths]
+# Path to your Mixxx SQLite database
+mixxx_db = "~/.mixxx/mixxxdb.sqlite"
+
+# Path to your git-annex music repository
+music_repo = "~/Music"
+
+[display]
+# Enable colored terminal output
+colored_output = true
+
+[git_annex]
+# Default remote for git-annex operations (optional)
+# default_remote = "nas"

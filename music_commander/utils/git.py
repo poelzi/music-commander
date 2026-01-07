@@ -258,7 +258,7 @@ def filter_annexed_files(files: list[Path]) -> list[Path]:
     Returns:
         List of paths that are git-annex managed.
     """
-    return [f for f in files if f.exists() and is_annexed(f)]
+    return [f for f in files if is_annexed(f)]
 
 
 def annex_get_files(
