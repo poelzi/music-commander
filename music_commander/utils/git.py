@@ -318,6 +318,8 @@ def annex_get_files_with_progress(
     files: list[Path],
     *,
     remote: str | None = None,
+    jobs: int = 1,
+    verbose: bool = False,
 ) -> FetchResult:
     """Fetch annexed files with Rich progress display.
 
@@ -325,11 +327,15 @@ def annex_get_files_with_progress(
         repo_path: Git repository path.
         files: List of files to fetch.
         remote: Preferred remote (optional).
+        jobs: Number of parallel fetch jobs (default 1).
+        verbose: If True, print git annex commands and per-file status.
 
     Returns:
         FetchResult with fetched, already_present, and failed lists.
     """
-    from music_commander.utils.output import create_progress
+    import json
+
+    from music_commander.utils.output import console, create_progress, info
 
     result = FetchResult()
 
@@ -344,37 +350,91 @@ def annex_get_files_with_progress(
     if not to_fetch:
         return result
 
+    # Build command - use batch mode with all files at once for parallel support
+    cmd = ["git", "annex", "get", "--json-progress", f"-J{jobs}"]
+    if remote:
+        cmd.extend(["--from", remote])
+
+    # Add all files to the command
+    rel_paths = [str(f.relative_to(repo_path)) for f in to_fetch]
+    cmd.extend(rel_paths)
+
+    if verbose:
+        info(f"Running: {' '.join(cmd[:6])}... ({len(rel_paths)} files)")
+
+    # Track which files we've seen results for
+    file_map = {str(f.relative_to(repo_path)): f for f in to_fetch}
+    seen_files: set[str] = set()
+
     with create_progress() as progress:
         task = progress.add_task(
-            f"Fetching {len(to_fetch)} files...",
+            "Fetching files...",
             total=len(to_fetch),
         )
 
-        for file_path in to_fetch:
-            # Update description
-            rel_path = file_path.relative_to(repo_path)
-            progress.update(task, description=f"[cyan]{rel_path.name}[/cyan]")
+        # Run git annex get with streaming JSON output
+        proc = subprocess.Popen(
+            cmd,
+            cwd=repo_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
 
-            # Build command
-            cmd = ["git", "annex", "get", "--json-progress"]
-            if remote:
-                cmd.extend(["--from", remote])
-            cmd.append(str(rel_path))
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
 
-            # Execute
-            proc = subprocess.run(
-                cmd,
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-            )
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError:
+                continue
 
-            if proc.returncode == 0:
-                result.fetched.append(file_path)
-            else:
-                reason = proc.stderr.strip() or "Unknown error"
-                result.failed.append((file_path, reason))
+            # Handle progress updates
+            if "action" in data:
+                action = data.get("action", {})
+                file_key = action.get("file", "")
 
-            progress.advance(task)
+                if "success" in data:
+                    # Final result for a file
+                    if file_key and file_key not in seen_files:
+                        seen_files.add(file_key)
+                        full_path = file_map.get(file_key)
+
+                        if full_path:
+                            if data.get("success"):
+                                result.fetched.append(full_path)
+                                if verbose:
+                                    console.print(f"  [success]✓[/success] {file_key}")
+                            else:
+                                reason = data.get("error-messages", ["Unknown error"])
+                                reason_str = reason[0] if reason else "Unknown error"
+                                result.failed.append((full_path, reason_str))
+                                if verbose:
+                                    console.print(f"  [error]✗[/error] {file_key}: {reason_str}")
+
+                            progress.advance(task)
+
+                elif file_key:
+                    # Progress update - show current file
+                    progress.update(task, description=f"[cyan]{file_key}[/cyan]")
+
+        proc.wait()
+
+        # Handle any files we didn't get JSON results for
+        for rel_path, full_path in file_map.items():
+            if rel_path not in seen_files:
+                # Check if file is now present
+                if is_annex_present(full_path):
+                    result.fetched.append(full_path)
+                    if verbose:
+                        console.print(f"  [success]✓[/success] {rel_path}")
+                else:
+                    result.failed.append((full_path, "No response from git-annex"))
+                    if verbose:
+                        console.print(f"  [error]✗[/error] {rel_path}: No response")
+                progress.advance(task)
 
     return result

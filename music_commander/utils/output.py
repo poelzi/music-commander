@@ -7,12 +7,12 @@ from typing import Any
 from rich.console import Console
 from rich.progress import (
     BarColumn,
-    DownloadColumn,
+    MofNCompleteColumn,
     Progress,
     SpinnerColumn,
     TextColumn,
+    TimeElapsedColumn,
     TimeRemainingColumn,
-    TransferSpeedColumn,
 )
 from rich.table import Table
 from rich.theme import Theme
@@ -67,15 +67,15 @@ def create_progress() -> Progress:
     """Create a progress bar for file operations.
 
     Returns:
-        Rich Progress instance configured for file downloads.
+        Rich Progress instance configured for file counts.
     """
     return Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
+        MofNCompleteColumn(),
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        DownloadColumn(),
-        TransferSpeedColumn(),
+        TimeElapsedColumn(),
         TimeRemainingColumn(),
         console=console,
     )
