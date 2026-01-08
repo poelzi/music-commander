@@ -53,10 +53,17 @@ EXIT_NOT_ANNEX_REPO = 3
 )
 @click.option(
     "--jobs",
-    "-j",
+    "-J",
     type=int,
     default=1,
-    help="Parallel fetch jobs (not yet implemented)",
+    help="Number of parallel fetch jobs",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    default=False,
+    help="Show git annex commands and per-file status",
 )
 @pass_context
 def cli(
@@ -65,6 +72,7 @@ def cli(
     dry_run: bool,
     remote: str | None,
     jobs: int,
+    verbose: bool,
 ) -> None:
     """Fetch git-annexed files from commits, ranges, branches, or tags.
 
@@ -158,6 +166,8 @@ def cli(
         repo_path,
         annexed_files,
         remote=remote,
+        jobs=jobs,
+        verbose=verbose,
     )
 
     # Show summary
