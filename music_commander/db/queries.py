@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from music_commander.db.models import (
@@ -15,6 +16,7 @@ from music_commander.db.models import (
     PlaylistTrack,
     Track,
     TrackLocation,
+    TrackMetadata,
 )
 from music_commander.exceptions import (
     CrateNotFoundError,
@@ -235,6 +237,172 @@ def get_crate_tracks(
     )
     result = session.execute(stmt)
     return list(result.scalars().all())
+
+
+# =============================================================================
+# Sync Operations
+# =============================================================================
+
+
+def to_relative_path(absolute_path: Path, music_repo: Path) -> Path | None:
+    """Convert absolute path from Mixxx to music repository relative path.
+
+    Args:
+        absolute_path: Absolute file path from Mixxx track_locations.
+        music_repo: Root path of the music repository.
+
+    Returns:
+        Relative path from music_repo, or None if path is not under music_repo.
+    """
+    try:
+        return absolute_path.resolve().relative_to(music_repo.resolve())
+    except ValueError:
+        # Path is not relative to music_repo
+        return None
+
+
+def get_track_crates(session: Session, track_id: int) -> list[str]:
+    """Get list of crate names containing a track.
+
+    Args:
+        session: Active database session.
+        track_id: Track primary key.
+
+    Returns:
+        List of crate names (ordered alphabetically).
+    """
+    stmt = (
+        select(Crate.name)
+        .join(CrateTrack)
+        .where(CrateTrack.track_id == track_id)
+        .order_by(Crate.name)
+    )
+    result = session.execute(stmt)
+    return list(result.scalars().all())
+
+
+def get_all_tracks(session: Session, music_repo: Path) -> Iterator[TrackMetadata]:
+    """Query all non-deleted tracks from Mixxx database.
+
+    Yields TrackMetadata objects with joined file paths and crate memberships.
+    Only tracks with valid file locations under music_repo are included.
+
+    Args:
+        session: Active database session.
+        music_repo: Root path of music repository for relative path conversion.
+
+    Yields:
+        TrackMetadata objects for each track.
+    """
+    stmt = (
+        select(Track)
+        .options(joinedload(Track.track_location))
+        .where(Track.mixxx_deleted != 1)
+        .order_by(Track.id)
+    )
+
+    result = session.execute(stmt)
+
+    for track in result.scalars():
+        # Skip tracks without location
+        if not track.track_location or not track.track_location.location:
+            continue
+
+        file_path = Path(track.track_location.location)
+        relative_path = to_relative_path(file_path, music_repo)
+
+        # Skip tracks outside music_repo
+        if relative_path is None:
+            continue
+
+        # Get crate memberships
+        crates = get_track_crates(session, track.id)
+
+        yield TrackMetadata(
+            file_path=file_path,
+            relative_path=relative_path,
+            rating=track.rating,
+            bpm=track.bpm,
+            color=track.color,
+            key=track.key,
+            artist=track.artist,
+            title=track.title,
+            album=track.album,
+            genre=track.genre,
+            year=track.year,
+            tracknumber=track.tracknumber,
+            comment=track.comment,
+            crates=crates,
+            source_synchronized_ms=track.source_synchronized_ms,
+        )
+
+
+def get_changed_tracks(
+    session: Session,
+    music_repo: Path,
+    since_timestamp_ms: int,
+) -> Iterator[TrackMetadata]:
+    """Query tracks modified since a timestamp.
+
+    Uses source_synchronized_ms field for change detection. Tracks with
+    source_synchronized_ms > since_timestamp_ms OR NULL source_synchronized_ms
+    are considered changed (NULL is treated as "unknown/changed").
+
+    Args:
+        session: Active database session.
+        music_repo: Root path of music repository.
+        since_timestamp_ms: Timestamp in milliseconds (Mixxx format).
+
+    Yields:
+        TrackMetadata objects for changed tracks.
+    """
+    stmt = (
+        select(Track)
+        .options(joinedload(Track.track_location))
+        .where(
+            Track.mixxx_deleted != 1,
+            or_(
+                Track.source_synchronized_ms > since_timestamp_ms,
+                Track.source_synchronized_ms.is_(None),  # Treat NULL as changed
+            ),
+        )
+        .order_by(Track.id)
+    )
+
+    result = session.execute(stmt)
+
+    for track in result.scalars():
+        # Skip tracks without location
+        if not track.track_location or not track.track_location.location:
+            continue
+
+        file_path = Path(track.track_location.location)
+        relative_path = to_relative_path(file_path, music_repo)
+
+        # Skip tracks outside music_repo
+        if relative_path is None:
+            continue
+
+        # Get crate memberships
+        crates = get_track_crates(session, track.id)
+
+        yield TrackMetadata(
+            file_path=file_path,
+            relative_path=relative_path,
+            rating=track.rating,
+            bpm=track.bpm,
+            color=track.color,
+            key=track.key,
+            artist=track.artist,
+            title=track.title,
+            album=track.album,
+            genre=track.genre,
+            year=track.year,
+            tracknumber=track.tracknumber,
+            comment=track.comment,
+            crates=crates,
+            source_synchronized_ms=track.source_synchronized_ms,
+        )
 
 
 # =============================================================================

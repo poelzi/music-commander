@@ -182,3 +182,26 @@ class AnnexGetError(GitError):
         self.path = path
         self.reason = reason
         super().__init__(f"Failed to get {path}: {reason}")
+
+
+# Sync Errors
+class SyncError(MusicCommanderError):
+    """Base exception for sync operations."""
+
+    pass
+
+
+class MixxxDatabaseError(SyncError):
+    """Error accessing Mixxx database."""
+
+    def __init__(self, db_path: Path, message: str) -> None:
+        self.db_path = db_path
+        super().__init__(f"Mixxx database error ({db_path}): {message}")
+
+
+class AnnexMetadataError(SyncError):
+    """Error writing git-annex metadata."""
+
+    def __init__(self, file_path: Path, message: str) -> None:
+        self.file_path = file_path
+        super().__init__(f"Annex metadata error ({file_path}): {message}")
