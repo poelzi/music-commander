@@ -11,12 +11,22 @@
         "nix develop --command mypy music_commander/db/queries.py music_commander/utils/annex_metadata.py music_commander/commands/sync_metadata.py --strict",
         "nix develop --command pytest tests/ -v"
       ]
+    },
+    {
+      "accepted_at": "2026-01-28T15:25:02Z",
+      "accepted_by": "claude",
+      "accepted_from_commit": "74dcc125d6c17583f4836925ee490de84457a2d4",
+      "branch": "002-mixxx-to-git",
+      "mode": "local",
+      "validation_commands": [
+        "nix flake check"
+      ]
     }
   ],
   "acceptance_mode": "local",
-  "accepted_at": "2026-01-07T20:35:33Z",
+  "accepted_at": "2026-01-28T15:25:02Z",
   "accepted_by": "claude",
-  "accepted_from_commit": "27b3580fa751641adedc555b2723c1b1edfe0d17",
+  "accepted_from_commit": "74dcc125d6c17583f4836925ee490de84457a2d4",
   "created_at": "2026-01-07T13:00:19Z",
   "feature_number": "002",
   "friendly_name": "Mixxx to Git-Annex Metadata Sync",
