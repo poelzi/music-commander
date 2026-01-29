@@ -89,17 +89,17 @@
 **Prompt**: `kitty-specs/004-real-git-annex-integration-tests/tasks/WP03-cache-and-search-tests.md`
 
 ### Included Subtasks
-- [ ] T012 `test_all_tracks_have_file_path`: assert every CacheTrack has `file IS NOT NULL` in partial clone cache
-- [ ] T013 `test_present_field_accuracy`: assert tracks 1-3 present=True, tracks 4-6 present=False
-- [ ] T014 `test_metadata_correctness`: assert artist/title/genre/bpm/rating match expected values for all 6 tracks
-- [ ] T015 `test_crate_data`: assert TrackCrate entries correct for all tracks
-- [ ] T016 `test_incremental_refresh_no_change`: build then refresh, assert None returned
-- [ ] T017 `test_fts5_search`: query FTS5 for known artist, verify result
-- [ ] T018 `test_search_returns_all_tracks`: search match-all, assert 6 results
-- [ ] T019 [P] `test_field_filter_includes_non_present`: search `rating:>=4`, assert 4 results including non-present track
-- [ ] T020 [P] `test_text_search`: search "DarkPulse", assert 1 result
-- [ ] T021 [P] `test_genre_filter`: search `genre:Ambient`, assert 2 results (both non-present)
-- [ ] T022 [P] `test_crate_search`: search `crate:Festival`, assert 2 results
+- [x] T012 `test_all_tracks_have_file_path`: assert every CacheTrack has `file IS NOT NULL` in partial clone cache
+- [x] T013 `test_present_field_accuracy`: assert tracks 1-3 present=True, tracks 4-6 present=False
+- [x] T014 `test_metadata_correctness`: assert artist/title/genre/bpm/rating match expected values for all 6 tracks
+- [x] T015 `test_crate_data`: assert TrackCrate entries correct for all tracks
+- [x] T016 `test_incremental_refresh_no_change`: build then refresh, assert None returned
+- [x] T017 `test_fts5_search`: query FTS5 for known artist, verify result
+- [x] T018 `test_search_returns_all_tracks`: search match-all, assert 6 results
+- [x] T019 [P] `test_field_filter_includes_non_present`: search `rating:>=4`, assert 4 results including non-present track
+- [x] T020 [P] `test_text_search`: search "DarkPulse", assert 1 result
+- [x] T021 [P] `test_genre_filter`: search `genre:Ambient`, assert 2 results (both non-present)
+- [x] T022 [P] `test_crate_search`: search `crate:Festival`, assert 2 results
 
 ### Implementation Notes
 - Cache tests in `tests/integration/test_cache_build.py`
