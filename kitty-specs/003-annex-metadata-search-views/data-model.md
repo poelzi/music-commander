@@ -61,12 +61,13 @@ Parsed representation of a Mixxx-compatible search string.
 SearchQuery
   ├── OrGroup[]           # Top-level OR groups separated by | or OR
   │     └── AndClause[]   # Implicitly ANDed terms within a group
-  │           ├── TextTerm(value, negated)         # Bare word: "dark"
-  │           ├── FieldFilter(field, op, value, negated)  # field:value, field:>N
-  │           └── ExactFilter(field, value, negated)      # field:="exact"
+  │           ├── TextTerm(value, negated)                          # Bare word: "dark"
+  │           └── FieldFilter(field, op, value, value_end, negated) # field:value, field:>N, field:="exact"
   └── (empty = match all)
 
-Operators: =, >, <, >=, <=, contains (default text), range (N-M), empty ("")
+Operators: contains (default text), = (exact), >, <, >=, <=, range (N-M), empty ("")
+Note: ExactFilter is not a separate node — exact match is FieldFilter with op="=".
+value_end is only set for the "range" operator (N-M).
 ```
 
 ## View Template Context

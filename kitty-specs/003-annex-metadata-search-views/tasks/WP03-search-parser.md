@@ -65,6 +65,8 @@ spec-kitty implement WP03
      - Operators: `>`, `<`, `>=`, `<=`, range `N-M`
   2. Handle: `dark psy bpm:>140 rating:>=4 -genre:ambient genre:house | genre:techno artist:="DJ Name"`
   3. Whitespace between tokens, optional space after colon
+  4. `OR` keyword is case-sensitive (uppercase only). Lowercase `or` is treated as a bare search term.
+  5. `|` is an alternative OR separator.
 
 ### Subtask T015 -- Create search parser module
 - **Purpose**: Use lark to parse query strings into AST.

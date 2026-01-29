@@ -73,14 +73,17 @@ spec-kitty implement WP02 --base WP01
 - **Parallel?**: Yes, can be developed independently from T009.
 
 ### Subtask T008 -- Metadata log parser
-- **Purpose**: Parse `key=value` pairs from `.log.met` file content.
+- **Purpose**: Parse `.log.met` file content into structured metadata.
 - **Files**: `music_commander/cache/builder.py`
 - **Steps**:
-  1. Parse format: `1735000000s 0 artist=Bollywood album=100% Bollywood title=Kuch Kuch Hota Hai bpm=120`
-  2. Skip timestamp prefix (`\d+s \d+`)
-  3. Handle values with spaces (git-annex escapes them)
-  4. Return dict of field → value
-- **Notes**: Multi-value fields (like crate) may appear multiple times. Collect as lists.
+  1. Parse format: `<timestamp>s <field1> +<value1> [+<value2>] [-<value3>] <field2> +<value1> ...`
+  2. Skip timestamp prefix (`\d+(\.\d+)?s`)
+  3. Identify field names: tokens not starting with `+` or `-`
+  4. Collect subsequent `+`/`-` values until the next field name
+  5. Decode `!`-prefixed values as base64 (e.g., `+!U3BhY2V5...` → `"Spacey & Sleepy Koala"`)
+  6. For multi-line blobs: replay chronologically, applying set (`+`) and unset (`-`) operations
+  7. Return dict of field → list[str] (multi-value fields like crate have multiple values)
+- **Notes**: See `research.md` Decision 4 for full format spec with real-data examples. Multi-value fields (crate, genre) have multiple `+value` tokens on the same line. Empty field name with no `+` values means field exists but is empty.
 
 ### Subtask T009 -- Key-to-file mapper
 - **Purpose**: Map git-annex keys to repository-relative file paths.

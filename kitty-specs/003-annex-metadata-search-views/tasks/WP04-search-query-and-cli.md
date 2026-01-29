@@ -81,7 +81,7 @@ Note: WP03 (parser) should also be merged before starting. If using worktrees, e
   2. `=` (exact) → `column = 'value'` (case-insensitive via COLLATE NOCASE)
   3. `>`, `<`, `>=`, `<=` → numeric column comparison (cast to float for bpm)
   4. `range` → `column >= low AND column <= high`
-  5. Map field names to cache model columns (e.g., `key` search field → `key_musical` column)
+  5. Map field names to cache model columns (e.g., `key` search field → `key_musical` column, `location` → `file` column)
 
 ### Subtask T022 -- OR groups and negation
 - **Purpose**: Combine OR groups and handle negation.

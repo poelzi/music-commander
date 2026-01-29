@@ -48,14 +48,54 @@ The raw approach reads `.log.met` files from the `git-annex` branch directly. Ea
 
 ## Decision 4: Metadata Log Format
 
-**Format**: `git-annex` branch stores metadata in `.log.met` files:
+**Format**: Git-annex branch stores metadata in `.log.met` files. Each file may
+contain multiple lines (log entries), one per metadata update event. The path
+encodes the annex key: `1f5/9b3/SHA256E-s6850832--...mp3.log.met`.
+
+**Line format**:
 ```
-1735000000s 0 artist=Bollywood album=100% Bollywood (Disc 1) title=Kuch Kuch Hota Hai bpm=120
+<unix-timestamp>s <field1> +<value1> [+<value2>] [-<value3>] <field2> +<value1> ...
 ```
 
-Fields are space-separated `key=value` pairs. Values with spaces are encoded. The path encodes the annex key: `1f5/9b3/SHA256E-s6850832--...mp3.log.met`.
+**Value encoding**:
+- `+value` — set this value (plain text, no spaces allowed in plain values)
+- `-value` — unset/remove this value
+- `+!<base64>` — set a base64-encoded value (used when value contains spaces, special chars, or non-ASCII)
+- `-!<base64>` — unset a base64-encoded value
 
-**Parser needed**: Simple `key=value` parser for the log format, handling git-annex's escaping conventions.
+**Examples from real data**:
+```
+# Simple values (no spaces):
+1769651283s album +Gromoviti artist +Psyriots bpm +150.00 rating +5
+
+# Base64-encoded values (contain spaces):
+1769651204s artist +!U3BhY2V5ICYgU2xlZXB5IEtvYWxh  → "Spacey & Sleepy Koala"
+              title +!VGhpcyBJcyBOb3QgQmFuam8=      → "This Is Not Banjo"
+
+# Multi-value field (crate with two values on same line):
+crate +jazzy +psyjazz
+
+# Multi-value field (genre with three values):
+genre +darkpsy +experimental +full-on
+
+# Empty field (no values, field name alone):
+crate    → field exists but no values set
+
+# Multi-line blob (later entry overrides earlier):
+1502762922s genre +ambient
+1769651187s genre +Ambient -ambient    → removes "ambient", adds "Ambient"
+
+# Musical key with base64 (contains unicode sharp/flat):
+key +!NG0gKEbima9tKQ==  → "4m (F♯m)"
+```
+
+**Parser requirements**:
+1. Split log entry by spaces into tokens
+2. Identify field names (tokens not starting with `+` or `-` and not the timestamp)
+3. Collect subsequent `+`/`-` values until the next field name
+4. Decode `!`-prefixed values as base64
+5. For multi-line blobs: replay chronologically, applying set/unset operations
+6. Final state = all `+` values that haven't been `-` removed
 
 ## Decision 5: Search Parser Library
 

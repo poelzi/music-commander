@@ -98,17 +98,17 @@ A DJ wants search results displayed in different formats: a Rich table for termi
 #### Search
 
 - **FR-001**: System MUST support Mixxx-compatible search syntax for querying git-annex metadata.
-- **FR-002**: System MUST support text field filtering with partial match: `artist:value`, `genre:value`, `title:value`, `album:value`, `comment:value`, `crate:value`, `location:value`.
+- **FR-002**: System MUST support text field filtering with partial match: `artist:value`, `genre:value`, `title:value`, `album:value`, `comment:value`, `crate:value`, `file:value` (aliased as `location:value` for Mixxx compatibility).
 - **FR-003**: System MUST support exact text match with `=` operator: `artist:="Exact Name"`.
 - **FR-004**: System MUST support numeric field filtering with comparison operators (`>`, `<`, `>=`, `<=`): `bpm:>140`, `rating:>=4`, `year:<2010`.
 - **FR-005**: System MUST support numeric range syntax: `bpm:140-160`, `rating:3-5`.
 - **FR-006**: System MUST support negation with `-` prefix: `-genre:ambient`.
 - **FR-007**: System MUST support OR logic with `|` or `OR` (case-sensitive): `genre:house | genre:techno`.
-- **FR-008**: System MUST support bare-word full-text search across artist, title, album, genre, and filename: `"dark psy"` matches any track with both words in any of those fields.
+- **FR-008**: System MUST support bare-word full-text search across artist, title, album, genre, and file path (relative to repo root): `"dark psy"` matches any track with both words in any of those fields.
 - **FR-009**: System MUST support searching for empty metadata fields: `genre:""`.
 - **FR-010**: System MUST support quoted multi-word arguments: `artist:"Com Truise"`.
 - **FR-011**: System MUST read metadata from git-annex (not the Mixxx SQLite database), so it works on any clone.
-- **FR-011a**: System MUST use `git annex find --metadata` to push simple filters to git-annex for performance.
+- **FR-011a** *(deferred)*: System SHOULD use `git annex find --metadata` to push simple filters to git-annex for performance. Deferred to a future optimization pass — the SQLite cache provides sub-second queries after a ~16s build, making this unnecessary for MVP.
 - **FR-011b**: System MUST build a local metadata cache/index for complex queries (OR, full-text, multi-field) that git-annex cannot handle natively, with incremental refresh.
 
 #### View Export
