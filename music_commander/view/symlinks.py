@@ -48,16 +48,16 @@ def sanitize_rendered_path(rendered: str) -> str:
 def _build_metadata_dict(
     track: CacheTrack,
     crate_values: list[str] | None = None,
-) -> dict[str, str | None]:
+) -> dict[str, str | float | int | None]:
     """Build a metadata dict from a CacheTrack for template rendering."""
     file_path = track.file or ""
-    d: dict[str, str | None] = {
+    d: dict[str, str | float | int | None] = {
         "artist": track.artist,
         "title": track.title,
         "album": track.album,
         "genre": track.genre,
-        "bpm": str(track.bpm) if track.bpm is not None else None,
-        "rating": str(track.rating) if track.rating is not None else None,
+        "bpm": track.bpm,
+        "rating": track.rating,
         "key": track.key_musical,
         "year": track.year,
         "tracknumber": track.tracknumber,
@@ -147,6 +147,7 @@ def create_symlink_tree(
     repo_path: Path,
     *,
     absolute: bool = False,
+    include_missing: bool = False,
 ) -> tuple[int, int]:
     """Create a symlink directory tree from search results.
 
@@ -157,6 +158,7 @@ def create_symlink_tree(
         output_dir: Directory to create symlinks in.
         repo_path: Path to the music repository root.
         absolute: If True, create absolute symlinks instead of relative.
+        include_missing: If True, also create symlinks for files not locally present.
 
     Returns:
         Tuple of (symlinks_created, duplicates_found).
@@ -169,6 +171,13 @@ def create_symlink_tree(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for track in tracks:
+        # Skip tracks without a file path (metadata-only, not in current tree)
+        if not track.file:
+            continue
+        # Skip files not locally present unless include_missing is set
+        if not include_missing and not track.present:
+            continue
+
         crates = crates_by_key.get(track.key, [])
         metadata_dicts = _expand_multi_value(track, template_vars, crates)
 
@@ -177,10 +186,9 @@ def create_symlink_tree(
             sanitized = sanitize_rendered_path(rendered)
 
             # Append original file extension
-            if track.file:
-                _, ext = os.path.splitext(track.file)
-                if ext and not sanitized.endswith(ext):
-                    sanitized += ext
+            _, ext = os.path.splitext(track.file)
+            if ext and not sanitized.endswith(ext):
+                sanitized += ext
 
             # Handle duplicates
             original_path = sanitized

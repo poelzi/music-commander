@@ -43,7 +43,7 @@ class TemplateRenderError(Exception):
     pass
 
 
-def render_path(template_str: str, metadata: dict[str, str | None]) -> str:
+def render_path(template_str: str, metadata: dict[str, str | float | int | None]) -> str:
     """Render a Jinja2 path template with track metadata.
 
     Missing metadata values are replaced with "Unknown".

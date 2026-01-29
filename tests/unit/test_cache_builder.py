@@ -249,12 +249,14 @@ class TestBuildCache:
         blob1 = "1769651283s artist +ArtistOne title +TitleOne"
         blob2 = "1769651283s artist +ArtistTwo genre +IDM"
         cat_file_out = f"aaa111 blob {len(blob1)}\n{blob1}\nbbb222 blob {len(blob2)}\n{blob2}\n"
-        # 3. git annex find (build_key_to_file_map)
-        annex_find_out = (
+        # 3. git annex find --include=* (build_key_to_file_map — all files)
+        annex_find_all_out = (
             "SHA256E-s100--track1.mp3\tmusic/track1.mp3\n"
             "SHA256E-s200--track2.flac\tmusic/track2.flac\n"
         )
-        # 4. rev-parse git-annex
+        # 4. git annex find (build_present_keys — present keys only)
+        annex_find_present_out = "SHA256E-s100--track1.mp3\nSHA256E-s200--track2.flac\n"
+        # 5. rev-parse git-annex
         rev_parse_out = "abc123def456"
 
         def side_effect(cmd, **kwargs):
@@ -263,7 +265,9 @@ class TestBuildCache:
             if "cat-file" in cmd:
                 return _make_completed_process(cat_file_out)
             if "annex" in cmd:
-                return _make_completed_process(annex_find_out)
+                if "--include=*" in cmd:
+                    return _make_completed_process(annex_find_all_out)
+                return _make_completed_process(annex_find_present_out)
             if "rev-parse" in cmd:
                 return _make_completed_process(rev_parse_out)
             return _make_completed_process()
@@ -290,7 +294,8 @@ class TestBuildCache:
         blob = "1769651283s artist +Test crate +Festival +DarkPsy"
         ls_tree_out = "100644 blob aaa111\tab/cd/KEY1.log.met\n"
         cat_file_out = f"aaa111 blob {len(blob)}\n{blob}\n"
-        annex_find_out = "KEY1\tmusic/track.mp3\n"
+        annex_find_all_out = "KEY1\tmusic/track.mp3\n"
+        annex_find_present_out = "KEY1\n"
 
         def side_effect(cmd, **kwargs):
             if "ls-tree" in cmd:
@@ -298,7 +303,9 @@ class TestBuildCache:
             if "cat-file" in cmd:
                 return _make_completed_process(cat_file_out)
             if "annex" in cmd:
-                return _make_completed_process(annex_find_out)
+                if "--include=*" in cmd:
+                    return _make_completed_process(annex_find_all_out)
+                return _make_completed_process(annex_find_present_out)
             if "rev-parse" in cmd:
                 return _make_completed_process("commit1")
             return _make_completed_process()
@@ -312,8 +319,8 @@ class TestBuildCache:
         assert {c.crate for c in crates} == {"Festival", "DarkPsy"}
 
     @patch("music_commander.cache.builder.subprocess.run")
-    def test_build_skips_unmapped_keys(self, mock_run: MagicMock) -> None:
-        """Tracks with no file mapping should be skipped."""
+    def test_build_indexes_unmapped_keys(self, mock_run: MagicMock) -> None:
+        """Tracks with no file mapping should be indexed with file=None and present=False."""
         session = self._setup_session()
         repo = Path("/fake/repo")
 
@@ -329,6 +336,7 @@ class TestBuildCache:
             if "cat-file" in cmd:
                 return _make_completed_process(cat_file_out)
             if "annex" in cmd:
+                # Both --include=* and plain find return nothing for this orphan key
                 return _make_completed_process(annex_find_out)
             if "rev-parse" in cmd:
                 return _make_completed_process("commit1")
@@ -337,8 +345,12 @@ class TestBuildCache:
         mock_run.side_effect = side_effect
 
         count = build_cache(repo, session)
-        assert count == 0
-        assert session.query(CacheTrack).count() == 0
+        assert count == 1
+        track = session.query(CacheTrack).first()
+        assert track is not None
+        assert track.file is None
+        assert track.present is False
+        assert track.artist == "Test"
 
 
 # ---------------------------------------------------------------------------
@@ -355,7 +367,8 @@ class TestFTS5:
         blob = "1769651283s artist +TestArtist title +TestTitle"
         ls_tree_out = "100644 blob aaa111\tab/cd/KEY1.log.met\n"
         cat_file_out = f"aaa111 blob {len(blob)}\n{blob}\n"
-        annex_find_out = "KEY1\tmusic/track.mp3\n"
+        annex_find_all_out = "KEY1\tmusic/track.mp3\n"
+        annex_find_present_out = "KEY1\n"
 
         def side_effect(cmd, **kwargs):
             if "ls-tree" in cmd:
@@ -363,7 +376,9 @@ class TestFTS5:
             if "cat-file" in cmd:
                 return _make_completed_process(cat_file_out)
             if "annex" in cmd:
-                return _make_completed_process(annex_find_out)
+                if "--include=*" in cmd:
+                    return _make_completed_process(annex_find_all_out)
+                return _make_completed_process(annex_find_present_out)
             if "rev-parse" in cmd:
                 return _make_completed_process("commit1")
             return _make_completed_process()
@@ -431,7 +446,9 @@ class TestRefreshCache:
             if "cat-file" in cmd and "-p" in cmd:
                 return _make_completed_process(changed_blob)
             if "annex" in cmd:
-                return _make_completed_process("existing-key\texisting.mp3\n")
+                if "--include=*" in cmd:
+                    return _make_completed_process("existing-key\texisting.mp3\n")
+                return _make_completed_process("existing-key\n")
             return _make_completed_process()
 
         mock_run.side_effect = side_effect
@@ -475,7 +492,8 @@ class TestRefreshCache:
         ls_tree_out = "100644 blob aaa111\tab/cd/KEY1.log.met\n"
         blob = "1769651283s artist +FullBuild"
         cat_file_out = f"aaa111 blob {len(blob)}\n{blob}\n"
-        annex_find_out = "KEY1\tmusic/track.mp3\n"
+        annex_find_all_out = "KEY1\tmusic/track.mp3\n"
+        annex_find_present_out = "KEY1\n"
 
         def side_effect(cmd, **kwargs):
             if "rev-parse" in cmd:
@@ -485,7 +503,9 @@ class TestRefreshCache:
             if "cat-file" in cmd:
                 return _make_completed_process(cat_file_out)
             if "annex" in cmd:
-                return _make_completed_process(annex_find_out)
+                if "--include=*" in cmd:
+                    return _make_completed_process(annex_find_all_out)
+                return _make_completed_process(annex_find_present_out)
             return _make_completed_process()
 
         mock_run.side_effect = side_effect

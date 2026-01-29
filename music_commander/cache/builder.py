@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import text
 
 from music_commander.cache.models import CacheBase, CacheState, CacheTrack, TrackCrate
+from music_commander.utils.output import debug, verbose
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -117,6 +118,7 @@ def read_metadata_from_branch(
     blobs directly from the ``git-annex`` branch.
     """
     # Step 1: list all .log.met files with their blob hashes
+    debug("git ls-tree -r git-annex")
     ls_tree = subprocess.run(
         ["git", "ls-tree", "-r", "git-annex"],
         cwd=repo_path,
@@ -144,7 +146,10 @@ def read_metadata_from_branch(
     if not entries:
         return
 
+    verbose(f"Found {len(entries)} metadata entries")
+
     # Step 2: batch-read all blobs via git cat-file --batch
+    debug(f"git cat-file --batch ({len(entries)} blobs)")
     input_data = "\n".join(h for h, _ in entries) + "\n"
     cat_file = subprocess.run(
         ["git", "cat-file", "--batch"],
@@ -190,11 +195,13 @@ def read_metadata_from_branch(
 def build_key_to_file_map(repo_path: Path) -> dict[str, str]:
     """Map git-annex keys to repository-relative file paths.
 
-    Uses ``git annex find`` with a custom format to efficiently build the
-    mapping.
+    Uses ``git annex find --include='*'`` to include all annexed files,
+    even those whose content is not locally present.
     """
+    verbose("Building key-to-file mapping...")
+    debug("git annex find --include='*' --format=${key}\\t${file}\\n")
     result = subprocess.run(
-        ["git", "annex", "find", "--format=${key}\t${file}\n"],
+        ["git", "annex", "find", "--include=*", "--format=${key}\t${file}\n"],
         cwd=repo_path,
         capture_output=True,
         text=True,
@@ -208,7 +215,29 @@ def build_key_to_file_map(repo_path: Path) -> dict[str, str]:
         key, file_path = line.split("\t", 1)
         key_to_file[key] = file_path
 
+    verbose(f"Mapped {len(key_to_file)} keys to files")
     return key_to_file
+
+
+def build_present_keys(repo_path: Path) -> set[str]:
+    """Return the set of annex keys whose content is locally present.
+
+    Uses ``git annex find`` (without ``--branch``) which only lists files
+    with content available in the local repository.
+    """
+    verbose("Checking locally present files...")
+    debug("git annex find --format=${key}\\n")
+    result = subprocess.run(
+        ["git", "annex", "find", "--format=${key}\n"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    keys = {line for line in result.stdout.splitlines() if line}
+    verbose(f"Found {len(keys)} locally present files")
+    return keys
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +276,7 @@ def _rebuild_fts5(session: Session) -> None:
 
 def _get_annex_branch_commit(repo_path: Path) -> str | None:
     """Get the current commit hash of the git-annex branch."""
+    debug("git rev-parse git-annex")
     try:
         result = subprocess.run(
             ["git", "rev-parse", "git-annex"],
@@ -263,7 +293,7 @@ def _get_annex_branch_commit(repo_path: Path) -> str | None:
 def _metadata_to_track(
     annex_key: str,
     metadata: dict[str, list[str]],
-    file_path: str,
+    file_path: str | None,
 ) -> CacheTrack:
     """Convert parsed metadata + file path into a CacheTrack."""
 
@@ -337,31 +367,48 @@ def build_cache(repo_path: Path, session: Session) -> int:
     session.commit()
 
     # Read metadata from git-annex branch
+    verbose("Reading metadata from git-annex branch...")
     metadata_map: dict[str, dict[str, list[str]]] = {}
     for annex_key, parsed in read_metadata_from_branch(repo_path):
         metadata_map[annex_key] = parsed
 
-    # Build key-to-file mapping
+    # Build key-to-file mapping (includes all annexed files, present or not)
     key_to_file = build_key_to_file_map(repo_path)
 
+    # Determine which keys have content locally present
+    present_keys = build_present_keys(repo_path)
+
     # Insert tracks
+    verbose("Inserting tracks into cache...")
     track_count = 0
+    missing_count = 0
+    no_file_count = 0
     for annex_key, metadata in metadata_map.items():
         file_path = key_to_file.get(annex_key)
-        if file_path is None:
-            continue
+        is_present = file_path is not None and annex_key in present_keys
 
         track = _metadata_to_track(annex_key, metadata, file_path)
+        track.present = is_present
         session.add(track)
 
         for crate in _metadata_to_crates(annex_key, metadata):
             session.add(crate)
 
         track_count += 1
+        if file_path is None:
+            no_file_count += 1
+        elif not is_present:
+            missing_count += 1
+
+    if no_file_count:
+        verbose(f"{no_file_count} tracks with no file path (not in current tree)")
+    if missing_count:
+        verbose(f"{missing_count} tracks not locally present (content on remote)")
 
     session.commit()
 
     # Rebuild FTS5 index
+    verbose("Rebuilding FTS5 index...")
     _rebuild_fts5(session)
 
     # Update cache state
@@ -377,6 +424,7 @@ def build_cache(repo_path: Path, session: Session) -> int:
     state.track_count = track_count
     session.commit()
 
+    verbose(f"Cache built: {track_count} tracks")
     return track_count
 
 
@@ -391,6 +439,7 @@ def _get_changed_log_met_files(
     new_commit: str,
 ) -> list[str]:
     """Get list of changed .log.met file paths between two git-annex commits."""
+    debug(f"git diff-tree -r --name-only {old_commit[:12]} {new_commit[:12]}")
     result = subprocess.run(
         ["git", "diff-tree", "-r", "--name-only", old_commit, new_commit],
         cwd=repo_path,
@@ -447,6 +496,7 @@ def refresh_cache(repo_path: Path, session: Session) -> int | None:
 
     # Cache is up-to-date
     if state.annex_branch_commit == current_commit:
+        verbose("Cache is current, no refresh needed")
         return None
 
     old_commit = state.annex_branch_commit
@@ -455,15 +505,19 @@ def refresh_cache(repo_path: Path, session: Session) -> int | None:
     changed_paths = _get_changed_log_met_files(repo_path, old_commit, current_commit)
     if not changed_paths:
         # No metadata changes, just update commit
+        verbose("No metadata changes detected")
         state.annex_branch_commit = current_commit
         session.commit()
         return 0
+
+    verbose(f"{len(changed_paths)} changed metadata files detected")
 
     # Ensure FTS5 table exists
     _create_fts5_table(session)
 
     # Get key-to-file mapping (needed for new/changed entries)
     key_to_file = build_key_to_file_map(repo_path)
+    present_keys = build_present_keys(repo_path)
 
     updated_count = 0
     for annex_key, metadata in _read_specific_blobs(repo_path, changed_paths):
@@ -476,10 +530,8 @@ def refresh_cache(repo_path: Path, session: Session) -> int | None:
             continue
 
         file_path = key_to_file.get(annex_key)
-        if file_path is None:
-            continue
-
         track = _metadata_to_track(annex_key, metadata, file_path)
+        track.present = file_path is not None and annex_key in present_keys
         session.add(track)
 
         for crate in _metadata_to_crates(annex_key, metadata):

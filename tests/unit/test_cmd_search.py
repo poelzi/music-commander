@@ -97,14 +97,14 @@ class TestSearchCLI:
         runner = CliRunner()
         result = runner.invoke(
             cli,
-            ["artist:TestArtist"],
+            ["--columns", "artist,title,file", "artist:TestArtist"],
             obj=_make_ctx(tmp_path),
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert "TestA" in result.output  # Artist column (may be truncated)
-        assert "TestT" in result.output  # Title column (may be truncated)
-        assert "darkpsy/Track.mp3" in result.output
+        assert "TestArtist" in result.output
+        assert "TestTitle" in result.output
+        assert "Track.mp3" in result.output
 
     @patch("music_commander.commands.search.get_cache_session")
     @patch("music_commander.commands.search.refresh_cache")

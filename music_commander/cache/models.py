@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Float, Index, Integer, String, Text
+from sqlalchemy import Boolean, Float, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -18,7 +18,7 @@ class CacheTrack(CacheBase):
     __tablename__ = "tracks"
 
     key: Mapped[str] = mapped_column(String(512), primary_key=True)
-    file: Mapped[str] = mapped_column(Text, nullable=False)
+    file: Mapped[str | None] = mapped_column(Text, nullable=True)
     artist: Mapped[str | None] = mapped_column(Text)
     title: Mapped[str | None] = mapped_column(Text)
     album: Mapped[str | None] = mapped_column(Text)
@@ -30,6 +30,7 @@ class CacheTrack(CacheBase):
     tracknumber: Mapped[str | None] = mapped_column(String(16))
     comment: Mapped[str | None] = mapped_column(Text)
     color: Mapped[str | None] = mapped_column(String(32))
+    present: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
     __table_args__ = (
         Index("ix_tracks_bpm", "bpm"),

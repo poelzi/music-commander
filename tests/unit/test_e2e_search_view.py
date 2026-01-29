@@ -41,8 +41,11 @@ _CAT_FILE = (
     f"aaa111 blob {len(_LOG_TRACK1)}\n{_LOG_TRACK1}bbb222 blob {len(_LOG_TRACK2)}\n{_LOG_TRACK2}"
 )
 
-# Simulated annex find output
-_ANNEX_FIND = "KEY1--file1.mp3\tdarkpsy/Track.mp3\nKEY2--file2.mp3\tambient/Calm.mp3\n"
+# Simulated annex find output (all files — for build_key_to_file_map with --include=*)
+_ANNEX_FIND_ALL = "KEY1--file1.mp3\tdarkpsy/Track.mp3\nKEY2--file2.mp3\tambient/Calm.mp3\n"
+
+# Simulated annex find output (present files only — for build_present_keys)
+_ANNEX_FIND_PRESENT = "KEY1--file1.mp3\nKEY2--file2.mp3\n"
 
 
 def _mock_subprocess_run(args, **kwargs):
@@ -58,7 +61,12 @@ def _mock_subprocess_run(args, **kwargs):
         return result
     elif args[:3] == ["git", "annex", "find"]:
         result = MagicMock()
-        result.stdout = _ANNEX_FIND
+        # --include=* returns all files with key\tfile format
+        if "--include=*" in args:
+            result.stdout = _ANNEX_FIND_ALL
+        else:
+            # Plain git annex find returns only present keys
+            result.stdout = _ANNEX_FIND_PRESENT
         return result
     elif args[:2] == ["git", "rev-parse"]:
         result = MagicMock()
@@ -192,6 +200,7 @@ class TestE2EPipeline:
             output_dir=output_dir,
             repo_path=repo,
             absolute=False,
+            include_missing=True,
         )
 
         assert created == 1
@@ -222,6 +231,7 @@ class TestE2EPipeline:
             output_dir=output_dir,
             repo_path=repo,
             absolute=False,
+            include_missing=True,
         )
 
         # Track1 has 2 crates → 2 symlinks
@@ -245,6 +255,7 @@ class TestE2EPipeline:
             output_dir=output_dir,
             repo_path=repo,
             absolute=False,
+            include_missing=True,
         )
         assert created == 2
 
@@ -293,7 +304,10 @@ class TestE2EPipeline:
                 return result
             elif args[:3] == ["git", "annex", "find"]:
                 result = MagicMock()
-                result.stdout = _ANNEX_FIND
+                if "--include=*" in args:
+                    result.stdout = _ANNEX_FIND_ALL
+                else:
+                    result.stdout = _ANNEX_FIND_PRESENT
                 return result
             raise ValueError(f"Unmocked: {args}")
 

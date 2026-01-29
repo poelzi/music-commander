@@ -18,7 +18,9 @@ from music_commander.utils.output import (
     create_progress,
     error,
     info,
+    is_verbose,
     success,
+    verbose,
     warning,
 )
 from music_commander.view.symlinks import cleanup_output_dir, create_symlink_tree
@@ -63,6 +65,19 @@ EXIT_NO_REPO = 3
     default=False,
     help="Don't remove old symlinks before creating new ones",
 )
+@click.option(
+    "--include-missing",
+    is_flag=True,
+    default=False,
+    help="Also create symlinks for files not locally present",
+)
+@click.option(
+    "--get",
+    "annex_get",
+    is_flag=True,
+    default=False,
+    help="Run 'git annex get' to fetch matched files before creating symlinks",
+)
 @pass_context
 def cli(
     ctx: Context,
@@ -72,6 +87,8 @@ def cli(
     absolute: bool,
     rebuild_cache: bool,
     no_cleanup: bool,
+    include_missing: bool,
+    annex_get: bool,
 ) -> None:
     """Create a symlink directory tree from search results.
 
@@ -162,6 +179,64 @@ def cli(
             for row in crate_rows:
                 crates_by_key.setdefault(row.key, []).append(row.crate)
 
+            # Warn if output directory is inside the git-annex repo
+            output_dir = output.resolve()
+            try:
+                output_dir.relative_to(repo_path.resolve())
+                warning(
+                    f"Output directory is inside the git-annex repo. "
+                    f"Consider adding '{output_dir.relative_to(repo_path.resolve())}' to .gitignore."
+                )
+            except ValueError:
+                pass  # output_dir is outside repo — no warning needed
+
+            # git annex get — fetch missing files
+            if annex_get:
+                files_to_get = [t.file for t in tracks if t.file and not t.present]
+                if files_to_get:
+                    info(f"Fetching {len(files_to_get)} missing files with git annex get...")
+                    cmd = ["git", "annex", "get", "--"] + files_to_get
+                    verbose(f"Running: git annex get -- ({len(files_to_get)} files)")
+                    proc = subprocess.run(
+                        cmd,
+                        cwd=repo_path,
+                        capture_output=not is_verbose(),
+                    )
+                    if proc.returncode != 0:
+                        if not is_verbose() and proc.stderr:
+                            error(proc.stderr.decode(errors="replace").strip())
+                        error("git annex get failed")
+                        raise SystemExit(EXIT_NO_REPO)
+                    success(f"Fetched {len(files_to_get)} files")
+                else:
+                    info("All matched files are already present")
+
+            # Cleanup old symlinks
+            if not no_cleanup and output_dir.exists():
+                removed = cleanup_output_dir(output_dir)
+                if removed > 0:
+                    info(f"Cleaned up {removed} old symlinks")
+
+            # Create symlink tree
+            try:
+                created, duplicates = create_symlink_tree(
+                    tracks=tracks,
+                    crates_by_key=crates_by_key,
+                    template_str=pattern,
+                    output_dir=output_dir,
+                    repo_path=repo_path,
+                    absolute=absolute,
+                    include_missing=include_missing or annex_get,
+                )
+            except TemplateRenderError as e:
+                error(f"Template error: {e}")
+                raise SystemExit(EXIT_TEMPLATE_ERROR)
+
+            # Report
+            success(f"Created {created} symlinks in {output_dir}")
+            if duplicates > 0:
+                warning(f"{duplicates} duplicate paths resolved with numeric suffixes")
+
     except SystemExit:
         raise
     except subprocess.CalledProcessError as e:
@@ -173,41 +248,5 @@ def cli(
     except Exception as e:
         error(f"Cache error: {e}")
         raise SystemExit(EXIT_NO_REPO)
-
-    # Warn if output directory is inside the git-annex repo
-    output_dir = output.resolve()
-    try:
-        output_dir.relative_to(repo_path.resolve())
-        warning(
-            f"Output directory is inside the git-annex repo. "
-            f"Consider adding '{output_dir.relative_to(repo_path.resolve())}' to .gitignore."
-        )
-    except ValueError:
-        pass  # output_dir is outside repo — no warning needed
-
-    # Cleanup old symlinks
-    if not no_cleanup and output_dir.exists():
-        removed = cleanup_output_dir(output_dir)
-        if removed > 0:
-            info(f"Cleaned up {removed} old symlinks")
-
-    # Create symlink tree
-    try:
-        created, duplicates = create_symlink_tree(
-            tracks=tracks,
-            crates_by_key=crates_by_key,
-            template_str=pattern,
-            output_dir=output_dir,
-            repo_path=repo_path,
-            absolute=absolute,
-        )
-    except TemplateRenderError as e:
-        error(f"Template error: {e}")
-        raise SystemExit(EXIT_TEMPLATE_ERROR)
-
-    # Report
-    success(f"Created {created} symlinks in {output_dir}")
-    if duplicates > 0:
-        warning(f"{duplicates} duplicate paths resolved with numeric suffixes")
 
     raise SystemExit(EXIT_SUCCESS)
