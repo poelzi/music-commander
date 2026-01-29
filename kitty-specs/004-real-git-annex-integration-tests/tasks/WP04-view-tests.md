@@ -1,27 +1,30 @@
 ---
-work_package_id: "WP04"
+work_package_id: WP04
+title: View Integration Tests
+lane: "for_review"
+dependencies: [WP02]
+base_branch: 004-real-git-annex-integration-tests-WP02
+base_commit: c0006eedf11bf52dd2c7a2b3865976012f3b4db1
+created_at: '2026-01-29T18:47:58.988839+00:00'
 subtasks:
-  - "T023"
-  - "T024"
-  - "T025"
-  - "T026"
-  - "T027"
-  - "T028"
-title: "View Integration Tests"
-phase: "Phase 1 - Core Tests"
-lane: "doing"
-assignee: ""
-agent: ""
-shell_pid: ""
-review_status: ""
-reviewed_by: ""
-dependencies: ["WP02"]
+- T023
+- T024
+- T025
+- T026
+- T027
+- T028
+phase: Phase 1 - Core Tests
+assignee: ''
+agent: ''
+shell_pid: ''
+review_status: ''
+reviewed_by: ''
 history:
-  - timestamp: "2026-01-29T17:54:16Z"
-    lane: "planned"
-    agent: "system"
-    shell_pid: ""
-    action: "Prompt generated via /spec-kitty.tasks"
+- timestamp: '2026-01-29T17:54:16Z'
+  lane: planned
+  agent: system
+  shell_pid: ''
+  action: Prompt generated via /spec-kitty.tasks
 ---
 
 # Work Package Prompt: WP04 - View Integration Tests
@@ -129,3 +132,4 @@ history:
 
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
 - 2026-01-29T18:47:54Z – unknown – lane=doing – Moved to doing
+- 2026-01-29T18:49:36Z – unknown – lane=for_review – Moved to for_review
