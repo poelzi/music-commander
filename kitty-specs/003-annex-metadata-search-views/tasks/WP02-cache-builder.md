@@ -132,7 +132,7 @@ spec-kitty implement WP02 --base WP01
 ## Risks & Mitigations
 
 - Metadata log format edge cases — test with real data samples from the repo
-- FTS5 availability — SQLite 3.9+ ships FTS5 by default, Python 3.11 includes it
+- FTS5 availability — SQLite 3.9+ ships FTS5 by default, Python 3.13 includes it
 - Large dataset performance — batch INSERTs with `executemany`
 
 ## Review Guidance

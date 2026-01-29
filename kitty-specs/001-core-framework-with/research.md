@@ -61,11 +61,11 @@ def cli(ctx):
 
 ### Configuration: tomllib + tomli-w
 
-**Decision**: Use Python 3.11's built-in `tomllib` for reading, `tomli-w` for writing
+**Decision**: Use Python 3.13's built-in `tomllib` for reading, `tomli-w` for writing
 
 **Rationale**:
 - TOML is human-readable and familiar to developers
-- `tomllib` is stdlib in Python 3.11+ (no extra dependency for reading)
+- `tomllib` is stdlib in Python 3.11+ (no extra dependency for reading; project requires 3.13+)
 - `tomli-w` is small, well-maintained for write operations
 - XDG Base Directory compliant (`~/.config/music-commander/`)
 
@@ -178,7 +178,7 @@ git log --name-only --pretty=format: <branch> --not HEAD
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        python = pkgs.python311;
+        python = pkgs.python313;
         
         pythonEnv = python.withPackages (ps: with ps; [
           click

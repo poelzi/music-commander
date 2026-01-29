@@ -19,7 +19,7 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        python = pkgs.python311;
+        python = pkgs.python313;
 
         # Runtime dependencies
         pythonDeps =

@@ -10,7 +10,7 @@ A command-line tool for managing large music collections stored in git-annex, wi
 - **Mixxx database access**: Query and manage your Mixxx library programmatically (ORM layer)
 - **Reproducible builds**: Full Nix flake support for consistent environments
 - **Beautiful CLI**: Colored output with Rich, progress bars, helpful error messages
-- **Type-safe**: Fully type-hinted Python 3.11+ with strict mypy checking
+- **Type-safe**: Fully type-hinted Python 3.13+ with strict mypy checking
 - **Well-tested**: 80%+ test coverage with pytest
 
 ## Installation
@@ -109,7 +109,7 @@ music-commander sync-metadata --all --batch-size 1000
 
 ```bash
 # Find all 5-star tracks
-git annex find --metadata rating=5
+/
 
 # Find tracks in a specific crate
 git annex find --metadata crate="Festival Sets"
@@ -293,7 +293,7 @@ music-commander/
 
 ## Requirements
 
-- **Python**: 3.11 or later
+- **Python**: 3.13 or later
 - **git-annex**: Required for annex operations
 - **Mixxx**: Optional (only needed for database commands)
 

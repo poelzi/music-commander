@@ -8,10 +8,10 @@ subtasks:
   - "T005"
 title: "Dependencies & Cache Infrastructure"
 phase: "Phase 0 - Setup"
-lane: "planned"
+lane: "for_review"
 dependencies: []
 assignee: ""
-agent: ""
+agent: "claude-opus"
 shell_pid: ""
 review_status: ""
 reviewed_by: ""
@@ -35,7 +35,7 @@ history:
 
 ## Context & Constraints
 
-- Constitution: `.kittify/memory/constitution.md` — Python 3.11+, pytest required, every module needs tests
+- Constitution: `.kittify/memory/constitution.md` — Python 3.13+, pytest required, every module needs tests
 - Plan: `kitty-specs/003-annex-metadata-search-views/plan.md`
 - Data model: `kitty-specs/003-annex-metadata-search-views/data-model.md`
 - Follow existing patterns from `music_commander/db/` for SQLAlchemy models and session management
@@ -106,3 +106,5 @@ history:
 ## Activity Log
 
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
+- 2026-01-29T03:08:07Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP01: Dependencies & Cache Infrastructure
+- 2026-01-29T03:12:17Z – claude-opus – shell_pid= – lane=for_review – Ready for review: cache models, session, 16 passing tests

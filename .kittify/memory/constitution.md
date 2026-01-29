@@ -14,7 +14,7 @@ principles.
 
 ### Languages and Frameworks
 
-- Python 3.11+ as the sole implementation language
+- Python 3.13+ as the sole implementation language
 - Click for CLI command framework
 - SQLAlchemy for database access (Mixxx SQLite)
 - Rich for terminal output and formatting

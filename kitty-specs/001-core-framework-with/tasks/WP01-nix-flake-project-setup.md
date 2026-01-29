@@ -36,7 +36,7 @@ history:
 ## Objectives & Success Criteria
 
 - Create a fully functional Nix flake that provides reproducible builds
-- `nix develop` enters a shell with Python 3.11 and all dependencies
+- `nix develop` enters a shell with Python 3.13 and all dependencies
 - `nix build` produces a working `music-commander` executable
 - `nix flake check` runs pytest (even if no tests yet, the framework works)
 - Package installs correctly with entry point `music-commander`
@@ -64,7 +64,7 @@ history:
 **Steps**:
 1. Create `flake.nix` at repository root
 2. Define inputs: nixpkgs (unstable), flake-utils
-3. Create Python environment with Python 3.11
+3. Create Python environment with Python 3.13
 4. Define outputs:
    - `packages.default`: buildPythonApplication for music-commander
    - `devShells.default`: development shell with all tools
@@ -84,7 +84,7 @@ history:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        python = pkgs.python311;
+        python = pkgs.python313;
         
         # Runtime dependencies
         pythonDeps = ps: with ps; [
@@ -168,7 +168,7 @@ name = "music-commander"
 version = "0.1.0"
 description = "Manage git-annex based music collections with Mixxx integration"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
     {name = "poelzi"}
@@ -196,14 +196,14 @@ where = ["."]
 include = ["music_commander*"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py313"
 line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
@@ -286,7 +286,7 @@ def cli() -> None:
 
 ## Review Guidance
 
-- Verify `nix develop` provides Python 3.11 with all deps
+- Verify `nix develop` provides Python 3.13 with all deps
 - Verify `nix build` succeeds from clean clone
 - Check entry point works: `./result/bin/music-commander --help`
 - Ensure no hardcoded paths in flake.nix

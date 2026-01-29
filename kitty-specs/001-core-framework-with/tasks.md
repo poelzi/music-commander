@@ -23,11 +23,11 @@
 ## Work Package WP01: Nix Flake & Project Setup (Priority: P0)
 
 **Goal**: Establish reproducible build environment and Python package skeleton.
-**Independent Test**: `nix develop` enters shell with Python 3.11 and all dependencies; `nix build` succeeds.
+**Independent Test**: `nix develop` enters shell with Python 3.13 and all dependencies; `nix build` succeeds.
 **Prompt**: `tasks/WP01-nix-flake-project-setup.md`
 
 ### Included Subtasks
-- [X] T001 Create flake.nix with Python 3.11, Click, Rich, SQLAlchemy, tomli-w, pytest, ruff, mypy
+- [X] T001 Create flake.nix with Python 3.13, Click, Rich, SQLAlchemy, tomli-w, pytest, ruff, mypy
 - [X] T002 Create pyproject.toml with package metadata and entry point
 - [X] T003 Create music_commander/__init__.py with __version__
 - [X] T004 Create music_commander/__main__.py entry point
@@ -44,7 +44,7 @@
 - None (starting package)
 
 ### Risks & Mitigations
-- Nix Python packaging complexity → use python311.pkgs.buildPythonApplication pattern
+- Nix Python packaging complexity → use python313.pkgs.buildPythonApplication pattern
 
 ---
 

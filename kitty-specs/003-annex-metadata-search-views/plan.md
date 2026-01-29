@@ -8,7 +8,7 @@ Add two CLI commands to music-commander: `search` (query git-annex metadata usin
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+
+**Language/Version**: Python 3.13+
 **Primary Dependencies**: Click, SQLAlchemy, Rich, lark (search parser), Jinja2 (templates)
 **Storage**: SQLite cache in-repo (`.music-commander-cache.db`), git-annex metadata as source of truth
 **Testing**: pytest, unit tests for every command and utility module
@@ -20,7 +20,7 @@ Add two CLI commands to music-commander: `search` (query git-annex metadata usin
 
 **GATE: PASS**
 
-- Python 3.11+: Compliant
+- Python 3.13+: Compliant
 - Click CLI: Compliant (new commands follow existing pattern)
 - SQLAlchemy: Compliant (used for cache DB)
 - Rich: Compliant (table output)

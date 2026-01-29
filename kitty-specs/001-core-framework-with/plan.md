@@ -9,7 +9,7 @@ Build the foundational musicCommander framework: a Python CLI tool for managing 
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+
+**Language/Version**: Python 3.13+
 **Primary Dependencies**: Click (CLI), Rich (terminal output), SQLAlchemy 2.0 (ORM), tomli-w (config writing)
 **Storage**: SQLite (Mixxx's mixxxdb.sqlite, read/write with WAL mode awareness)
 **Testing**: pytest via `nix flake check`
@@ -26,7 +26,7 @@ Build the foundational musicCommander framework: a Python CLI tool for managing 
 | Principle | Status | Notes |
 |-----------|--------|-------|
 | I. Nix-First Packaging | PASS | flake.nix with devShell, build, check |
-| II. Python Implementation | PASS | Python 3.11+, type hints, ruff, mypy |
+| II. Python Implementation | PASS | Python 3.13+, type hints, ruff, mypy |
 | III. CLI Usability | PASS | Click subcommands, Rich colors, --help |
 | IV. git-annex Integration | PASS | get-commit-files command, proper annexed file detection |
 | V. Test Coverage | PASS | pytest with fixtures, 80% target |

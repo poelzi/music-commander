@@ -9,7 +9,7 @@ Sync Mixxx DJ library metadata (rating, BPM, color, key, artist, title, album, g
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (matches existing project)
+**Language/Version**: Python 3.13+ (matches existing project)
 **Primary Dependencies**: Click (CLI), SQLAlchemy (Mixxx DB), Rich (output) - all existing
 **Storage**: Mixxx SQLite database (read), git-annex metadata (write)
 **Testing**: pytest with fixtures - existing test infrastructure
