@@ -166,7 +166,7 @@
 **Prompt**: `tasks/WP06-polish-and-integration.md`
 
 ### Included Subtasks
-- [ ] T041 Add `.music-commander-cache.db` to default `.gitignore` generation in init-config
+- [x] T041 Add `.music-commander-cache.db` to default `.gitignore` generation in init-config
 - [ ] T042 Add `--rebuild-cache` flag to search and view commands for forcing full rebuild
 - [ ] T043 Handle edge cases: empty repo, no metadata, corrupt cache file
 - [ ] T044 Performance validation on 100k+ track repo
