@@ -98,7 +98,7 @@
 **Prompt**: `tasks/WP04-search-query-and-cli.md`
 
 ### Included Subtasks
-- [ ] T019 Create `music_commander/search/query.py` — Convert AST to SQL WHERE clauses
+- [x] T019 Create `music_commander/search/query.py` — Convert AST to SQL WHERE clauses
 - [ ] T020 Implement TextTerm → FTS5 MATCH query
 - [ ] T021 Implement FieldFilter → column comparisons (=, >, <, >=, <=, range, glob)
 - [ ] T022 Implement OR groups → SQL OR, negation → NOT
