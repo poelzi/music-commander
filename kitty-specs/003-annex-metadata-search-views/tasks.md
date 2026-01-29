@@ -40,7 +40,7 @@
 **Prompt**: `tasks/WP02-cache-builder.md`
 
 ### Included Subtasks
-- [ ] T006 Create `music_commander/cache/builder.py` — Full cache build from git-annex branch
+- [x] T006 Create `music_commander/cache/builder.py` — Full cache build from git-annex branch
 - [ ] T007 Implement raw git-annex branch reader (`git ls-tree` + `git cat-file --batch` for `.log.met` files)
 - [ ] T008 Implement metadata log parser (parse `key=value` format from `.log.met` content)
 - [ ] T009 Implement key-to-file mapper (`git annex find --format='${key}\t${file}\n'`)

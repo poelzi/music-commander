@@ -8,7 +8,7 @@ subtasks:
   - "T045"
 title: "Polish & Integration"
 phase: "Phase 2 - Polish"
-lane: "doing"
+lane: "for_review"
 dependencies: ["WP04", "WP05"]
 assignee: ""
 agent: "claude-opus"
@@ -106,3 +106,4 @@ spec-kitty implement WP06 --base WP05
 
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
 - 2026-01-29T13:50:36Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP06: Polish & Integration
+- 2026-01-29T13:54:42Z – claude-opus – shell_pid= – lane=for_review – All 182 tests pass (9 E2E). Commit 4517922. Edge case handling, corrupt cache auto-rebuild, delete_cache for --rebuild-cache, git-annex branch error messages.
