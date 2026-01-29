@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: Git-Annex Test Fixtures
-lane: "for_review"
+lane: "doing"
 dependencies: [WP01]
 base_branch: 004-real-git-annex-integration-tests-WP01
 base_commit: 5a6a7ce1c4a3537341653cbebb467c93b65208d3
@@ -14,8 +14,8 @@ subtasks:
 - T011
 phase: Phase 0 - Setup
 assignee: ''
-agent: ''
-shell_pid: "311044"
+agent: "claude-opus"
+shell_pid: "323047"
 review_status: ''
 reviewed_by: ''
 history:
@@ -136,3 +136,4 @@ history:
 
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
 - 2026-01-29T18:45:41Z – unknown – shell_pid=311044 – lane=for_review – Moved to for_review
+- 2026-01-29T20:31:03Z – claude-opus – shell_pid=323047 – lane=doing – Started review via workflow command
