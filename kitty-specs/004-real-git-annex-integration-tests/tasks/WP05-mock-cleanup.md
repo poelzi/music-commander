@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: Mock Test Cleanup
-lane: "for_review"
+lane: "doing"
 dependencies:
 - WP03
 base_branch: 004-real-git-annex-integration-tests-WP04
@@ -16,8 +16,8 @@ subtasks:
 - T034
 phase: Phase 2 - Polish
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-opus"
+shell_pid: "324600"
 review_status: ''
 reviewed_by: ''
 history:
@@ -118,3 +118,4 @@ history:
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
 - 2026-01-29T18:49:50Z – unknown – lane=doing – Moved to doing
 - 2026-01-29T18:52:25Z – unknown – lane=for_review – Moved to for_review
+- 2026-01-29T20:32:15Z – claude-opus – shell_pid=324600 – lane=doing – Started review via workflow command
