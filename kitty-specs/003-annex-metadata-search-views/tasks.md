@@ -104,7 +104,7 @@
 - [x] T022 Implement OR groups → SQL OR, negation → NOT
 - [x] T023 Implement empty field search (field:"") → column IS NULL
 - [x] T024 Create `music_commander/commands/search.py` — CLI search command with Rich table output
-- [ ] T025 Add `--format` flag (table/paths/json) for output formats
+- [x] T025 Add `--format` flag (table/paths/json) for output formats
 - [ ] T026 Auto-build/refresh cache on first search (with progress bar)
 - [ ] T027 Create `tests/test_search_query.py` — Unit tests for query execution
 - [ ] T028 Create `tests/test_cmd_search.py` — CLI integration tests
