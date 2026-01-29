@@ -45,7 +45,7 @@
 - [x] T008 Implement metadata log parser (parse `key=value` format from `.log.met` content)
 - [x] T009 Implement key-to-file mapper (`git annex find --format='${key}\t${file}\n'`)
 - [x] T010 Implement incremental refresh via `git diff-tree` on git-annex branch
-- [ ] T011 Create FTS5 virtual table for full-text search on artist, title, album, genre, file
+- [x] T011 Create FTS5 virtual table for full-text search on artist, title, album, genre, file
 - [ ] T012 Create `tests/test_cache_builder.py` — Unit tests for builder, parser, incremental refresh
 
 ### Implementation Notes
