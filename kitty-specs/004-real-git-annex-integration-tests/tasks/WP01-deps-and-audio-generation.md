@@ -9,10 +9,10 @@ subtasks:
   - "T006"
 title: "Dependencies & Audio Generation Infrastructure"
 phase: "Phase 0 - Setup"
-lane: "for_review"
+lane: "doing"
 assignee: ""
 agent: "claude-opus"
-shell_pid: "308628"
+shell_pid: "322769"
 review_status: ""
 reviewed_by: ""
 dependencies: []
@@ -130,3 +130,4 @@ history:
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
 - 2026-01-29T18:39:13Z – claude-opus – shell_pid=308628 – lane=doing – Started implementation via workflow command
 - 2026-01-29T18:42:07Z – claude-opus – shell_pid=308628 – lane=for_review – Ready for review: ffmpeg+mutagen deps added, audio generation helpers implemented and verified
+- 2026-01-29T20:30:02Z – claude-opus – shell_pid=322769 – lane=doing – Started review via workflow command
