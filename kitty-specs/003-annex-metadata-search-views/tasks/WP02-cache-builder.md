@@ -1,0 +1,143 @@
+---
+work_package_id: "WP02"
+subtasks:
+  - "T006"
+  - "T007"
+  - "T008"
+  - "T009"
+  - "T010"
+  - "T011"
+  - "T012"
+title: "Cache Builder"
+phase: "Phase 0 - Setup"
+lane: "planned"
+dependencies: ["WP01"]
+assignee: ""
+agent: ""
+shell_pid: ""
+review_status: ""
+reviewed_by: ""
+history:
+  - timestamp: "2026-01-29T02:41:50Z"
+    lane: "planned"
+    agent: "system"
+    shell_pid: ""
+    action: "Prompt generated via /spec-kitty.tasks"
+---
+
+# Work Package Prompt: WP02 -- Cache Builder
+
+## Implementation Command
+
+```bash
+spec-kitty implement WP02 --base WP01
+```
+
+## Objectives & Success Criteria
+
+- Build a complete local SQLite cache from the git-annex branch in ~16 seconds for 100k files
+- Parse `.log.met` files from the git-annex branch into structured metadata
+- Map git-annex keys to file paths
+- Support incremental refresh via `git diff-tree`
+- Create FTS5 full-text search index for text queries
+- Unit tests for all components
+
+## Context & Constraints
+
+- Research: `kitty-specs/003-annex-metadata-search-views/research.md` — benchmarks and raw read approach
+- Data model: `kitty-specs/003-annex-metadata-search-views/data-model.md`
+- The raw git-annex branch approach is 14x faster than `metadata --batch --json`
+- Pipeline: `git ls-tree -r git-annex` → `grep .log.met` → `git cat-file --batch` → parse → key-to-file → INSERT
+
+## Subtasks & Detailed Guidance
+
+### Subtask T006 -- Create cache builder module
+- **Purpose**: Orchestrate the full cache build pipeline.
+- **Files**: `music_commander/cache/builder.py`
+- **Steps**:
+  1. Create `build_cache(repo_path: Path, session: Session)` function
+  2. Pipeline: read_metadata_logs → parse_logs → map_keys_to_files → insert_all
+  3. Update CacheState with current git-annex branch commit hash
+  4. Show progress via Rich progress bar
+  5. Create `refresh_cache(repo_path: Path, session: Session)` that checks if refresh needed
+
+### Subtask T007 -- Raw git-annex branch reader
+- **Purpose**: Read all `.log.met` blob hashes and paths from the git-annex branch.
+- **Files**: `music_commander/cache/builder.py`
+- **Steps**:
+  1. Run `git ls-tree -r git-annex` and filter lines ending with `.log.met`
+  2. Extract blob hash and path for each line
+  3. Extract git-annex key from path: strip directory prefix (`xxx/yyy/`) and `.log.met` suffix
+  4. Pipe blob hashes to `git cat-file --batch` to read content
+  5. Return iterator of `(annex_key, raw_metadata_string)` tuples
+- **Parallel?**: Yes, can be developed independently from T009.
+
+### Subtask T008 -- Metadata log parser
+- **Purpose**: Parse `key=value` pairs from `.log.met` file content.
+- **Files**: `music_commander/cache/builder.py`
+- **Steps**:
+  1. Parse format: `1735000000s 0 artist=Bollywood album=100% Bollywood title=Kuch Kuch Hota Hai bpm=120`
+  2. Skip timestamp prefix (`\d+s \d+`)
+  3. Handle values with spaces (git-annex escapes them)
+  4. Return dict of field → value
+- **Notes**: Multi-value fields (like crate) may appear multiple times. Collect as lists.
+
+### Subtask T009 -- Key-to-file mapper
+- **Purpose**: Map git-annex keys to repository-relative file paths.
+- **Files**: `music_commander/cache/builder.py`
+- **Steps**:
+  1. Run `git annex find --format='${key}\t${file}\n'`
+  2. Parse output into dict: `{annex_key: relative_file_path}`
+  3. Return the mapping
+- **Parallel?**: Yes, independent from T007/T008.
+
+### Subtask T010 -- Incremental refresh
+- **Purpose**: Update only changed metadata since last cache build.
+- **Files**: `music_commander/cache/builder.py`
+- **Steps**:
+  1. Read last-seen commit from CacheState
+  2. Run `git diff-tree -r --name-only <old_commit> <new_commit>` on git-annex branch
+  3. Filter changed `.log.met` files
+  4. Re-read and re-parse only changed entries
+  5. UPDATE/INSERT changed rows, DELETE removed rows
+  6. Update CacheState with new commit hash
+
+### Subtask T011 -- FTS5 virtual table
+- **Purpose**: Enable full-text search across text metadata fields.
+- **Files**: `music_commander/cache/builder.py` or `music_commander/cache/models.py`
+- **Steps**:
+  1. Create FTS5 virtual table: `CREATE VIRTUAL TABLE tracks_fts USING fts5(artist, title, album, genre, file, content=tracks, content_rowid=rowid)`
+  2. Populate during cache build
+  3. Update triggers for incremental refresh
+
+### Subtask T012 -- Cache builder tests
+- **Purpose**: Verify full build and incremental refresh pipeline.
+- **Files**: `tests/test_cache_builder.py`
+- **Steps**:
+  1. Test metadata log parsing with various formats
+  2. Test key extraction from git-annex branch paths
+  3. Test full build pipeline with mock git output
+  4. Test incremental refresh with mock diff-tree output
+  5. Test FTS5 search queries
+
+## Test Strategy
+
+- Mock `subprocess.run`/`Popen` for git commands in unit tests
+- Use real repo for integration testing (optional, manual)
+- Test parser with edge cases: spaces in values, empty fields, multi-value crate
+
+## Risks & Mitigations
+
+- Metadata log format edge cases — test with real data samples from the repo
+- FTS5 availability — SQLite 3.9+ ships FTS5 by default, Python 3.11 includes it
+- Large dataset performance — batch INSERTs with `executemany`
+
+## Review Guidance
+
+- Verify pipeline produces correct metadata for known tracks
+- Verify incremental refresh only touches changed entries
+- Verify FTS5 index is populated and queryable
+
+## Activity Log
+
+- 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
