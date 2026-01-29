@@ -9,11 +9,11 @@ subtasks:
   - "T018"
 title: "Search Parser"
 phase: "Phase 1 - Core"
-lane: "for_review"
+lane: "doing"
 dependencies: []
 assignee: ""
 agent: "claude-opus"
-shell_pid: ""
+shell_pid: "192134"
 review_status: ""
 reviewed_by: ""
 history:
@@ -153,3 +153,4 @@ spec-kitty implement WP03
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
 - 2026-01-29T12:40:40Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP03: Search Grammar & Parser
 - 2026-01-29T12:44:57Z – claude-opus – shell_pid= – lane=for_review – Ready for review: Lark grammar, parser, AST, 36 tests all passing
+- 2026-01-29T14:20:10Z – claude-opus – shell_pid=192134 – lane=doing – Started review via workflow command
