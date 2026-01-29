@@ -1,9 +1,12 @@
 ---
 work_package_id: WP05
 title: Mock Test Cleanup
-lane: "doing"
+lane: "for_review"
 dependencies:
 - WP03
+base_branch: 004-real-git-annex-integration-tests-WP04
+base_commit: fb48767764475d55bf738a3d0706ce82574db0c6
+created_at: '2026-01-29T18:49:55.729654+00:00'
 subtasks:
 - T029
 - T030
@@ -114,3 +117,4 @@ history:
 
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
 - 2026-01-29T18:49:50Z – unknown – lane=doing – Moved to doing
+- 2026-01-29T18:52:25Z – unknown – lane=for_review – Moved to for_review
