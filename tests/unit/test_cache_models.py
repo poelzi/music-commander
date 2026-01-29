@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from music_commander.cache.models import CacheBase, CacheState, CacheTrack, TrackCrate
-from music_commander.cache.session import CACHE_DB_NAME, get_cache_session
+from music_commander.cache.session import CACHE_DB_NAME, delete_cache, get_cache_session
 
 
 def _in_memory_session() -> Session:
@@ -243,3 +243,18 @@ class TestGetCacheSession:
             tracks = session.query(CacheTrack).all()
             assert len(tracks) == 1
             assert tracks[0].key == "good"
+
+
+class TestDeleteCache:
+    def test_delete_existing(self, tmp_path: Path) -> None:
+        cache_path = tmp_path / CACHE_DB_NAME
+        cache_path.write_text("fake db")
+        assert cache_path.exists()
+
+        deleted = delete_cache(tmp_path)
+        assert deleted is True
+        assert not cache_path.exists()
+
+    def test_delete_nonexistent(self, tmp_path: Path) -> None:
+        deleted = delete_cache(tmp_path)
+        assert deleted is False
