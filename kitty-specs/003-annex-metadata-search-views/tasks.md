@@ -136,7 +136,7 @@
 - [x] T032 Implement multi-value field expansion (crate → one symlink per value)
 - [x] T033 Implement path sanitization (filesystem-safe characters)
 - [x] T034 Implement duplicate path handling (numeric suffix)
-- [ ] T035 Implement output directory cleanup (remove old symlinks and empty dirs)
+- [x] T035 Implement output directory cleanup (remove old symlinks and empty dirs)
 - [ ] T036 Implement relative symlink creation (default) and `--absolute` flag
 - [ ] T037 Create `music_commander/commands/view.py` — CLI view command
 - [ ] T038 Create `tests/test_view_template.py` — Unit tests for template rendering
