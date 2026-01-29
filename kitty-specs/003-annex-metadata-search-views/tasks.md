@@ -101,7 +101,7 @@
 - [x] T019 Create `music_commander/search/query.py` — Convert AST to SQL WHERE clauses
 - [x] T020 Implement TextTerm → FTS5 MATCH query
 - [x] T021 Implement FieldFilter → column comparisons (=, >, <, >=, <=, range, glob)
-- [ ] T022 Implement OR groups → SQL OR, negation → NOT
+- [x] T022 Implement OR groups → SQL OR, negation → NOT
 - [ ] T023 Implement empty field search (field:"") → column IS NULL
 - [ ] T024 Create `music_commander/commands/search.py` — CLI search command with Rich table output
 - [ ] T025 Add `--format` flag (table/paths/json) for output formats
