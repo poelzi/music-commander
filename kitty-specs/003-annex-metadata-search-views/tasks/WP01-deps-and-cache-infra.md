@@ -8,11 +8,11 @@ subtasks:
   - "T005"
 title: "Dependencies & Cache Infrastructure"
 phase: "Phase 0 - Setup"
-lane: "for_review"
+lane: "doing"
 dependencies: []
 assignee: ""
-agent: "claude-opus"
-shell_pid: ""
+agent: "openai/gpt-5.2-codex"
+shell_pid: "190088"
 review_status: ""
 reviewed_by: ""
 history:
@@ -108,3 +108,4 @@ history:
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
 - 2026-01-29T03:08:07Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP01: Dependencies & Cache Infrastructure
 - 2026-01-29T03:12:17Z – claude-opus – shell_pid= – lane=for_review – Ready for review: cache models, session, 16 passing tests
+- 2026-01-29T14:16:13Z – openai/gpt-5.2-codex – shell_pid=190088 – lane=doing – Started review via workflow command
