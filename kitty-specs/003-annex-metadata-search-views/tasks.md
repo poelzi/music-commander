@@ -102,7 +102,7 @@
 - [x] T020 Implement TextTerm → FTS5 MATCH query
 - [x] T021 Implement FieldFilter → column comparisons (=, >, <, >=, <=, range, glob)
 - [x] T022 Implement OR groups → SQL OR, negation → NOT
-- [ ] T023 Implement empty field search (field:"") → column IS NULL
+- [x] T023 Implement empty field search (field:"") → column IS NULL
 - [ ] T024 Create `music_commander/commands/search.py` — CLI search command with Rich table output
 - [ ] T025 Add `--format` flag (table/paths/json) for output formats
 - [ ] T026 Auto-build/refresh cache on first search (with progress bar)
