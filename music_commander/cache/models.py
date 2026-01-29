@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Float, Integer, String, Text
+from sqlalchemy import Float, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -31,6 +31,12 @@ class CacheTrack(CacheBase):
     comment: Mapped[str | None] = mapped_column(Text)
     color: Mapped[str | None] = mapped_column(String(32))
 
+    __table_args__ = (
+        Index("ix_tracks_bpm", "bpm"),
+        Index("ix_tracks_rating", "rating"),
+        Index("ix_tracks_year", "year"),
+    )
+
     def __repr__(self) -> str:
         return f"<CacheTrack(key='{self.key[:30]}...', file='{self.file}')>"
 
@@ -45,6 +51,8 @@ class TrackCrate(CacheBase):
         primary_key=True,
     )
     crate: Mapped[str] = mapped_column(String(256), primary_key=True)
+
+    __table_args__ = (Index("ix_track_crates_crate", "crate"),)
 
     def __repr__(self) -> str:
         return f"<TrackCrate(key='{self.key[:30]}...', crate='{self.crate}')>"

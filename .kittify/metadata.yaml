@@ -3,12 +3,109 @@
 # DO NOT EDIT MANUALLY
 
 spec_kitty:
-  version: 0.9.4
+  version: 0.13.7
   initialized_at: '2026-01-06T17:01:40.081700'
-  last_upgraded_at: null
+  last_upgraded_at: '2026-01-28T17:45:00.004701'
 environment:
   python_version: 3.13.9
   platform: linux
   platform_version: Linux-6.18.1-x86_64-with-glibc2.40
 migrations:
-  applied: []
+  applied:
+  - id: 0.10.0_python_only
+    applied_at: '2026-01-28T17:44:59.911687'
+    result: skipped
+    notes: Not applicable
+  - id: 0.10.1_populate_slash_commands
+    applied_at: '2026-01-28T17:44:59.912228'
+    result: skipped
+    notes: Not applicable
+  - id: 0.10.2_update_slash_commands
+    applied_at: '2026-01-28T17:44:59.920723'
+    result: success
+    notes: 'Updated 12 slash commands for claude; Updated 12 slash commands for opencode;
+      Total: Updated 24 slash commands from software-dev mission; Slash commands now
+      use Python CLI (no bash scripts); Slash commands now enforce flat tasks/ structure
+      (feature 007)'
+  - id: 0.10.6_workflow_simplification
+    applied_at: '2026-01-28T17:44:59.921297'
+    result: skipped
+    notes: Not applicable
+  - id: 0.10.8_fix_memory_structure
+    applied_at: '2026-01-28T17:44:59.921366'
+    result: skipped
+    notes: Not applicable
+  - id: 0.10.9_repair_templates
+    applied_at: '2026-01-28T17:44:59.985441'
+    result: success
+    notes: Removed broken templates from .kittify/templates/; Copied correct templates
+      from package; Regenerated all agent slash commands; Cleaned up temporary templates
+  - id: 0.10.12_constitution_cleanup
+    applied_at: '2026-01-28T17:44:59.985618'
+    result: skipped
+    notes: Not applicable
+  - id: 0.10.14_update_implement_slash_command
+    applied_at: '2026-01-28T17:44:59.986728'
+    result: success
+    notes: 'Using template from: packaged missions; Updated: .claude/commands/spec-kitty.implement.md;
+      Updated 1 agent directories'
+  - id: 0.11.0_workspace_per_wp
+    applied_at: '2026-01-28T17:44:59.987432'
+    result: skipped
+    notes: Not applicable
+  - id: 0.11.1_improved_workflow_templates
+    applied_at: '2026-01-28T17:44:59.989132'
+    result: success
+    notes: 'Updated mission template: software-dev/implement.md; Updated mission template:
+      software-dev/review.md; Updated 2 templates for claude; Updated 2 templates
+      for opencode; Total: Updated 4 slash command templates across all agents; Templates
+      now warn agents to scroll to bottom of long output; Templates emphasize automated
+      file updates (no manual editing); Prevents state corruption from incomplete
+      workflows'
+  - id: 0.11.1_update_implement_slash_command
+    applied_at: '2026-01-28T17:44:59.989761'
+    result: success
+    notes: No agent directories needed updates
+  - id: 0.11.2_improved_workflow_templates
+    applied_at: '2026-01-28T17:44:59.991158'
+    result: success
+    notes: 'Updated 2 templates for claude; Updated 2 templates for opencode; Total:
+      Updated 4 slash command templates across all agents; Templates now warn agents
+      to scroll to bottom of long output; Templates emphasize automated file updates
+      (no manual editing); Prevents state corruption from incomplete workflows'
+  - id: 0.11.3_workflow_agent_flag
+    applied_at: '2026-01-28T17:44:59.991701'
+    result: skipped
+    notes: Not applicable
+  - id: 0.12.0_documentation_mission
+    applied_at: '2026-01-28T17:44:59.991773'
+    result: skipped
+    notes: Not applicable
+  - id: 0.12.1_remove_kitty_specs_from_gitignore
+    applied_at: '2026-01-28T17:44:59.992302'
+    result: skipped
+    notes: Not applicable
+  - id: 0.13.0_research_csv_schema_check
+    applied_at: '2026-01-28T17:44:59.994771'
+    result: skipped
+    notes: Not applicable
+  - id: 0.13.0_update_constitution_templates
+    applied_at: '2026-01-28T17:44:59.995361'
+    result: skipped
+    notes: Not applicable
+  - id: 0.13.0_update_research_implement_templates
+    applied_at: '2026-01-28T17:44:59.995727'
+    result: skipped
+    notes: Not applicable
+  - id: 0.13.1_exclude_worktrees
+    applied_at: '2026-01-28T17:45:00.003747'
+    result: success
+    notes: Added .worktrees/ to .git/info/exclude
+  - id: 0.13.5_fix_clarify_template
+    applied_at: '2026-01-28T17:45:00.004333'
+    result: skipped
+    notes: Not applicable
+  - id: 0.13.5_add_commit_workflow_to_templates
+    applied_at: '2026-01-28T17:45:00.004693'
+    result: skipped
+    notes: Not applicable

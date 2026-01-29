@@ -244,20 +244,36 @@ def get_crate_tracks(
 # =============================================================================
 
 
-def to_relative_path(absolute_path: Path, music_repo: Path) -> Path | None:
+def to_relative_path(
+    absolute_path: Path,
+    music_repo: Path,
+    mixxx_music_root: Path | None = None,
+) -> Path | None:
     """Convert absolute path from Mixxx to music repository relative path.
+
+    If mixxx_music_root is provided, strips it from absolute_path first.
+    This allows the Mixxx database paths to differ from the local filesystem.
 
     Args:
         absolute_path: Absolute file path from Mixxx track_locations.
         music_repo: Root path of the music repository.
+        mixxx_music_root: Optional prefix to strip from Mixxx paths.
 
     Returns:
-        Relative path from music_repo, or None if path is not under music_repo.
+        Relative path from music_repo, or None if path is not under the
+        expected root (mixxx_music_root if set, otherwise music_repo).
     """
     try:
-        return absolute_path.resolve().relative_to(music_repo.resolve())
+        if mixxx_music_root is not None:
+            # Strip mixxx_music_root prefix to get the relative path
+            # Use absolute() to preserve symlinks (Mixxx stores symlink paths)
+            return absolute_path.absolute().relative_to(mixxx_music_root.absolute())
+        else:
+            # Use absolute() instead of resolve() to preserve symlinks
+            # This is important for git-annex repos where files are symlinks
+            return absolute_path.absolute().relative_to(music_repo.resolve())
     except ValueError:
-        # Path is not relative to music_repo
+        # Path is not relative to the expected root
         return None
 
 
@@ -281,15 +297,20 @@ def get_track_crates(session: Session, track_id: int) -> list[str]:
     return list(result.scalars().all())
 
 
-def get_all_tracks(session: Session, music_repo: Path) -> Iterator[TrackMetadata]:
+def get_all_tracks(
+    session: Session,
+    music_repo: Path,
+    mixxx_music_root: Path | None = None,
+) -> Iterator[TrackMetadata]:
     """Query all non-deleted tracks from Mixxx database.
 
     Yields TrackMetadata objects with joined file paths and crate memberships.
-    Only tracks with valid file locations under music_repo are included.
+    Only tracks with valid file locations under the expected root are included.
 
     Args:
         session: Active database session.
         music_repo: Root path of music repository for relative path conversion.
+        mixxx_music_root: Optional prefix to strip from Mixxx paths.
 
     Yields:
         TrackMetadata objects for each track.
@@ -309,9 +330,9 @@ def get_all_tracks(session: Session, music_repo: Path) -> Iterator[TrackMetadata
             continue
 
         file_path = Path(track.track_location.location)
-        relative_path = to_relative_path(file_path, music_repo)
+        relative_path = to_relative_path(file_path, music_repo, mixxx_music_root)
 
-        # Skip tracks outside music_repo
+        # Skip tracks outside expected root
         if relative_path is None:
             continue
 
@@ -341,6 +362,7 @@ def get_changed_tracks(
     session: Session,
     music_repo: Path,
     since_timestamp_ms: int,
+    mixxx_music_root: Path | None = None,
 ) -> Iterator[TrackMetadata]:
     """Query tracks modified since a timestamp.
 
@@ -352,6 +374,7 @@ def get_changed_tracks(
         session: Active database session.
         music_repo: Root path of music repository.
         since_timestamp_ms: Timestamp in milliseconds (Mixxx format).
+        mixxx_music_root: Optional prefix to strip from Mixxx paths.
 
     Yields:
         TrackMetadata objects for changed tracks.
@@ -377,9 +400,9 @@ def get_changed_tracks(
             continue
 
         file_path = Path(track.track_location.location)
-        relative_path = to_relative_path(file_path, music_repo)
+        relative_path = to_relative_path(file_path, music_repo, mixxx_music_root)
 
-        # Skip tracks outside music_repo
+        # Skip tracks outside expected root
         if relative_path is None:
             continue
 

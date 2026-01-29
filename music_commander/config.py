@@ -32,6 +32,10 @@ class Config:
     Attributes:
         mixxx_db: Path to Mixxx SQLite database.
         music_repo: Path to git-annex music repository.
+        mixxx_music_root: Optional root path for Mixxx track locations.
+            When set, paths in Mixxx DB are made relative to this path
+            instead of music_repo. Useful when Mixxx stores paths like
+            /home/user/Music but the git-annex repo is at /space/Music.
         colored_output: Whether to use colored terminal output.
         default_remote: Default git-annex remote for operations.
         config_path: Path where config was loaded from (None if defaults).
@@ -39,6 +43,7 @@ class Config:
 
     mixxx_db: Path = field(default_factory=get_default_mixxx_db_path)
     music_repo: Path = field(default_factory=Path.cwd)
+    mixxx_music_root: Path | None = None
     colored_output: bool = True
     default_remote: str | None = None
     config_path: Path | None = None
@@ -57,6 +62,10 @@ class Config:
         # Expand user paths
         self.mixxx_db = self.mixxx_db.expanduser().resolve()
         self.music_repo = self.music_repo.expanduser().resolve()
+        if self.mixxx_music_root is not None:
+            # Use absolute() instead of resolve() to preserve symlinks.
+            # Mixxx stores paths using the symlink path, so we must match that.
+            self.mixxx_music_root = Path(str(self.mixxx_music_root.expanduser().absolute()))
 
         # Check if paths exist (warnings, not errors - might be created later)
         if not self.mixxx_db.exists():
@@ -95,8 +104,7 @@ def load_config(config_path: Path | None = None) -> tuple[Config, list[str]]:
         config = Config()
         warnings.append(
             f"No config file found at {config_path}. Using defaults. "
-            f"Create config with: mkdir -p {config_path.parent} && "
-            f"music-commander config init"
+            f"Create config with: music-commander init-config"
         )
         config_warnings = config.validate()
         return config, warnings + config_warnings
@@ -131,6 +139,12 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
         if not isinstance(value, str):
             raise ConfigValidationError("paths.music_repo", value, "must be a string path")
         config.music_repo = Path(value)
+
+    if "mixxx_music_root" in paths:
+        value = paths["mixxx_music_root"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("paths.mixxx_music_root", value, "must be a string path")
+        config.mixxx_music_root = Path(value)
 
     # Parse [display] section
     display = data.get("display", {})
@@ -178,6 +192,9 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
             "colored_output": config.colored_output,
         },
     }
+
+    if config.mixxx_music_root is not None:
+        data["paths"]["mixxx_music_root"] = str(config.mixxx_music_root)
 
     if config.default_remote is not None:
         data["git_annex"] = {"default_remote": config.default_remote}

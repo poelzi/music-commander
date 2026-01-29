@@ -130,7 +130,7 @@ A DJ wants search results displayed in different formats: a Rich table for termi
 
 - **SearchQuery**: A parsed representation of the user's search string, containing text terms, field filters (with operator and value), negations, and OR groups.
 - **ViewTemplate**: A Jinja2 template string that maps track metadata to a filesystem path structure.
-- **TrackResult**: A track's metadata as read from git-annex, including all synced fields plus the file's relative path.
+- **CacheTrack**: A track's metadata cached from git-annex, including all synced fields plus the file's relative path. Implemented as `CacheTrack` in `music_commander/cache/models.py`.
 
 ## Success Criteria
 

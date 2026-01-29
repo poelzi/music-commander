@@ -97,7 +97,7 @@ def cli(
     \b
     Available template variables:
       artist, title, album, genre, bpm, rating, key, year,
-      tracknumber, comment, color, crate, file
+      tracknumber, comment, color, crate, file, filename, ext
 
     \b
     Custom filters:
@@ -174,8 +174,18 @@ def cli(
         error(f"Cache error: {e}")
         raise SystemExit(EXIT_NO_REPO)
 
-    # Cleanup old symlinks
+    # Warn if output directory is inside the git-annex repo
     output_dir = output.resolve()
+    try:
+        output_dir.relative_to(repo_path.resolve())
+        warning(
+            f"Output directory is inside the git-annex repo. "
+            f"Consider adding '{output_dir.relative_to(repo_path.resolve())}' to .gitignore."
+        )
+    except ValueError:
+        pass  # output_dir is outside repo — no warning needed
+
+    # Cleanup old symlinks
     if not no_cleanup and output_dir.exists():
         removed = cleanup_output_dir(output_dir)
         if removed > 0:

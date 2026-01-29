@@ -159,8 +159,8 @@ Execution steps:
 
 4. Sequential questioning loop (interactive):
     - Present EXACTLY ONE question at a time.
-    - For multiple-choice questions, list options inline using letter prefixes rather than tables, e.g.  
-      `Options: (A) describe option A · (B) describe option B · (C) describe option C · (D) short custom answer (<=5 words)`  
+    - For multiple-choice questions, list options inline using letter prefixes rather than tables, e.g.
+      `Options: (A) describe option A · (B) describe option B · (C) describe option C · (D) short custom answer (<=5 words)`
       Ask the user to reply with the letter (or short custom text when offered).
     - For short-answer style (no meaningful discrete options), output a single line after the question: `Format: Short answer (<=5 words)`.
     - After the user answers:

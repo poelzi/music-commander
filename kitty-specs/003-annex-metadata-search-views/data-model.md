@@ -49,7 +49,7 @@ Tracks the last-known state of the git-annex branch for incremental updates.
 
 ## Indexes
 
-- `tracks`: Full-text search index (FTS5) on `artist`, `title`, `album`, `genre`, `file`
+- `tracks`: Full-text search index (FTS5) on `key`, `artist`, `title`, `album`, `genre`, `file` (`key` included for join queries)
 - `tracks`: Index on `bpm`, `rating`, `year` for numeric range queries
 - `track_crates`: Index on `crate` for crate filtering
 

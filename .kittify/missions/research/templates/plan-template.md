@@ -7,10 +7,10 @@
 
 ## Research Context
 
-**Research Question**: [Primary question]  
-**Research Type**: Literature Review | Empirical Study | Case Study  
-**Domain**: [Academic field or industry domain]  
-**Time Frame**: [When research will be conducted]  
+**Research Question**: [Primary question]
+**Research Type**: Literature Review | Empirical Study | Case Study
+**Domain**: [Academic field or industry domain]
+**Time Frame**: [When research will be conducted]
 **Resources Available**: [Databases, tools, budget, time]
 
 **Key Background**:
@@ -66,15 +66,15 @@
 
 ### Analysis Framework
 
-**Coding Scheme**: [How findings will be categorized]  
-**Synthesis Method**: [Thematic analysis | Meta-analysis | Narrative synthesis]  
+**Coding Scheme**: [How findings will be categorized]
+**Synthesis Method**: [Thematic analysis | Meta-analysis | Narrative synthesis]
 **Quality Assessment**: [How source quality will be evaluated]
 
 ## Data Management
 
 ### Evidence Tracking
 
-**File**: `research/evidence-log.csv`  
+**File**: `research/evidence-log.csv`
 **Purpose**: Track all evidence collected with citations and findings
 
 **Columns**:
@@ -93,7 +93,7 @@
 
 ### Source Registry
 
-**File**: `research/source-register.csv`  
+**File**: `research/source-register.csv`
 **Purpose**: Maintain master list of all sources for bibliography
 
 **Columns**:

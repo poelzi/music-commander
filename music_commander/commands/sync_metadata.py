@@ -253,13 +253,15 @@ def sync_tracks(
     # Query Mixxx database
     with get_session(config.mixxx_db) as session:
         if sync_all:
-            tracks_iter = get_all_tracks(session, config.music_repo)
+            tracks_iter = get_all_tracks(session, config.music_repo, config.mixxx_music_root)
         else:
             # Get timestamp in milliseconds (Mixxx format)
             # Note: sync_all is True when is_first_sync, so last_sync_timestamp is not None here
             assert sync_state.last_sync_timestamp is not None
             since_ms = int(sync_state.last_sync_timestamp.timestamp() * 1000)
-            tracks_iter = get_changed_tracks(session, config.music_repo, since_ms)
+            tracks_iter = get_changed_tracks(
+                session, config.music_repo, since_ms, config.mixxx_music_root
+            )
 
         # Convert to list for progress tracking (and to close DB session before batch)
         tracks = list(tracks_iter)
@@ -301,8 +303,10 @@ def sync_tracks(
                 continue
 
             # Check if file exists in repository
+            # Use is_symlink() to also match git-annex dangling symlinks
+            # (content not locally present but still tracked by git-annex)
             full_path = config.music_repo / t.relative_path
-            if not full_path.exists():
+            if not full_path.exists() and not full_path.is_symlink():
                 result.skipped.append((t.relative_path, "File not in repository"))
                 continue
 

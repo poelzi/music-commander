@@ -50,6 +50,7 @@ def _build_metadata_dict(
     crate_values: list[str] | None = None,
 ) -> dict[str, str | None]:
     """Build a metadata dict from a CacheTrack for template rendering."""
+    file_path = track.file or ""
     d: dict[str, str | None] = {
         "artist": track.artist,
         "title": track.title,
@@ -62,7 +63,9 @@ def _build_metadata_dict(
         "tracknumber": track.tracknumber,
         "comment": track.comment,
         "color": track.color,
-        "file": track.file,
+        "file": file_path,
+        "filename": os.path.splitext(os.path.basename(file_path))[0] if file_path else None,
+        "ext": os.path.splitext(file_path)[1].lstrip(".") if file_path else None,
     }
     if crate_values is not None:
         # For multi-value expansion, set crate to the specific value

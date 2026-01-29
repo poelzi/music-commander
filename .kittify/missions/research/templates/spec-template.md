@@ -1,8 +1,8 @@
 # Research Specification: [RESEARCH QUESTION]
 
-**Feature Branch**: `[###-research-name]`  
-**Created**: [DATE]  
-**Status**: Draft  
+**Feature Branch**: `[###-research-name]`
+**Created**: [DATE]
+**Status**: Draft
 **Research Type**: Literature Review | Empirical Study | Case Study | Meta-Analysis
 
 ## Research Question & Scope

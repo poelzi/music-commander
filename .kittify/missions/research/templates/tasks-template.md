@@ -4,7 +4,7 @@ description: "Work package task list template for research methodology execution
 
 # Work Packages: [RESEARCH QUESTION]
 
-**Inputs**: Research documents from `/kitty-specs/[###-research]/`  
+**Inputs**: Research documents from `/kitty-specs/[###-research]/`
 **Prerequisites**: plan.md (methodology), spec.md (research question), research.md (background), data-model.md, quickstart.md
 
 **Evidence Tracking**: All sources MUST be recorded in `research/source-register.csv` and findings in `research/evidence-log.csv`.
@@ -26,8 +26,8 @@ description: "Work package task list template for research methodology execution
 
 ## Work Package WP01: Literature Search & Source Collection (Priority: P1) 🎯 Foundation
 
-**Goal**: Identify and collect all relevant sources for the research question.  
-**Independent Test**: `research/source-register.csv` contains the minimum required high-quality sources with relevance ratings.  
+**Goal**: Identify and collect all relevant sources for the research question.
+**Independent Test**: `research/source-register.csv` contains the minimum required high-quality sources with relevance ratings.
 **Prompt**: `/tasks/WP01-literature-search.md`
 
 ### Included Subtasks
@@ -47,8 +47,8 @@ description: "Work package task list template for research methodology execution
 
 ## Work Package WP02: Source Review & Evidence Extraction (Priority: P1)
 
-**Goal**: Review prioritized sources and extract key findings.  
-**Independent Test**: `research/evidence-log.csv` contains findings from all high-relevance sources with confidence levels.  
+**Goal**: Review prioritized sources and extract key findings.
+**Independent Test**: `research/evidence-log.csv` contains findings from all high-relevance sources with confidence levels.
 **Prompt**: `/tasks/WP02-source-review.md`
 
 ### Included Subtasks
@@ -66,8 +66,8 @@ description: "Work package task list template for research methodology execution
 
 ## Work Package WP03: Analysis & Synthesis (Priority: P1)
 
-**Goal**: Synthesize findings and answer the research question.  
-**Independent Test**: findings.md contains synthesized conclusions backed by citations.  
+**Goal**: Synthesize findings and answer the research question.
+**Independent Test**: findings.md contains synthesized conclusions backed by citations.
 **Prompt**: `/tasks/WP03-analysis-synthesis.md`
 
 ### Included Subtasks
