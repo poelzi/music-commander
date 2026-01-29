@@ -24,12 +24,12 @@
 **Prompt**: `kitty-specs/004-real-git-annex-integration-tests/tasks/WP01-deps-and-audio-generation.md`
 
 ### Included Subtasks
-- [ ] T001 Add `ffmpeg` to `flake.nix` devShell buildInputs
-- [ ] T002 Add `mutagen` to `flake.nix` devDeps and `pyproject.toml` dev dependencies
-- [ ] T003 Create `tests/integration/__init__.py`
-- [ ] T004 Create audio generation helper in `tests/integration/conftest.py`: WAV sine wave via `struct`+`wave`, ffmpeg conversion to mp3/flac/aiff
-- [ ] T005 Create tagging helper: use mutagen to write artist/title/album/genre/bpm/year/tracknumber tags and embed artwork PNG
-- [ ] T006 Create minimal PNG artwork generator (raw bytes, no image library)
+- [x] T001 Add `ffmpeg` to `flake.nix` devShell buildInputs
+- [x] T002 Add `mutagen` to `flake.nix` devDeps and `pyproject.toml` dev dependencies
+- [x] T003 Create `tests/integration/__init__.py`
+- [x] T004 Create audio generation helper in `tests/integration/conftest.py`: WAV sine wave via `struct`+`wave`, ffmpeg conversion to mp3/flac/aiff
+- [x] T005 Create tagging helper: use mutagen to write artist/title/album/genre/bpm/year/tracknumber tags and embed artwork PNG
+- [x] T006 Create minimal PNG artwork generator (raw bytes, no image library)
 
 ### Implementation Notes
 - WAV: 44100Hz, mono, 16-bit, ~0.5s sine wave at 440Hz
