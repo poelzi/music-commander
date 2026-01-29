@@ -1,108 +1,135 @@
-# Implementation Plan: [FEATURE]
-*Path: [templates/plan-template.md](templates/plan-template.md)*
+# Implementation Plan: Annex Metadata Search & Symlink Views
 
-
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/kitty-specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/spec-kitty.plan` command. See `src/specify_cli/missions/software-dev/command-templates/plan.md` for the execution workflow.
-
-The planner will not begin until all planning questions have been answered—capture those answers in this document before progressing to later phases.
+**Branch**: `003-annex-metadata-search-views` | **Date**: 2026-01-29 | **Spec**: `kitty-specs/003-annex-metadata-search-views/spec.md`
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+Add two CLI commands to music-commander: `search` (query git-annex metadata using Mixxx-compatible syntax) and `view` (create symlink directory trees from search results using Jinja2 path templates). A local SQLite cache enables sub-second queries across 100k+ tracks.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: Python 3.11+
+**Primary Dependencies**: Click, SQLAlchemy, Rich, lark (search parser), Jinja2 (templates)
+**Storage**: SQLite cache in-repo (`.music-commander-cache.db`), git-annex metadata as source of truth
+**Testing**: pytest, unit tests for every command and utility module
+**Target Platform**: Linux (Nix flake)
+**Performance Goals**: 100k+ tracks, sub-second cached queries, ~16s cache rebuild
+**Constraints**: Must work without Mixxx installed. Local-only, no external services.
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+**GATE: PASS**
 
-[Gates determined based on constitution file]
+- Python 3.11+: Compliant
+- Click CLI: Compliant (new commands follow existing pattern)
+- SQLAlchemy: Compliant (used for cache DB)
+- Rich: Compliant (table output)
+- Jinja2: Compliant (listed in constitution)
+- Testing: Every command and utility will have unit tests
+- Performance: Benchmarked — 16s full cache build, sub-second queries
+- Nix flake: New deps (lark, jinja2) added to flake.nix
+- No external services: Compliant
+
+**New dependencies**: `lark` and `jinja2` added to `pythonDeps` in `flake.nix` and `pyproject.toml`.
 
 ## Project Structure
 
-### Documentation (this feature)
+### Source Code (new files)
 
 ```
-kitty-specs/[###-feature]/
-├── plan.md              # This file (/spec-kitty.plan command output)
-├── research.md          # Phase 0 output (/spec-kitty.plan command)
-├── data-model.md        # Phase 1 output (/spec-kitty.plan command)
-├── quickstart.md        # Phase 1 output (/spec-kitty.plan command)
-├── contracts/           # Phase 1 output (/spec-kitty.plan command)
-└── tasks.md             # Phase 2 output (/spec-kitty.tasks command - NOT created by /spec-kitty.plan)
-```
-
-### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
-
-```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+music_commander/
+├── commands/
+│   ├── search.py              # CLI search command
+│   └── view.py                # CLI view command
+├── search/
+│   ├── __init__.py
+│   ├── parser.py              # Lark grammar + AST for Mixxx search syntax
+│   ├── query.py               # Execute search against SQLite cache
+│   └── grammar.lark           # Lark grammar file
+├── cache/
+│   ├── __init__.py
+│   ├── models.py              # SQLAlchemy models for cache DB
+│   ├── builder.py             # Build/refresh cache from git-annex branch
+│   └── session.py             # Cache DB session management
+└── view/
+    ├── __init__.py
+    ├── template.py            # Jinja2 environment + custom filters
+    └── symlinks.py            # Symlink tree creation logic
 
 tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+├── test_search_parser.py      # Parser unit tests
+├── test_search_query.py       # Query execution tests
+├── test_cache_builder.py      # Cache build/refresh tests
+├── test_view_template.py      # Template rendering tests
+├── test_view_symlinks.py      # Symlink creation tests
+├── test_cmd_search.py         # CLI search integration tests
+└── test_cmd_view.py           # CLI view integration tests
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+## Architecture
+
+### Cache Build Pipeline
+
+```
+git-annex branch
+    │
+    ├─ git ls-tree -r git-annex | grep .log.met
+    │  → list of blob hashes + key paths (~1s)
+    │
+    ├─ git cat-file --batch
+    │  → raw metadata key=value lines (~4s)
+    │
+    ├─ git annex find --format='${key}\t${file}\n'
+    │  → key-to-file mapping (~12s)
+    │
+    └─ Parse + INSERT into SQLite cache
+       → tracks table + track_crates table + FTS5 index
+```
+
+**Incremental refresh**: `git diff-tree` between cached commit and current `git-annex` branch HEAD to find changed `.log.met` files. Update only changed rows.
+
+### Search Pipeline
+
+```
+User query string
+    │
+    ├─ Lark parser → SearchQuery AST
+    │
+    ├─ AST → SQL WHERE clause (against cache)
+    │  - TextTerm → FTS5 MATCH
+    │  - FieldFilter → column comparison
+    │  - OR groups → SQL OR
+    │  - Negation → NOT
+    │
+    └─ Execute against SQLite → TrackResult list
+```
+
+### View Pipeline
+
+```
+Search results (TrackResult list)
+    │
+    ├─ For each track:
+    │  ├─ Expand multi-value fields (crate) → N copies
+    │  ├─ Render Jinja2 template → relative path
+    │  ├─ Sanitize path segments
+    │  ├─ Append file extension
+    │  └─ Handle duplicates (numeric suffix)
+    │
+    ├─ Clean output directory (remove old symlinks)
+    │
+    └─ Create symlinks (relative by default)
+```
+
+## Key Design Decisions
+
+1. **Cache location**: `.music-commander-cache.db` in repo root. Add to `.gitignore`.
+2. **Raw branch read**: 14x faster than `metadata --batch --json` for full dump.
+3. **FTS5**: SQLite full-text search for bare-word queries across multiple fields.
+4. **Lark grammar**: Formal grammar for Mixxx search syntax, producing clean AST.
+5. **Multi-value expansion**: Crate field in Jinja2 templates creates one symlink per crate value.
+6. **Relative symlinks**: Default for portability, `--absolute` flag available.
 
 ## Complexity Tracking
 
-*Fill ONLY if Constitution Check has violations that must be justified*
-
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+No constitution violations. All choices align with established patterns.
