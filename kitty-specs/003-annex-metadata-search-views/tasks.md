@@ -137,7 +137,7 @@
 - [x] T033 Implement path sanitization (filesystem-safe characters)
 - [x] T034 Implement duplicate path handling (numeric suffix)
 - [x] T035 Implement output directory cleanup (remove old symlinks and empty dirs)
-- [ ] T036 Implement relative symlink creation (default) and `--absolute` flag
+- [x] T036 Implement relative symlink creation (default) and `--absolute` flag
 - [ ] T037 Create `music_commander/commands/view.py` — CLI view command
 - [ ] T038 Create `tests/test_view_template.py` — Unit tests for template rendering
 - [ ] T039 Create `tests/test_view_symlinks.py` — Unit tests for symlink creation
