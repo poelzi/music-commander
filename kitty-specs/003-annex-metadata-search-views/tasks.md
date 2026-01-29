@@ -76,7 +76,7 @@
 - [x] T015 Create `music_commander/search/parser.py` — Parser producing SearchQuery AST
 - [x] T016 Implement AST data classes: SearchQuery, OrGroup, AndClause, TextTerm, FieldFilter
 - [x] T017 Handle: bare words, field:value, field:>N, field:N-M, -negation, | OR, field:="exact", field:"", quoted strings
-- [ ] T018 Create `tests/test_search_parser.py` — Unit tests for all query syntax variants
+- [x] T018 Create `tests/test_search_parser.py` — Unit tests for all query syntax variants
 
 ### Implementation Notes
 - Grammar must handle: `dark psy bpm:>140 rating:>=4 -genre:ambient genre:house | genre:techno artist:="DJ Name" year:2020-2025`
