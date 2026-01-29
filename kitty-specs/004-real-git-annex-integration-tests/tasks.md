@@ -126,12 +126,12 @@
 **Prompt**: `kitty-specs/004-real-git-annex-integration-tests/tasks/WP04-view-tests.md`
 
 ### Included Subtasks
-- [ ] T023 `test_view_without_include_missing`: view on partial clone with `rating:>=4`, assert 3 symlinks (present only)
-- [ ] T024 `test_view_with_include_missing`: same query + `--include-missing`, assert 4 symlinks (strictly more)
-- [ ] T025 `test_symlink_targets_correct`: with `--include-missing`, verify each symlink target path is correct
-- [ ] T026 `test_view_full_repo_no_difference`: view on origin repo, assert same count with and without flag
-- [ ] T027 `test_template_rendering`: verify `{{ genre }}/{{ artist }} - {{ title }}` produces expected directory structure
-- [ ] T028 `test_duplicate_handling`: template producing duplicate paths, verify numeric suffix resolution
+- [x] T023 `test_view_without_include_missing`: view on partial clone with `rating:>=4`, assert 3 symlinks (present only)
+- [x] T024 `test_view_with_include_missing`: same query + `--include-missing`, assert 4 symlinks (strictly more)
+- [x] T025 `test_symlink_targets_correct`: with `--include-missing`, verify each symlink target path is correct
+- [x] T026 `test_view_full_repo_no_difference`: view on origin repo, assert same count with and without flag
+- [x] T027 `test_template_rendering`: verify `{{ genre }}/{{ artist }} - {{ title }}` produces expected directory structure
+- [x] T028 `test_duplicate_handling`: template producing duplicate paths, verify numeric suffix resolution
 
 ### Implementation Notes
 - Tests in `tests/integration/test_view.py`
