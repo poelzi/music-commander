@@ -83,6 +83,14 @@ A DJ wants search results displayed in different formats: a Rich table for termi
 - What happens with special characters in metadata values used in paths? Sanitize to filesystem-safe characters (replace `/`, `\0` etc.).
 - How are file extensions handled in the pattern? The original file extension is always preserved and appended to the final path segment.
 
+## Clarifications
+
+### Session 2026-01-29
+
+- Q: How should metadata be retrieved from git-annex at scale (100k+ tracks)? → A: Use `git annex find --metadata` to push filtering to git-annex where possible. Build a local cache/index for complex queries that git-annex can't handle natively, with incremental refresh.
+- Q: Should symlinks in the view directory use relative or absolute paths? → A: Relative paths by default (portable). Provide `--absolute` flag to override.
+- Q: How should multi-value metadata fields (e.g., crate) behave in Jinja2 view templates? → A: Create one symlink per value. A track with multiple crate values appears in multiple directories.
+
 ## Requirements
 
 ### Functional Requirements
@@ -100,6 +108,8 @@ A DJ wants search results displayed in different formats: a Rich table for termi
 - **FR-009**: System MUST support searching for empty metadata fields: `genre:""`.
 - **FR-010**: System MUST support quoted multi-word arguments: `artist:"Com Truise"`.
 - **FR-011**: System MUST read metadata from git-annex (not the Mixxx SQLite database), so it works on any clone.
+- **FR-011a**: System MUST use `git annex find --metadata` to push simple filters to git-annex for performance.
+- **FR-011b**: System MUST build a local metadata cache/index for complex queries (OR, full-text, multi-field) that git-annex cannot handle natively, with incremental refresh.
 
 #### View Export
 
@@ -113,6 +123,8 @@ A DJ wants search results displayed in different formats: a Rich table for termi
 - **FR-019**: System MUST render missing metadata values as "Unknown" by default (configurable via Jinja2 `default` filter).
 - **FR-020**: System MUST sanitize rendered path segments to be filesystem-safe.
 - **FR-021**: System MUST accept a user-specified output directory for the symlink tree.
+- **FR-022**: System MUST create symlinks using relative paths by default (portable). A `--absolute` flag overrides to use absolute symlink targets.
+- **FR-023**: System MUST expand multi-value metadata fields (e.g., crate) in templates by creating one symlink per value, so a track appears in multiple directories when a multi-value field is used in the path pattern.
 
 ### Key Entities
 
