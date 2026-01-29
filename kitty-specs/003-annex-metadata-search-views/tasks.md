@@ -71,7 +71,7 @@
 **Prompt**: `tasks/WP03-search-parser.md`
 
 ### Included Subtasks
-- [ ] T013 Create `music_commander/search/__init__.py`
+- [x] T013 Create `music_commander/search/__init__.py`
 - [ ] T014 Create `music_commander/search/grammar.lark` — Lark grammar for Mixxx search syntax
 - [ ] T015 Create `music_commander/search/parser.py` — Parser producing SearchQuery AST
 - [ ] T016 Implement AST data classes: SearchQuery, OrGroup, AndClause, TextTerm, FieldFilter
