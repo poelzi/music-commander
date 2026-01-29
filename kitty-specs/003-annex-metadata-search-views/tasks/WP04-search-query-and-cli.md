@@ -13,13 +13,13 @@ subtasks:
   - "T028"
 title: "Search Query Execution & CLI"
 phase: "Phase 1 - Core"
-lane: "doing"
+lane: "done"
 dependencies: ["WP02", "WP03"]
 assignee: ""
 agent: "claude-opus"
 shell_pid: "193019"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "Daniel Poelzleithner"
 history:
   - timestamp: "2026-01-29T02:41:50Z"
     lane: "planned"
@@ -163,3 +163,4 @@ Note: WP03 (parser) should also be merged before starting. If using worktrees, e
 - 2026-01-29T12:55:43Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP04: Search Query Execution
 - 2026-01-29T13:02:10Z – claude-opus – shell_pid= – lane=for_review – Ready for review: query executor, CLI with 3 output formats, 31 tests all passing
 - 2026-01-29T14:21:45Z – claude-opus – shell_pid=193019 – lane=doing – Started review via workflow command
+- 2026-01-29T14:23:05Z – claude-opus – shell_pid=193019 – lane=done – Review passed: All 31 tests pass (26 query + 5 CLI). All operators correctly mapped to SQL. FTS5 text search, crate subqueries, OR/AND/NOT logic verified. CLI supports table/paths/json formats with auto cache refresh.
