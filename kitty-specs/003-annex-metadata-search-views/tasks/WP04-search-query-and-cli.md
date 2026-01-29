@@ -13,7 +13,7 @@ subtasks:
   - "T028"
 title: "Search Query Execution & CLI"
 phase: "Phase 1 - Core"
-lane: "doing"
+lane: "for_review"
 dependencies: ["WP02", "WP03"]
 assignee: ""
 agent: "claude-opus"
@@ -161,3 +161,4 @@ Note: WP03 (parser) should also be merged before starting. If using worktrees, e
 
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
 - 2026-01-29T12:55:43Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP04: Search Query Execution
+- 2026-01-29T13:02:10Z – claude-opus – shell_pid= – lane=for_review – Ready for review: query executor, CLI with 3 output formats, 31 tests all passing
