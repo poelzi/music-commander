@@ -9,10 +9,10 @@ subtasks:
   - "T006"
 title: "Dependencies & Audio Generation Infrastructure"
 phase: "Phase 0 - Setup"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude-opus"
+shell_pid: "308628"
 review_status: ""
 reviewed_by: ""
 dependencies: []
@@ -128,3 +128,4 @@ history:
 ## Activity Log
 
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
+- 2026-01-29T18:39:13Z – claude-opus – shell_pid=308628 – lane=doing – Started implementation via workflow command
