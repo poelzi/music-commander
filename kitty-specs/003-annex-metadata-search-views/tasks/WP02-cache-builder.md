@@ -10,10 +10,10 @@ subtasks:
   - "T012"
 title: "Cache Builder"
 phase: "Phase 0 - Setup"
-lane: "planned"
+lane: "doing"
 dependencies: ["WP01"]
 assignee: ""
-agent: ""
+agent: "claude-opus"
 shell_pid: ""
 review_status: ""
 reviewed_by: ""
@@ -144,3 +144,4 @@ spec-kitty implement WP02 --base WP01
 ## Activity Log
 
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
+- 2026-01-29T03:21:09Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP02: Cache Builder
