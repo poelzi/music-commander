@@ -107,7 +107,7 @@
 - [x] T025 Add `--format` flag (table/paths/json) for output formats
 - [x] T026 Auto-build/refresh cache on first search (with progress bar)
 - [x] T027 Create `tests/test_search_query.py` — Unit tests for query execution
-- [ ] T028 Create `tests/test_cmd_search.py` — CLI integration tests
+- [x] T028 Create `tests/test_cmd_search.py` — CLI integration tests
 
 ### Implementation Notes
 - Cache auto-refresh: check cache_state.annex_branch_commit vs current git-annex HEAD
