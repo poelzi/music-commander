@@ -1,4 +1,4 @@
-"""Search query parsing for Mixxx-compatible syntax."""
+"""Search query parsing and execution for Mixxx-compatible syntax."""
 
 from music_commander.search.ast_nodes import (
     FieldFilter,
@@ -7,6 +7,7 @@ from music_commander.search.ast_nodes import (
     TextTerm,
 )
 from music_commander.search.parser import SearchParseError, parse_query
+from music_commander.search.query import execute_search
 
 __all__ = [
     "FieldFilter",
@@ -14,5 +15,6 @@ __all__ = [
     "SearchParseError",
     "SearchQuery",
     "TextTerm",
+    "execute_search",
     "parse_query",
 ]
