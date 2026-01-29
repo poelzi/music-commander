@@ -14,7 +14,7 @@
 **Prompt**: `tasks/WP01-deps-and-cache-infra.md`
 
 ### Included Subtasks
-- [ ] T001 Add `lark` and `jinja2` to `flake.nix` pythonDeps and `pyproject.toml`
+- [x] T001 Add `lark` and `jinja2` to `flake.nix` pythonDeps and `pyproject.toml`
 - [ ] T002 Create `music_commander/cache/__init__.py`
 - [ ] T003 Create `music_commander/cache/models.py` — SQLAlchemy models for tracks, track_crates, cache_state tables
 - [ ] T004 Create `music_commander/cache/session.py` — Cache DB session management (`.music-commander-cache.db` in repo root)
