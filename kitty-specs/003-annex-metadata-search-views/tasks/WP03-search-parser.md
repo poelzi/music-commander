@@ -9,10 +9,10 @@ subtasks:
   - "T018"
 title: "Search Parser"
 phase: "Phase 1 - Core"
-lane: "planned"
+lane: "doing"
 dependencies: []
 assignee: ""
-agent: ""
+agent: "claude-opus"
 shell_pid: ""
 review_status: ""
 reviewed_by: ""
@@ -151,3 +151,4 @@ spec-kitty implement WP03
 ## Activity Log
 
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
+- 2026-01-29T12:40:40Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP03: Search Grammar & Parser

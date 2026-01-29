@@ -1,0 +1,75 @@
+// Mixxx 2.5-compatible search syntax grammar
+//
+// Precedence: OR (lowest) < AND (implicit) < negation (prefix)
+//
+// Examples:
+//   dark psy                         → two TextTerms, AND
+//   artist:Basinski                  → FieldFilter(contains)
+//   artist:="DJ Name"               → FieldFilter(exact)
+//   bpm:>140                         → FieldFilter(gt)
+//   bpm:140-160                      → FieldFilter(range)
+//   -genre:ambient                   → FieldFilter(negated)
+//   genre:house | genre:techno       → OR groups
+//   genre:house OR genre:techno      → OR groups (case-sensitive OR)
+//   genre:""                         → FieldFilter(empty)
+//   artist:"Com Truise"              → FieldFilter(contains, quoted)
+
+start: query
+
+query: or_group (OR_SEP or_group)*
+
+or_group: clause+
+
+?clause: negated_clause
+       | positive_clause
+
+negated_clause: NEGATE positive_clause
+
+?positive_clause: field_filter
+                | text_term
+
+text_term: QUOTED_STRING
+         | WORD
+
+// Field filters: field:operator?value
+field_filter: FIELD_NAME ":" filter_value
+
+?filter_value: exact_value
+             | empty_value
+             | range_value
+             | comparison_value
+             | contains_value
+
+exact_value: "=" QUOTED_STRING
+           | "=" WORD
+
+empty_value: EMPTY_QUOTES
+
+range_value: NUMBER "-" NUMBER
+
+comparison_value: CMP_OP NUMBER
+
+contains_value: QUOTED_STRING
+              | WORD
+
+// --- Terminals ---
+
+NEGATE: "-"
+
+OR_SEP.2: /\s*\|\s*/ | /\s+OR(?=\s)/
+
+FIELD_NAME: /[a-zA-Z_][a-zA-Z0-9_]*(?=:)/
+
+CMP_OP: ">=" | "<=" | ">" | "<"
+
+NUMBER: /\d+(\.\d+)?/
+
+EMPTY_QUOTES: "\"\""
+
+QUOTED_STRING: "\"" /[^"]+/ "\""
+
+// A word: non-whitespace chars that don't start with - and aren't OR
+WORD: /(?!OR(?:\s|$))[^\s"|][^\s"|]*/
+
+%import common.WS_INLINE
+%ignore WS_INLINE
