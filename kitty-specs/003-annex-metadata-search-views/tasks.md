@@ -75,7 +75,7 @@
 - [x] T014 Create `music_commander/search/grammar.lark` — Lark grammar for Mixxx search syntax
 - [x] T015 Create `music_commander/search/parser.py` — Parser producing SearchQuery AST
 - [x] T016 Implement AST data classes: SearchQuery, OrGroup, AndClause, TextTerm, FieldFilter
-- [ ] T017 Handle: bare words, field:value, field:>N, field:N-M, -negation, | OR, field:="exact", field:"", quoted strings
+- [x] T017 Handle: bare words, field:value, field:>N, field:N-M, -negation, | OR, field:="exact", field:"", quoted strings
 - [ ] T018 Create `tests/test_search_parser.py` — Unit tests for all query syntax variants
 
 ### Implementation Notes
