@@ -85,3 +85,7 @@ __pycache__
 
 # Generated view output
 views/
+
+# Block WP status files (managed in main repo, prevents merge conflicts)
+# Research artifacts in kitty-specs/**/research/ are allowed
+kitty-specs/**/tasks/*.md
