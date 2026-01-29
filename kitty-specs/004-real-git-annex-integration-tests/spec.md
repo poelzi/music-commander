@@ -121,8 +121,8 @@ The view command against the origin repo (all files present) produces symlinks f
 - **FR-007**: Search tests MUST verify that results include both present and non-present tracks.
 - **FR-008**: View tests MUST verify that `--include-missing` produces strictly more symlinks than the default when non-present files exist.
 - **FR-009**: View tests MUST verify symlink targets point to correct file paths.
-- **FR-010**: Audio generation dependencies (mutagen, pydub or equivalent) MUST be added to the nix flake dev shell.
-- **FR-011**: Existing mock-based tests MUST be replaced where the new integration tests cover equivalent functionality.
+- **FR-010**: Audio generation dependencies (mutagen for tagging, ffmpeg for format conversion) MUST be added to the nix flake dev shell.
+- **FR-011**: Mock-heavy test classes (`TestBuildCache`, `TestRefreshCache` in `tests/unit/test_cache_builder.py` and `TestE2EPipeline` in `tests/unit/test_e2e_search_view.py`) MUST be removed and replaced by integration tests. Pure-logic test classes (parser, decoder, metadata conversion) MUST be preserved.
 
 ### Key Entities
 
@@ -139,10 +139,18 @@ The view command against the origin repo (all files present) produces symlinks f
 - **SC-003**: Cache build test confirms 100% of tracks have non-null file paths, and `present` field matches actual local availability for every track.
 - **SC-004**: Mock-based tests that are superseded by integration tests are removed, reducing test maintenance burden without losing coverage.
 
+## Clarifications
+
+### Session 2026-01-29
+
+- Q: Audio generation approach for mp3/flac/aiff? → A: Use ffmpeg (added to nix devShell) to convert generated WAV to mp3/flac/aiff.
+- Q: How to select which half of files to `git annex get` in partial clone? → A: Doesn't matter as long as selection is reproducible across test runs.
+- Q: Which existing mock tests to replace? → A: Keep both `test_cache_builder.py` and `test_e2e_search_view.py` but remove only mock-heavy test classes (TestBuildCache, TestRefreshCache, TestE2EPipeline) while keeping pure-logic tests (parser, decoder, metadata conversion).
+
 ## Assumptions
 
 - `git` and `git-annex` are available in the nix dev shell (already present in `flake.nix`).
 - `mutagen` is used for writing audio tags and embedding artwork (standard Python audio tagging library).
-- Audio generation uses Python standard library or lightweight dependencies (e.g., `struct` module for WAV-based generation, then convert or write raw PCM).
+- `ffmpeg` is used to convert generated WAV files to mp3, flac, and aiff formats (added to nix devShell).
 - The test suite uses `pytest` fixtures with `tmp_path` for temporary directories.
 - Tests are placed in `tests/integration/` to distinguish from existing unit tests.
