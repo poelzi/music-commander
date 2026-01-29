@@ -26,14 +26,16 @@ artifacts:
   optional:
     - data-model.md
     - research.md
+    - contracts/
+    - quickstart.md
     - checklists/
 
 # Path conventions for this mission
 paths:
   workspace: "music_commander/"
   tests: "tests/"
-  deliverables: "kitty-specs/"
-  documentation: "kitty-specs/"
+  deliverables: "contracts/"
+  documentation: "docs/"
 
 # Validation rules
 validation:
