@@ -130,7 +130,7 @@
 **Prompt**: `tasks/WP05-view-template-and-symlinks.md`
 
 ### Included Subtasks
-- [ ] T029 Create `music_commander/view/__init__.py`
+- [x] T029 Create `music_commander/view/__init__.py`
 - [ ] T030 Create `music_commander/view/template.py` — Jinja2 environment with custom filters (`round_to`)
 - [ ] T031 Create `music_commander/view/symlinks.py` — Symlink tree creation logic
 - [ ] T032 Implement multi-value field expansion (crate → one symlink per value)
