@@ -16,7 +16,7 @@
 ### Included Subtasks
 - [x] T001 Add `lark` and `jinja2` to `flake.nix` pythonDeps and `pyproject.toml`
 - [x] T002 Create `music_commander/cache/__init__.py`
-- [ ] T003 Create `music_commander/cache/models.py` — SQLAlchemy models for tracks, track_crates, cache_state tables
+- [x] T003 Create `music_commander/cache/models.py` — SQLAlchemy models for tracks, track_crates, cache_state tables
 - [ ] T004 Create `music_commander/cache/session.py` — Cache DB session management (`.music-commander-cache.db` in repo root)
 - [ ] T005 Create `tests/test_cache_models.py` — Unit tests for cache models and session
 
