@@ -1,26 +1,29 @@
 ---
-work_package_id: "WP02"
+work_package_id: WP02
+title: Git-Annex Test Fixtures
+lane: "doing"
+dependencies: [WP01]
+base_branch: 004-real-git-annex-integration-tests-WP01
+base_commit: 5a6a7ce1c4a3537341653cbebb467c93b65208d3
+created_at: '2026-01-29T18:42:46.937381+00:00'
 subtasks:
-  - "T007"
-  - "T008"
-  - "T009"
-  - "T010"
-  - "T011"
-title: "Git-Annex Test Fixtures"
-phase: "Phase 0 - Setup"
-lane: "planned"
-assignee: ""
-agent: ""
-shell_pid: ""
-review_status: ""
-reviewed_by: ""
-dependencies: ["WP01"]
+- T007
+- T008
+- T009
+- T010
+- T011
+phase: Phase 0 - Setup
+assignee: ''
+agent: ''
+shell_pid: "311044"
+review_status: ''
+reviewed_by: ''
 history:
-  - timestamp: "2026-01-29T17:54:16Z"
-    lane: "planned"
-    agent: "system"
-    shell_pid: ""
-    action: "Prompt generated via /spec-kitty.tasks"
+- timestamp: '2026-01-29T17:54:16Z'
+  lane: planned
+  agent: system
+  shell_pid: ''
+  action: Prompt generated via /spec-kitty.tasks
 ---
 
 # Work Package Prompt: WP02 - Git-Annex Test Fixtures
