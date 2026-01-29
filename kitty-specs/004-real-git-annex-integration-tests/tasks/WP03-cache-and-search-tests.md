@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: Cache Build & Search Integration Tests
-lane: "for_review"
+lane: "doing"
 dependencies: [WP02]
 base_branch: 004-real-git-annex-integration-tests-WP02
 base_commit: c0006eedf11bf52dd2c7a2b3865976012f3b4db1
@@ -20,8 +20,8 @@ subtasks:
 - T022
 phase: Phase 1 - Core Tests
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-opus"
+shell_pid: "323169"
 review_status: ''
 reviewed_by: ''
 history:
@@ -166,3 +166,4 @@ history:
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
 - 2026-01-29T18:45:59Z – unknown – lane=doing – Moved to doing
 - 2026-01-29T18:47:32Z – unknown – lane=for_review – Moved to for_review
+- 2026-01-29T20:31:19Z – claude-opus – shell_pid=323169 – lane=doing – Started review via workflow command
