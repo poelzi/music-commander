@@ -134,7 +134,7 @@
 - [x] T030 Create `music_commander/view/template.py` — Jinja2 environment with custom filters (`round_to`)
 - [x] T031 Create `music_commander/view/symlinks.py` — Symlink tree creation logic
 - [x] T032 Implement multi-value field expansion (crate → one symlink per value)
-- [ ] T033 Implement path sanitization (filesystem-safe characters)
+- [x] T033 Implement path sanitization (filesystem-safe characters)
 - [ ] T034 Implement duplicate path handling (numeric suffix)
 - [ ] T035 Implement output directory cleanup (remove old symlinks and empty dirs)
 - [ ] T036 Implement relative symlink creation (default) and `--absolute` flag
