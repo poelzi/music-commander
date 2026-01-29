@@ -39,6 +39,7 @@
             pytest-cov
             mypy
             ruff
+            mutagen
           ];
 
         # Python environment for music-commander (runtime deps only)
@@ -78,6 +79,7 @@
             pythonEnv
             python-music-cmd
             pkgs.git-annex
+            pkgs.ffmpeg
             spec-kitty.packages.${system}.default
           ];
 
