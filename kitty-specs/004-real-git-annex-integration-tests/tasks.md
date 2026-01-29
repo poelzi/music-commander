@@ -159,12 +159,12 @@
 **Prompt**: `kitty-specs/004-real-git-annex-integration-tests/tasks/WP05-mock-cleanup.md`
 
 ### Included Subtasks
-- [ ] T029 Remove `TestBuildCache` class from `tests/unit/test_cache_builder.py` (3 methods)
-- [ ] T030 Remove `TestRefreshCache` class from `tests/unit/test_cache_builder.py` (4 methods)
-- [ ] T031 Remove `TestFTS5` class from `tests/unit/test_cache_builder.py` (1 method)
-- [ ] T032 Remove `TestE2EPipeline` class and associated mock constants/helpers from `tests/unit/test_e2e_search_view.py`
-- [ ] T033 Relocate `test_render_path_integration` and `test_delete_cache` to appropriate locations (unit tests or integration)
-- [ ] T034 Run full test suite (`pytest tests/`) and verify all tests pass
+- [x] T029 Remove `TestBuildCache` class from `tests/unit/test_cache_builder.py` (3 methods)
+- [x] T030 Remove `TestRefreshCache` class from `tests/unit/test_cache_builder.py` (4 methods)
+- [x] T031 Remove `TestFTS5` class from `tests/unit/test_cache_builder.py` (1 method)
+- [x] T032 Remove `TestE2EPipeline` class and associated mock constants/helpers from `tests/unit/test_e2e_search_view.py`
+- [x] T033 Relocate `test_render_path_integration` and `test_delete_cache` to appropriate locations (unit tests or integration)
+- [x] T034 Run full test suite (`pytest tests/`) and verify all tests pass
 
 ### Implementation Notes
 - `test_render_path_integration` is a pure logic test — move to `tests/unit/test_view_template.py`
