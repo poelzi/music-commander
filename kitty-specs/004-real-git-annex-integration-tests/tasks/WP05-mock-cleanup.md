@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: Mock Test Cleanup
-lane: planned
+lane: "doing"
 dependencies:
 - WP03
 subtasks:
@@ -113,3 +113,4 @@ history:
 ## Activity Log
 
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
+- 2026-01-29T18:49:50Z – unknown – lane=doing – Moved to doing
