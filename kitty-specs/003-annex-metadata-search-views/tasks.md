@@ -169,7 +169,7 @@
 - [x] T041 Add `.music-commander-cache.db` to default `.gitignore` generation in init-config
 - [x] T042 Add `--rebuild-cache` flag to search and view commands for forcing full rebuild
 - [x] T043 Handle edge cases: empty repo, no metadata, corrupt cache file
-- [ ] T044 Performance validation on 100k+ track repo
+- [x] T044 Performance validation on 100k+ track repo
 - [ ] T045 End-to-end integration test: sync → cache → search → view
 
 ### Dependencies
