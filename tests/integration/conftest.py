@@ -317,3 +317,152 @@ def audio_files(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
     """Generate 6 synthetic audio files with tags and artwork."""
     output_dir = tmp_path_factory.mktemp("audio")
     return generate_all_audio_files(output_dir)
+
+
+# ---------------------------------------------------------------------------
+# T008: origin_repo session fixture
+# ---------------------------------------------------------------------------
+
+
+def _run_git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run a git command in the given repo."""
+    return subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _run_annex(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run a git-annex command in the given repo."""
+    return _run_git(repo, "annex", *args)
+
+
+@pytest.fixture(scope="session")
+def origin_repo(
+    tmp_path_factory: pytest.TempPathFactory,
+    audio_files: dict[str, Path],
+) -> Path:
+    """Create a git-annex repository with all 6 audio files and metadata."""
+    if not shutil.which("git-annex"):
+        pytest.skip("git-annex not found in PATH")
+
+    repo = tmp_path_factory.mktemp("origin")
+
+    # Init git + git-annex
+    _run_git(repo, "init")
+    _run_git(repo, "config", "user.email", "test@test.com")
+    _run_git(repo, "config", "user.name", "Test")
+    _run_annex(repo, "init", "origin")
+
+    # Copy audio files into repo
+    tracks_dir = repo / "tracks"
+    tracks_dir.mkdir()
+
+    for track in TRACK_METADATA:
+        src = audio_files[track["filename"]]
+        dst = tracks_dir / track["filename"]
+        shutil.copy2(src, dst)
+
+    # Add and commit
+    _run_annex(repo, "add", "tracks/")
+    _run_git(repo, "commit", "-m", "Add tracks")
+
+    # Set git-annex metadata for each file
+    for track in TRACK_METADATA:
+        rel_path = f"tracks/{track['filename']}"
+        metadata_args = []
+        for field in ("artist", "title", "genre", "bpm", "rating", "crate"):
+            metadata_args.extend(["-s", f"{field}={track[field]}"])
+        _run_annex(repo, "metadata", rel_path, *metadata_args)
+
+    # Commit metadata changes
+    _run_annex(repo, "merge")
+
+    return repo
+
+
+# ---------------------------------------------------------------------------
+# T009: partial_clone session fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def partial_clone(
+    tmp_path_factory: pytest.TempPathFactory,
+    origin_repo: Path,
+) -> Path:
+    """Clone the origin repo and fetch only the first 3 files."""
+    clone_dir = tmp_path_factory.mktemp("clone")
+    clone = clone_dir / "repo"
+
+    # Clone
+    subprocess.run(
+        ["git", "clone", str(origin_repo), str(clone)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    # Init git-annex in clone
+    _run_git(clone, "config", "user.email", "test@test.com")
+    _run_git(clone, "config", "user.name", "Test")
+    _run_annex(clone, "init", "clone")
+
+    # Fetch only the first 3 tracks (sorted alphabetically: track01, track02, track03)
+    for track in PRESENT_TRACKS:
+        _run_annex(clone, "get", f"tracks/{track['filename']}")
+
+    return clone
+
+
+# ---------------------------------------------------------------------------
+# T010: origin_cache_session fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def origin_cache_session(origin_repo: Path):
+    """Build cache against origin repo and return session."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from music_commander.cache.builder import build_cache
+    from music_commander.cache.models import CacheBase
+
+    engine = create_engine("sqlite:///:memory:")
+    CacheBase.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+
+    build_cache(origin_repo, session)
+
+    yield session
+
+    session.close()
+
+
+# ---------------------------------------------------------------------------
+# T011: clone_cache_session fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def clone_cache_session(partial_clone: Path):
+    """Build cache against partial clone and return session."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from music_commander.cache.builder import build_cache
+    from music_commander.cache.models import CacheBase
+
+    engine = create_engine("sqlite:///:memory:")
+    CacheBase.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+
+    build_cache(partial_clone, session)
+
+    yield session
+
+    session.close()
