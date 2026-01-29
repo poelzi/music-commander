@@ -8,10 +8,10 @@ subtasks:
   - "T045"
 title: "Polish & Integration"
 phase: "Phase 2 - Polish"
-lane: "planned"
+lane: "doing"
 dependencies: ["WP04", "WP05"]
 assignee: ""
-agent: ""
+agent: "claude-opus"
 shell_pid: ""
 review_status: ""
 reviewed_by: ""
@@ -105,3 +105,4 @@ spec-kitty implement WP06 --base WP05
 ## Activity Log
 
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
+- 2026-01-29T13:50:36Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP06: Polish & Integration

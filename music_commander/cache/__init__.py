@@ -6,7 +6,7 @@ from music_commander.cache.builder import (
     refresh_cache,
 )
 from music_commander.cache.models import CacheBase, CacheState, CacheTrack, TrackCrate
-from music_commander.cache.session import CACHE_DB_NAME, get_cache_session
+from music_commander.cache.session import CACHE_DB_NAME, delete_cache, get_cache_session
 
 __all__ = [
     "CacheBase",
@@ -15,6 +15,7 @@ __all__ = [
     "TrackCrate",
     "CACHE_DB_NAME",
     "build_cache",
+    "delete_cache",
     "get_cache_session",
     "parse_metadata_log",
     "refresh_cache",

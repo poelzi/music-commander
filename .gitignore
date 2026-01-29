@@ -79,3 +79,6 @@ result-*
 *.db
 config.toml
 __pycache__
+
+# music-commander cache
+.music-commander-cache.db

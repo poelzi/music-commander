@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import click
 
 from music_commander.cache.builder import build_cache, refresh_cache
 from music_commander.cache.models import TrackCrate
-from music_commander.cache.session import get_cache_session
+from music_commander.cache.session import delete_cache, get_cache_session
 from music_commander.cli import Context, pass_context
 from music_commander.search.parser import SearchParseError, parse_query
 from music_commander.search.query import execute_search
@@ -131,6 +132,9 @@ def cli(
         raise SystemExit(EXIT_PARSE_ERROR)
 
     try:
+        if rebuild_cache:
+            delete_cache(repo_path)
+
         with get_cache_session(repo_path) as session:
             # Auto-refresh cache
             if rebuild_cache:
@@ -160,6 +164,12 @@ def cli(
 
     except SystemExit:
         raise
+    except subprocess.CalledProcessError as e:
+        if "git-annex" in (e.stderr or ""):
+            error("No git-annex branch found. Is this a git-annex repository?")
+        else:
+            error(f"Git command failed: {e}")
+        raise SystemExit(EXIT_NO_REPO)
     except Exception as e:
         error(f"Cache error: {e}")
         raise SystemExit(EXIT_NO_REPO)

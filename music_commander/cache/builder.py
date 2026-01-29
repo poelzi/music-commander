@@ -321,6 +321,10 @@ def build_cache(repo_path: Path, session: Session) -> int:
     """Build the full cache from the git-annex branch.
 
     Returns the number of tracks inserted.
+
+    Raises:
+        subprocess.CalledProcessError: If the repository has no git-annex
+            branch (not a git-annex repository or no files annexed yet).
     """
     from datetime import datetime, timezone
 
