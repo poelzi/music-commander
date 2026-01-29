@@ -46,7 +46,7 @@
 - [x] T009 Implement key-to-file mapper (`git annex find --format='${key}\t${file}\n'`)
 - [x] T010 Implement incremental refresh via `git diff-tree` on git-annex branch
 - [x] T011 Create FTS5 virtual table for full-text search on artist, title, album, genre, file
-- [ ] T012 Create `tests/test_cache_builder.py` — Unit tests for builder, parser, incremental refresh
+- [x] T012 Create `tests/test_cache_builder.py` — Unit tests for builder, parser, incremental refresh
 
 ### Implementation Notes
 - Full build pipeline: ls-tree → cat-file --batch → parse → key-to-file → INSERT
