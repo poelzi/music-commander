@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: Mock Test Cleanup
-lane: "doing"
+lane: "done"
 dependencies:
 - WP03
 base_branch: 004-real-git-annex-integration-tests-WP04
@@ -18,8 +18,8 @@ phase: Phase 2 - Polish
 assignee: ''
 agent: "claude-opus"
 shell_pid: "324600"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "Daniel Poelzleithner"
 history:
 - timestamp: '2026-01-29T17:54:16Z'
   lane: planned
@@ -119,3 +119,4 @@ history:
 - 2026-01-29T18:49:50Z – unknown – lane=doing – Moved to doing
 - 2026-01-29T18:52:25Z – unknown – lane=for_review – Moved to for_review
 - 2026-01-29T20:32:15Z – claude-opus – shell_pid=324600 – lane=doing – Started review via workflow command
+- 2026-01-29T20:32:42Z – claude-opus – shell_pid=324600 – lane=done – Review passed: 667 lines mock code removed, 177/177 tests pass, pure-logic classes preserved, delete_cache relocated
