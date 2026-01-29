@@ -1,12 +1,9 @@
 ---
 description: Identify underspecified areas in the current feature spec by asking up to 5 highly targeted clarification questions and encoding answers back into the spec.
+scripts:
+   sh: scripts/bash/check-prerequisites.sh --json --paths-only
+   ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
-
-**Path reference rule:** When you mention directories or files, provide either the absolute path or a path relative to the project root (for example, `kitty-specs/<feature>/tasks/`). Never refer to a folder by name alone.
-
-
-*Path: [.kittify/templates/commands/clarify.md](.kittify/templates/commands/clarify.md)*
-
 
 ## User Input
 
@@ -16,65 +13,6 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
----
-
-## Location Pre-flight Check
-
-**BEFORE PROCEEDING:** Verify you are working in the feature worktree.
-
-```bash
-pwd
-git branch --show-current
-```
-
-**Expected output:**
-- `pwd`: Should end with `.worktrees/001-feature-name` (or similar feature worktree)
-- Branch: Should show your feature branch name like `001-feature-name` (NOT `main`)
-
-**If you see the main branch or main repository path:**
-
-⛔ **STOP - You are in the wrong location!**
-
-This command updates your feature's spec.md file. You must be in the feature worktree to ensure changes go to the correct location.
-
-**Correct the issue:**
-1. Navigate to your feature worktree: `cd .worktrees/001-feature-name`
-2. Verify you're on the correct feature branch: `git branch --show-current`
-3. Then run this clarify command again
-
----
-
-## What You Have Available
-
-After running `.kittify/scripts/bash/check-prerequisites.sh --json --paths-only`, you will have paths to:
-- **FEATURE_DIR**: Absolute path to your feature directory (kitty-specs/001-feature-name/)
-- **FEATURE_SPEC**: Absolute path to spec.md (the file you'll be clarifying)
-
-You may also have:
-- **plan.md**: If planning has started (optional)
-- **tasks.md**: If task breakdown exists (optional)
-
----
-
-## Workflow Context
-
-**Before this**: `/spec-kitty.specify` created spec.md (your starting requirements)
-
-**This command**:
-- Identifies ambiguities and gaps in your spec
-- Asks clarification questions (max 5)
-- Updates spec.md with clarifications directly
-- Reduces downstream rework risk
-
-**After this**:
-- Review clarified spec
-- Run `/spec-kitty.plan` to create implementation plan
-- Or run `/spec-kitty.clarify` again if more questions arise post-planning
-
-This command is optional but recommended before planning to reduce rework.
-
----
-
 ## Outline
 
 Goal: Detect and reduce ambiguity or missing decision points in the active feature specification and record the clarifications directly in the spec file.
@@ -83,7 +21,7 @@ Note: This clarification workflow is expected to run (and be completed) BEFORE i
 
 Execution steps:
 
-1. Run `.kittify/scripts/bash/check-prerequisites.sh --json --paths-only` from repo root **once** (combined `--json --paths-only` mode / `-Json -PathsOnly`). Parse minimal JSON payload fields:
+1. Run `{SCRIPT}` from repo root **once** (combined `--json --paths-only` mode / `-Json -PathsOnly`). Parse minimal JSON payload fields:
    - `FEATURE_DIR`
    - `FEATURE_SPEC`
    - (Optionally capture `IMPL_PLAN`, `TASKS` for future chained flows.)
@@ -219,4 +157,4 @@ Behavior rules:
  - If no questions asked due to full coverage, output a compact coverage summary (all categories Clear) then suggest advancing.
  - If quota reached with unresolved high-impact categories remaining, explicitly flag them under Deferred with rationale.
 
-Context for prioritization: $ARGUMENTS
+Context for prioritization: {ARGS}

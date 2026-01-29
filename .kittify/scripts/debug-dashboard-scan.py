@@ -1,4 +1,4 @@
-#!/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/bin/spec-kitty-python
+#!/nix/store/8s2vmxd4dplgq4cygmdd5pzs0nn2n1h6-spec-kitty-0.13.7/bin/spec-kitty-python
 """Debug script to test dashboard feature scanning."""
 
 import sys

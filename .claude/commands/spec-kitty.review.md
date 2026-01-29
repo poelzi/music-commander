@@ -1,130 +1,32 @@
 ---
-description: Perform structured code review and kanban transitions for completed task prompt files.
+description: Perform structured code review and kanban transitions for completed task prompt files
 ---
 
-*Path: [.kittify/templates/commands/review.md](.kittify/templates/commands/review.md)*
+**IMPORTANT**: After running the command below, you'll see a LONG work package prompt (~1000+ lines).
 
+**You MUST scroll to the BOTTOM** to see the completion commands!
 
-## User Input
+Run this command to get the work package prompt and review instructions:
 
-```text
-$ARGUMENTS
-```
-
-You **MUST** consider the user input before proceeding (if not empty).
-
-## Location Pre-flight Check (CRITICAL for AI Agents)
-
-**BEFORE PROCEEDING:** Verify you are working from inside the feature worktree.
-
-**Check current working directory and branch:**
 ```bash
-pwd
-git branch --show-current
+spec-kitty agent workflow review $ARGUMENTS --agent <your-name>
 ```
 
-**Expected output:**
-- `pwd`: `/path/to/project/.worktrees/004-feature-name` (or similar)
-- Branch: `004-feature-name` (NOT `main` or `release/x.x.x`)
+**CRITICAL**: You MUST provide `--agent <your-name>` to track who is reviewing!
 
-**If you see `main` or `release/*` branch, OR if pwd shows the main repo:**
+If no WP ID is provided, it will automatically find the first work package with `lane: "for_review"` and move it to "doing" for you.
 
-⛔ **STOP - You are in the wrong location!**
+## Dependency checks (required)
 
-**DO NOT use `cd` to navigate to the worktree.** File editing tools (Edit, Write) will still use your original working directory.
+- dependency_check: If the WP frontmatter lists `dependencies`, confirm each dependency WP is merged to main before you review this WP.
+- dependent_check: Identify any WPs that list this WP as a dependency and note their current lanes.
+- rebase_warning: If you request changes AND any dependents exist, warn those agents to rebase and provide a concrete command (example: `cd .worktrees/FEATURE-WP02 && git rebase FEATURE-WP01`).
+- verify_instruction: Confirm dependency declarations match actual code coupling (imports, shared modules, API contracts).
 
-**Instead:**
-1. Tell the user: "This command must be run from inside the worktree at `.worktrees/<feature>/`"
-2. Stop execution
-3. Wait for the user to restart the session from the correct location
+**After reviewing, scroll to the bottom and run ONE of these commands**:
+- ✅ Approve: `spec-kitty agent tasks move-task WP## --to done --note "Review passed: <summary>"`
+- ❌ Reject: Write feedback to the temp file path shown in the prompt, then run `spec-kitty agent tasks move-task WP## --to planned --review-feedback-file <temp-file-path>`
 
-**Path reference rule:** Always use paths relative to the worktree root (e.g., `kitty-specs/004-feature/tasks/`). When communicating with the user, mention absolute paths for clarity.
+**The prompt will provide a unique temp file path for feedback - use that exact path to avoid conflicts with other agents!**
 
-This is intentional - worktrees provide isolation for parallel feature development.
-
-## Outline
-
-1. Run `.kittify/scripts/bash/check-prerequisites.sh --json --include-tasks` from repo root; capture `FEATURE_DIR`, `AVAILABLE_DOCS`, and `tasks.md` path.
-
-2. Determine the review target:
-   - If user input specifies a filename, validate it exists under `tasks/for_review/` (support phase subdirectories).
-   - Otherwise, select the oldest file in `tasks/for_review/` (lexical order is sufficient because filenames retain task ordering).
-   - Abort with instructional message if no files are waiting for review.
-
-3. Load context for the selected task:
-   - Read the prompt file frontmatter (lane MUST be `for_review`); note `task_id`, `phase`, `agent`, `shell_pid`.
-   - Read the body sections (Objective, Context, Implementation Guidance, etc.).
-   - Consult supporting documents as referenced: constitution, plan, spec, data-model, contracts, research, quickstart, code changes.
-   - Review the associated code in the repository (diffs, tests, docs) to validate the implementation.
-
-4. Conduct the review:
-   - Verify implementation against the prompt’s Definition of Done and Review Guidance.
-   - Run required tests or commands; capture results.
-   - Document findings explicitly: bugs, regressions, missing tests, risks, or validation notes.
-
-5. Decide outcome:
-  - **Needs changes**:
-     * **CRITICAL**: Insert detailed feedback in the `## Review Feedback` section (located immediately after the frontmatter, before Objectives). This is the FIRST thing implementers will see when they re-read the prompt.
-     * Use a clear structure:
-       ```markdown
-       ## Review Feedback
-
-       **Status**: ❌ **Needs Changes**
-
-       **Key Issues**:
-       1. [Issue 1] - Why it's a problem and what to do about it
-       2. [Issue 2] - Why it's a problem and what to do about it
-
-       **What Was Done Well**:
-       - [Positive note 1]
-       - [Positive note 2]
-
-       **Action Items** (must complete before re-review):
-       - [ ] Fix [specific thing 1]
-       - [ ] Add [missing thing 2]
-       - [ ] Verify [validation point 3]
-       ```
-     * Update frontmatter:
-       - Set `lane: "planned"`
-       - Set `review_status: "has_feedback"`
-       - Set `reviewed_by: <YOUR_AGENT_ID>`
-       - Clear `assignee` if needed
-     * Append a new entry in the prompt's **Activity Log** with timestamp, reviewer agent, shell PID, and summary of feedback.
-     * Run `.kittify/scripts/bash/tasks-move-to-lane.sh <FEATURE> <TASK_ID> planned --note "Code review complete: [brief summary of issues]"` (use the PowerShell equivalent on Windows) so the move and history update are staged consistently.
-  - **Approved**:
-     * **Use the dedicated approval command** to ensure proper reviewer attribution:
-       ```bash
-       # Capture reviewer identity
-       REVIEWER_AGENT=<YOUR_AGENT_ID>  # e.g., "claude-reviewer" or from $AGENT_ID
-       REVIEWER_SHELL_PID=$$           # Current shell PID
-
-       # Use tasks-approve command for proper review attribution
-       python3 .kittify/scripts/tasks/tasks_cli.py approve <FEATURE> <TASK_ID> \
-         --review-status "approved without changes" \
-         --reviewer-agent "$REVIEWER_AGENT" \
-         --reviewer-shell-pid "$REVIEWER_SHELL_PID"
-       ```
-     * This automatically:
-       - Sets `lane: "done"`
-       - Sets `review_status: "approved without changes"` (or your custom status)
-       - Sets `reviewed_by: <YOUR_AGENT_ID>`
-       - Updates `agent: <YOUR_AGENT_ID>` and `shell_pid: <YOUR_SHELL_PID>`
-       - Appends Activity Log entry with reviewer's info (NOT implementer's)
-       - Handles git operations (add new location, remove old location)
-     * **Alternative:** For custom review statuses, use `--review-status "approved with minor notes"` or `--target-lane "planned"` for rejected tasks.
-     * Use helper script to mark the task complete in `tasks.md` (see Step 7).
-
-7. Update `tasks.md` automatically:
-   - Run `.kittify/scripts/bash/mark-task-status.sh --task-id <TASK_ID> --status done` (POSIX) or `.kittify/scripts/powershell/Set-TaskStatus.ps1 -TaskId <TASK_ID> -Status done` (PowerShell) from repo root.
-   - Confirm the task entry now shows `[X]` and includes a reference to the prompt file in its notes.
-
-7. Produce a review report summarizing:
-   - Task ID and filename reviewed.
-  - Approval status and key findings.
-   - Tests executed and their results.
-   - Follow-up actions (if any) for other team members.
-   - Reminder to push changes or notify teammates as per project conventions.
-
-Context for review: $ARGUMENTS (resolve this to the prompt's relative path, e.g., `kitty-specs/<feature>/tasks/for_review/WPXX.md`)
-
-All review feedback must live inside the prompt file, ensuring future implementers understand historical decisions before revisiting the task.
+**The Python script handles all file updates automatically - no manual editing required!**

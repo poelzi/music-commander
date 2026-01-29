@@ -1,12 +1,9 @@
 ---
 description: Generate a custom checklist for the current feature based on user requirements.
+scripts:
+  sh: scripts/bash/check-prerequisites.sh --json
+  ps: scripts/powershell/check-prerequisites.ps1 -Json
 ---
-
-**Path reference rule:** When you mention directories or files, provide either the absolute path or a path relative to the project root (for example, `kitty-specs/<feature>/tasks/`). Never refer to a folder by name alone.
-
-
-*Path: [.kittify/templates/commands/checklist.md](.kittify/templates/commands/checklist.md)*
-
 
 ## Checklist Purpose: "Unit Tests for English"
 
@@ -35,67 +32,9 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
----
-
-## Location Pre-flight Check
-
-**BEFORE PROCEEDING:** Verify you are working in the feature worktree.
-
-```bash
-pwd
-git branch --show-current
-```
-
-**Expected output:**
-- `pwd`: Should end with `.worktrees/001-feature-name` (or similar feature worktree)
-- Branch: Should show your feature branch name like `001-feature-name` (NOT `main`)
-
-**If you see the main branch or main repository path:**
-
-⛔ **STOP - You are in the wrong location!**
-
-This command creates checklists in your feature directory. You must be in the feature worktree.
-
-**Correct the issue:**
-1. Navigate to your feature worktree: `cd .worktrees/001-feature-name`
-2. Verify you're on the correct feature branch: `git branch --show-current`
-3. Then run this checklist command again
-
----
-
-## What You Have Available
-
-After running `.kittify/scripts/bash/check-prerequisites.sh --json`, you will have paths to:
-- **FEATURE_DIR**: Absolute path to your feature directory (kitty-specs/001-feature-name/)
-- **AVAILABLE_DOCS**: List of available documents (spec.md, plan.md, tasks.md, etc.)
-
-Your checklist will be created at:
-- **FEATURE_DIR/checklists/[domain].md** (e.g., `ux.md`, `api.md`, `security.md`)
-
----
-
-## Workflow Context
-
-**This command**: Creates custom quality checklists for your feature's requirements
-
-**When to use**:
-- Before or after `/spec-kitty.plan` to validate requirement quality
-- Anytime during the workflow to validate specific quality dimensions
-- Multiple runs create different checklists (ux.md, api.md, security.md, etc.)
-
-**What it does**:
-- Analyzes your spec/plan/tasks documents
-- Creates "unit tests for requirements" (tests the spec quality, not implementation)
-- Validates completeness, clarity, consistency, and coverage of requirements
-- Identifies gaps, ambiguities, and conflicts
-
-**This is NOT testing implementation** - it's validating that your requirements are well-written and complete.
-
----
-
 ## Execution Steps
 
-1. **Setup**: Run `.kittify/scripts/bash/check-prerequisites.sh --json` from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS list.
+1. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS list.
    - All file paths must be absolute.
 
 2. **Clarify intent (dynamic)**: Derive up to THREE initial contextual clarifying questions (no pre-baked catalog). They MUST:
@@ -264,7 +203,7 @@ Your checklist will be created at:
    - ✅ "Are [edge cases/scenarios] addressed in requirements?"
    - ✅ "Does the spec define [missing aspect]?"
 
-6. **Structure Reference**: Generate the checklist following the canonical template in `.kittify/templates/checklist-template.md` for title, meta section, category headings, and ID formatting. If template is unavailable, use: H1 title, purpose/created meta lines, `##` category sections containing `- [ ] CHK### <requirement item>` lines with globally incrementing IDs starting at CHK001.
+6. **Structure Reference**: Generate the checklist following the canonical template in `templates/checklist-template.md` for title, meta section, category headings, and ID formatting. If template is unavailable, use: H1 title, purpose/created meta lines, `##` category sections containing `- [ ] CHK### <requirement item>` lines with globally incrementing IDs starting at CHK001.
 
 7. **Report**: Output full path to created checklist, item count, and remind user that each run creates a new file. Summarize:
    - Focus areas selected

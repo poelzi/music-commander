@@ -1,11 +1,5 @@
 ---
 description: Execute the implementation planning workflow using the plan template to generate design artifacts.
-scripts:
-  sh: scripts/bash/setup-plan.sh --json
-  ps: scripts/powershell/setup-plan.ps1 -Json
-agent_scripts:
-  sh: scripts/bash/update-agent-context.sh __AGENT__
-  ps: scripts/powershell/update-agent-context.ps1 -AgentType __AGENT__
 ---
 
 ## User Input
@@ -21,14 +15,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 Before proceeding with planning, verify you are in the correct working directory by running the shared pre-flight validation:
 
 ```python
-import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.guards import validate_worktree_location
-
-# Validate location
-result = validate_worktree_location()
-if not result.is_valid:
-    print(result.format_error())
-    print("\nThis command MUST run from a feature worktree, not the main repository.")
-    exit(1)
 ```
 
 **What this validates**:
@@ -73,11 +59,11 @@ Planning requirements (scale to complexity):
 
 2. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_SPEC, IMPL_PLAN, SPECS_DIR, BRANCH.
 
-3. **Load context**: Read FEATURE_SPEC and `.kittify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
+3. **Load context**: Read FEATURE_SPEC and `.kittify/memory/constitution.md` if it exists. If the constitution file is missing, skip Constitution Check and note that it is absent. Load IMPL_PLAN template (already copied).
 
 4. **Execute plan workflow**: Follow the structure in IMPL_PLAN template, using the validated planning answers as ground truth:
    - Update Technical Context with explicit statements from the user or discovery research; mark `[NEEDS CLARIFICATION: …]` only when the user deliberately postpones a decision
-   - Fill Constitution Check section from constitution and challenge any conflicts directly with the user
+   - If a constitution exists, fill Constitution Check section from it and challenge any conflicts directly with the user. If no constitution exists, mark the section as skipped.
    - Evaluate gates (ERROR if violations unjustified or questions remain unanswered)
    - Phase 0: Generate research.md (commission research to resolve every outstanding clarification)
    - Phase 1: Generate data-model.md, contracts/, quickstart.md based on confirmed intent

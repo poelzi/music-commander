@@ -1,308 +1,255 @@
 ---
-description: Execute the implementation plan by processing and executing all tasks defined in tasks.md
-scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
+description: Implement a research work package by conducting research and documenting findings.
 ---
-*Path: [templates/commands/implement.md](templates/commands/implement.md)*
 
+## Research WP Implementation
 
-## User Input
+**CRITICAL**: Research missions separate PLANNING ARTIFACTS from RESEARCH DELIVERABLES.
 
-```text
-$ARGUMENTS
+### Two Types of Artifacts (IMPORTANT)
+
+| Type | Location | Edited Where | Purpose |
+|------|----------|--------------|---------|
+| **Sprint Planning** | `kitty-specs/{{feature_slug}}/research/` | Main repo | Evidence/sources for planning THIS sprint |
+| **Research Deliverables** | `{{deliverables_path}}` | Worktree | Actual research outputs (your work product) |
+
+### Where to Put Your Research
+
+**Your research findings go in:** `{{deliverables_path}}`
+
+This is configured in `meta.json` during planning. To find it:
+
+```bash
+# Check deliverables_path in meta.json
+cat kitty-specs/{{feature_slug}}/meta.json | grep deliverables_path
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+Examples of valid deliverables paths:
+- `docs/research/001-market-analysis/`
+- `research-outputs/002-literature-review/`
 
-## Location Pre-flight Check (CRITICAL for AI Agents)
-
-Before proceeding with implementation, verify you are in the correct working directory by running the shared pre-flight validation:
-
-```python
-import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.guards import validate_worktree_location
-
-# Validate location
-result = validate_worktree_location()
-if not result.is_valid:
-    print(result.format_error())
-    print("\nThis command MUST run from a feature worktree, not the main repository.")
-    exit(1)
-```
-
-**What this validates**:
-- Current branch follows the feature pattern like `001-feature-name`
-- You're not attempting to run from `main` or any release branch
-- The validator prints clear navigation instructions if you're outside the feature worktree
-
-**Path reference rule:** When you mention directories or files, provide either the absolute path or a path relative to the project root (for example, `kitty-specs/<feature>/tasks/`). Never refer to a folder by name alone.
-
-This is intentional - worktrees provide isolation for parallel feature development.
-
-## Citation Tracking Requirements (Research Mission)
-
-As you conduct research and gather evidence, you MUST maintain proper citation tracking:
-
-### Evidence Log Maintenance
-
-**File**: `research/evidence-log.csv`
-
-**For each source you review**:
-1. Read the source and extract key findings
-2. Add a row to evidence-log.csv with:
-   - timestamp: Current time in ISO format (YYYY-MM-DDTHH:MM:SS)
-   - source_type: journal | conference | book | web | preprint
-   - citation: Full citation in BibTeX or APA format
-   - key_finding: 1-2 sentence summary of main takeaway
-   - confidence: high | medium | low (based on source quality)
-   - notes: Additional context, caveats, or limitations
-
-**Citation Format Examples**:
-- BibTeX: `@article{smith2024,author={Smith et al.},title={Paper Title},journal={Journal},year={2024}}`
-- APA: `Smith, J., & Lee, K. (2024). Paper title. Journal Name, 10(2), 123-145.`
-- Simple: `Smith (2024). Paper title. Journal Name. https://doi.org/...`
-
-### Source Registry Maintenance
-
-**File**: `research/source-register.csv`
-
-**When you discover a new source**:
-1. Add to source-register.csv immediately
-2. Assign unique source_id (e.g., "smith2024")
-3. Include full citation and URL
-4. Mark status as "pending"
-5. Update status to "reviewed" after reading
-6. Assign relevance rating (high/medium/low)
-
-**Validation**: Citations will be validated during `/spec-kitty.review`. Errors block review, warnings are advisory.
-
-## ⚠️ CRITICAL: Review Feedback Check
-
-**Before you start implementing**, check for prior review feedback:
-
-1. Open the task prompt file for the work you're about to implement
-2. Look for the `review_status` field in the frontmatter:
-   - **`review_status: has_feedback`** → The task was reviewed and returned with feedback
-   - **`review_status: acknowledged`** → You (or another agent) already saw the feedback and started addressing it
-   - **`review_status: ""` (empty)** → No feedback; proceed normally
-3. **If feedback exists**:
-   - Scroll to the `## Review Feedback` section (located right after the frontmatter)
-   - Read the **Key Issues** and **Action Items** carefully
-   - Treat all action items as your implementation TODO list
-   - Update `review_status: acknowledged` when you begin work
-   - As you fix each item, update the Activity Log: `Addressed feedback: [specific fix description]`
-4. **If you miss or ignore feedback**, your work will be returned again for the same issues
+**DO NOT** put research deliverables in:
+- `kitty-specs/` (reserved for sprint planning)
+- `research/` at project root (ambiguous, conflicts with kitty-specs/###/research/)
 
 ---
 
-## Outline
+## Implementation Workflow
 
-1. **Verify worktree context**:
-   - The CLI prefers an isolated checkout at `PROJECT_ROOT/.worktrees/FEATURE-SLUG`; use the path returned by `create-new-feature` when it exists.
-   - If that directory is present and you are not already inside it, `cd` into the worktree before proceeding.
-    - When inspecting git status or listing files, always reference the worktree paths (for example, `kitty-specs/<feature>/...` inside `.worktrees/<feature>/`).
-   - If worktree creation was skipped (the CLI returned no worktree path or the directory is missing), remain in the primary checkout on the feature branch or recreate the worktree with `git worktree add PROJECT_ROOT/.worktrees/FEATURE-SLUG FEATURE-SLUG` and then `cd` into it.
+Run this command to get started:
 
-2. Run `{SCRIPT}` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute.
+```bash
+spec-kitty agent workflow implement $ARGUMENTS --agent <your-name>
+```
 
-2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
-   - Scan all checklist files in the checklists/ directory
-   - For each checklist, count:
-     * Total items: All lines matching `- [ ]` or `- [X]` or `- [x]`
-     * Completed items: Lines matching `- [X]` or `- [x]`
-     * Incomplete items: Lines matching `- [ ]`
-   - Create a status table:
-     ```
-     | Checklist | Total | Completed | Incomplete | Status |
-     |-----------|-------|-----------|------------|--------|
-     | ux.md     | 12    | 12        | 0          | ✓ PASS |
-     | test.md   | 8     | 5         | 3          | ✗ FAIL |
-     | security.md | 6   | 6         | 0          | ✓ PASS |
-     ```
-   - Calculate overall status:
-     * **PASS**: All checklists have 0 incomplete items
-     * **FAIL**: One or more checklists have incomplete items
+**CRITICAL**: You MUST provide `--agent <your-name>` to track who is implementing!
 
-   - **If any checklist is incomplete**:
-     * Display the table with incomplete item counts
-     * **STOP** and ask: "Some checklists are incomplete. Do you want to proceed with implementation anyway? (yes/no)"
-     * Wait for user response before continuing
-     * If user says "no" or "wait" or "stop", halt execution
-     * If user says "yes" or "proceed" or "continue", proceed to step 3
+### Step 1: Navigate to Your Worktree
 
-   - **If all checklists are complete**:
-     * Display the table showing all checklists passed
-     * Automatically proceed to step 3
+```bash
+cd {{workspace_path}}
+```
 
-3. **MANDATORY: Initialize Task Workflow** ⚠️ BLOCKING STEP
+Your worktree is an isolated workspace for this WP. The deliverables path is accessible here.
 
-   **For EACH task you will implement**:
+### Step 2: Create Research Deliverables (In Worktree)
 
-   a. **Move task prompt to doing lane**:
-      ```bash
-      # Capture your shell PID
-      SHELL_PID=$(echo $$)
+Create your research outputs in the deliverables path:
 
-      # Move prompt (example for T001)
-      .kittify/scripts/bash/tasks-move-to-lane.sh FEATURE-SLUG TXXX doing \
-        --shell-pid "$SHELL_PID" \
-        --agent "claude" \
-        --note "Started implementation"
-      ```
-      > Windows users: run `.kittify/scripts/powershell/tasks-move-to-lane.ps1` with the same arguments.
+```bash
+# Create the deliverables directory if it doesn't exist
+mkdir -p {{deliverables_path}}
 
-   b. **Verify frontmatter metadata** in the moved file:
-      ```yaml
-      lane: "doing"
-      assignee: "Your Name or Agent ID"
-      agent: "claude"  # or codex, gemini, etc.
-      shell_pid: "12345"  # from echo $$
-      ```
+# Create your research files
+# Examples:
+# - {{deliverables_path}}/findings.md
+# - {{deliverables_path}}/report.md
+# - {{deliverables_path}}/data/analysis.csv
+# - {{deliverables_path}}/recommendations.md
+```
 
-   c. **Confirm the Activity Log** shows a new entry that records the transition to `doing` (the helper script adds it automatically—adjust the note if needed).
+### Step 3: Commit Research Deliverables (In Worktree)
 
-   d. **Commit the move**:
-      ```bash
-      git status --short
-      git commit -m "Start TXXX: Move to doing lane"
-      ```
+**BEFORE moving to for_review**, commit your research outputs:
 
-   **VALIDATION**: Before proceeding to implementation, verify:
-   - [ ] Prompt file exists in `tasks/doing/phase-X-name/`
-   - [ ] Frontmatter has `lane: "doing"`
-   - [ ] Frontmatter has your `shell_pid`
-   - [ ] Activity log has "Started implementation" entry
-   - [ ] Changes are committed to git
+```bash
+cd {{workspace_path}}
+git add {{deliverables_path}}/
+git commit -m "research({{wp_id}}): <describe your research findings>"
+```
 
-   **If validation fails**: STOP and fix the workflow before implementing.
-   (Optional) Run `scripts/bash/validate-task-workflow.sh TXXX FEATURE_DIR` for automated checks.
+Example commit messages:
+- `research(WP01): Document core entities and relationships`
+- `research(WP03): Add market analysis findings and recommendations`
+- `research(WP05): Complete literature review synthesis`
 
-4. Load and analyze the implementation context:
-   - **REQUIRED**: Read tasks.md for the complete task list and execution plan
-   - **REQUIRED**: Read the task prompt file from `tasks/doing/phase-X-name/TXXX-slug.md` (moved in step 3)
-   - **MANDATORY** 🚨 **REVIEW FEEDBACK CHECK**: Look at the `review_status` field in the frontmatter:
-     - If `review_status: has_feedback` or `review_status: acknowledged`, **STOP** and read the `## Review Feedback` section immediately (it's right after the frontmatter)
-     - **Do not proceed** until you have read and understood all feedback items
-     - Make each action item a TODO in your implementation plan
-     - Update `review_status: acknowledged` to signal you've read and will address it
-   - **VERIFY**: Frontmatter shows `lane: "doing"`, `agent`, and `shell_pid`
-   - **IF METADATA MISSING**: You skipped step 3. Pause and complete the workflow initialization before continuing.
-   - **REQUIRED**: Read plan.md for tech stack, architecture, and file structure
-   - **IF EXISTS**: Read data-model.md for entities and relationships
-   - **IF EXISTS**: Read contracts/ for API specifications and test requirements
-   - **IF EXISTS**: Read research.md for technical decisions and constraints
-   - **IF EXISTS**: Read quickstart.md for integration scenarios
+### Step 4: Move to Review
 
-5. Parse tasks.md structure and extract:
-   - **Task phases**: Setup, Tests, Core, Integration, Polish
-   - **Task dependencies**: Sequential vs parallel execution rules
-   - **Task details**: ID, description, file paths, parallel markers [P]
-   - **Execution flow**: Order and dependency requirements
+**Only after committing**, move your WP to review:
 
-6. Execute implementation following the task plan:
-   - **Pull from planned intentionally**: Select the next task from `tasks/planned/`.
-     - **If it recently came back from `for_review/`** (check `reviewed_by` field and `review_status: has_feedback`):
-       - Treat the `## Review Feedback` section as your primary TODO list
-       - Complete all action items in the "Action Items" checklist
-       - Update the Activity Log for each item you fix: `Addressed feedback: [item description]`
-       - Do NOT move to `for_review/` again until all feedback items are checked off
-   - **Phase-by-phase execution**: Complete each phase before moving to the next
-   - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
-   - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
-   - **File-based coordination**: Tasks affecting the same files must run sequentially
-   - **Validation checkpoints**: Verify each phase completion before proceeding
-   - **Kanban discipline**: Use the lane helper scripts to keep the prompt in `tasks/doing/`, update the Activity Log, and capture your shell PID (`echo $$`). These should already be complete from step 3—verify before coding.
+```bash
+spec-kitty agent tasks move-task {{wp_id}} --to for_review --note "Ready for review: <summary>"
+```
 
-7. Implementation execution rules:
-   - **Setup first**: Initialize feature scaffolding, dependencies, configuration
-   - **Tests before code**: If you need to write tests for contracts, entities, and integration scenarios
-   - **Core development**: Implement models, services, CLI commands, endpoints
-   - **Integration work**: Database connections, middleware, logging, external services
-   - **Polish and validation**: Unit tests, performance optimization, documentation
+---
 
-8. Progress tracking and error handling:
-   - Report progress after each completed task
-   - Halt execution if any non-parallel task fails
-   - For parallel tasks [P], continue with successful tasks, report failed ones
-   - Provide clear error messages with context for debugging
-   - Suggest next steps if implementation cannot proceed
-   - Leave the task checkbox unchecked—reviewers will mark completion when moving the prompt to `tasks/done/`.
-   - **After completing each task**:
-     - Update the prompt's activity log:
-       ```markdown
-       - 2025-10-07T17:00:00Z – claude – shell_pid=12345 – lane=doing – Completed implementation
-       ```
-     - Move prompt to for_review:
-     ```bash
-     .kittify/scripts/bash/tasks-move-to-lane.sh FEATURE-SLUG TXXX for_review \
-       --shell-pid "$SHELL_PID" \
-       --agent "claude" \
-       --note "Ready for review"
-     ```
-     - Commit:
-       ```bash
-       git status --short
-       git commit -m "Complete TXXX: Move to for_review lane"
-       ```
-   - **VALIDATION BEFORE CONTINUING TO NEXT TASK**:
-     - [ ] Prompt is in `tasks/for_review/` lane
-     - [ ] Frontmatter shows `lane: "for_review"`
-     - [ ] Activity log has completion entry
-     - [ ] Git commit exists for the move
+## Sprint Planning Artifacts (Separate)
 
-9. Completion validation:
-   - Verify all required tasks are completed
-   - Check that implemented features match the original specification
-   - Validate that tests pass and coverage meets requirements
-   - Confirm the implementation follows the technical plan
-   - Report final status with summary of completed work
+Planning artifacts in `kitty-specs/{{feature_slug}}/research/` are:
+- `evidence-log.csv` - Evidence collected DURING PLANNING
+- `source-register.csv` - Sources cited DURING PLANNING
 
-## Task Workflow Summary (Quick Reference)
+**If you need to update these** (rare during implementation):
+- They're in the main repo (sparse-excluded from worktrees)
+- Edit them directly in the main repository
+- Commit to main before moving status
 
-**For every task**:
+**Most research WPs only produce deliverables, not planning updates.**
 
-1. **START**: `planned/` → `doing/`
-   - `.kittify/scripts/bash/tasks-move-to-lane.sh FEATURE-SLUG WPID doing --note "Started implementation"`
-   - Verify frontmatter: `lane: "doing"`, confirm `shell_pid`, `agent`
-   - Confirm activity log entry
-   - Commit
+---
 
-2. **WORK**: Implement the task
-   - Follow prompt guidance
-   - Create/modify files as specified
-   - Test your changes
+## Research CSV Schemas (CRITICAL - DO NOT MODIFY HEADERS)
 
-3. **COMPLETE**: `doing/` → `for_review/`
-   - Add completion entry to activity log
-   - `.kittify/scripts/bash/tasks-move-to-lane.sh FEATURE-SLUG WPID for_review --note "Ready for review"`
-   - Verify frontmatter: `lane: "for_review"`
-   - Confirm review-ready log entry
-   - Commit
+**⚠️  WARNING:** These schemas are validated during review. Modifying headers will BLOCK your review.
 
-4. **REVIEW**: Reviewer moves `for_review/` → `done/`
-   - Reviewer validates work
-   - Reviewer updates tasks.md checkbox (`- [x]`)
-   - Reviewer uses the lane helper script to move to `tasks/done/` and commits
+### evidence-log.csv Schema
 
-**Shell PID**: Capture once per session with `echo $$` and reuse it
+**Required columns (exact order, do not change):**
+```csv
+timestamp,source_type,citation,key_finding,confidence,notes
+```
 
-**Timestamp format**: ISO 8601 with timezone, e.g. `2025-10-07T16:00:00Z`
+| Column | Type | Description | Valid Values |
+|--------|------|-------------|--------------|
+| `timestamp` | ISO datetime | When evidence collected | `YYYY-MM-DDTHH:MM:SS` |
+| `source_type` | Enum | Type of source | `journal` \| `conference` \| `book` \| `web` \| `preprint` |
+| `citation` | Text | Full citation | BibTeX, APA, or Simple format |
+| `key_finding` | Text | Main takeaway | 1-2 sentences |
+| `confidence` | Enum | Source quality | `high` \| `medium` \| `low` |
+| `notes` | Text | Additional context | Free text |
 
-**Agent identifiers**: claude, codex, gemini, copilot, cursor, windsurf, etc.
+**To add evidence (append only, never edit headers):**
+```bash
+# Format: timestamp,source_type,citation,key_finding,confidence,notes
+echo '2025-01-25T14:00:00,journal,"Smith, J. (2024). AI Tools. Nature, 10(2), 123.",AI improves productivity 30%,high,Meta-analysis' \
+  >> kitty-specs/{{feature_slug}}/research/evidence-log.csv
+```
 
-Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `/tasks` first to regenerate the task list.
+### source-register.csv Schema
 
-## Agent-Specific Parallelization Tips
+**Required columns (exact order, do not change):**
+```csv
+source_id,citation,url,accessed_date,relevance,status
+```
 
-Leverage your agent’s native orchestration so one work package advances while another gets reviewed:
+| Column | Type | Description | Valid Values |
+|--------|------|-------------|--------------|
+| `source_id` | Text | Unique ID | Must be unique (e.g., S001, S002) |
+| `citation` | Text | Full citation | Same format as evidence-log |
+| `url` | URL | Source location | Valid URL or "N/A" |
+| `accessed_date` | ISO date | When accessed | `YYYY-MM-DD` |
+| `relevance` | Enum | Research relevance | `high` \| `medium` \| `low` |
+| `status` | Enum | Processing status | `reviewed` \| `pending` \| `archived` |
 
-- **Claude Code** – Use the `/agents` command to spin up specialized subagents and explicitly delegate work (for example, “Use the code-reviewer subagent to audit WP02”) so different assistants run in parallel.[^claude_subagents]
-- **OpenAI Codex** – Offload secondary tasks as cloud jobs with commands like `codex exec --cloud "refactor the adapters"`; cloud tasks are designed to run concurrently with your local session.[^codex_cloud]
-- **Cursor Agent CLI** – Launch multiple instances (`cursor-agent chat "…"`) in separate terminals or remote shells; the CLI explicitly supports parallel agents.[^cursor_parallel]
-- **GitHub Copilot CLI** – Schedule or review background work with `gh agent-task create`, `gh agent-task list`, and `gh agent-task view --log --follow` while you keep implementing locally.[^copilot_agent]
-- **Google Gemini CLI** – Pair Gemini with Container Use to open isolated shells (e.g., `cu shell --name=tests -- gemini-cli`) so two Gemini agents can run safely side by side.[^gemini_parallel]
-- **Qwen Code** – When you call the `/task` tool, include multiple `task` tool uses in one turn; the bundled guidance explicitly encourages launching several subagents concurrently.[^qwen_task]
-- **OpenCode** – The task tool reminds you to “launch multiple agents concurrently whenever possible”; start a review subagent while the build agent continues edits.[^opencode_parallel]
-- **Amazon Q Developer CLI** – Use Container Use recipes to create multiple isolated Q sessions so one agent handles reviews while another implements new changes.[^amazonq_parallel]
+**To add source (append only, never edit headers):**
+```bash
+# Format: source_id,citation,url,accessed_date,relevance,status
+echo 'S001,"Smith (2024). AI Tools.",https://example.com,2025-01-25,high,reviewed' \
+  >> kitty-specs/{{feature_slug}}/research/source-register.csv
+```
 
-If an agent lacks built-in subagents, mimic the pattern manually: open a second terminal, move a review prompt to `tasks/doing/`, and run the reviewer commands there while your primary session keeps coding.
+**Why this matters:**
+- Schema validation runs during `/spec-kitty.review`
+- Wrong schemas BLOCK review (cannot proceed)
+- Agents must preserve exact column order and names
+- Templates have correct schemas - never overwrite, only append
+
+---
+
+## Key Differences from Software-Dev
+
+| Aspect | Software-Dev | Research |
+|--------|--------------|----------|
+| **Primary output** | Source code in worktree | Research docs in `deliverables_path` |
+| **Commit location** | Worktree branch | Worktree branch (same!) |
+| **Merges to main** | Yes, via spec-kitty merge | Yes, via spec-kitty merge |
+| **Planning artifacts** | N/A | `kitty-specs/.../research/` (in main) |
+
+### Why This Changed
+
+Previously, research artifacts went in `kitty-specs/` which is sparse-excluded from worktrees. This meant:
+- Research outputs never got merged to main
+- WPs were marked "done" but work was stuck in worktrees
+
+Now, research deliverables go in `{{deliverables_path}}` which:
+- EXISTS in worktrees (not sparse-excluded)
+- MERGES to main when WPs complete
+- Works just like code in software-dev missions
+
+---
+
+## Common Mistakes to Avoid
+
+### Mistake 1: Putting Deliverables in kitty-specs/
+
+**Wrong**:
+```bash
+# Creating files in planning artifacts location
+echo "# Findings" > kitty-specs/{{feature_slug}}/findings.md  # BAD!
+```
+
+**Right**:
+```bash
+# Creating files in deliverables path (in worktree)
+echo "# Findings" > {{deliverables_path}}/findings.md  # GOOD!
+```
+
+### Mistake 2: Forgetting to Commit Before Review
+
+**Wrong**:
+```bash
+# Edit deliverables
+# Immediately run:
+spec-kitty agent tasks move-task {{wp_id}} --to for_review  # BAD! Nothing committed!
+```
+
+**Right**:
+```bash
+# Edit deliverables
+git add {{deliverables_path}}/
+git commit -m "research({{wp_id}}): Document findings"
+spec-kitty agent tasks move-task {{wp_id}} --to for_review  # GOOD!
+```
+
+### Mistake 3: Editing Planning Artifacts in Worktree
+
+Planning artifacts (`evidence-log.csv`, `source-register.csv`) are NOT in worktrees.
+If you need to update them, do so in the main repository.
+
+---
+
+## Parallelization
+
+**Research WPs CAN run in parallel** (unlike old model):
+
+Since deliverables go in `{{deliverables_path}}`, not `kitty-specs/`:
+- Each WP writes to different files/subdirectories
+- No merge conflicts with planning artifacts
+- Works just like parallel software-dev WPs
+
+**Exception**: If multiple WPs need to update the same deliverable file, coordinate to avoid conflicts.
+
+---
+
+## Completion Checklist
+
+Before running `move-task --to for_review`:
+
+- [ ] Research findings documented in `{{deliverables_path}}/`
+- [ ] All deliverable files committed to worktree branch: `git add {{deliverables_path}}/ && git commit`
+- [ ] Commit message follows format: `research({{wp_id}}): <description>`
+- [ ] All subtasks marked as done: `spec-kitty agent tasks mark-status T### --status done`
+
+---
+
+**NOTE**: If `/spec-kitty.status` shows your WP in "doing" after you moved it to "for_review", don't panic - a reviewer may have moved it back (changes requested), or there's a sync delay. Focus on your WP.

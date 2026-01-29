@@ -46,7 +46,7 @@ This command updates your feature's spec.md file. You must be in the feature wor
 
 ## What You Have Available
 
-After running `.kittify/scripts/bash/check-prerequisites.sh --json --paths-only`, you will have paths to:
+After running `spec-kitty agent check-prerequisites --json --paths-only`, you will have paths to:
 - **FEATURE_DIR**: Absolute path to your feature directory (kitty-specs/001-feature-name/)
 - **FEATURE_SPEC**: Absolute path to spec.md (the file you'll be clarifying)
 
@@ -83,7 +83,7 @@ Note: This clarification workflow is expected to run (and be completed) BEFORE i
 
 Execution steps:
 
-1. Run `.kittify/scripts/bash/check-prerequisites.sh --json --paths-only` from repo root **once** (combined `--json --paths-only` mode / `-Json -PathsOnly`). Parse minimal JSON payload fields:
+1. Run `spec-kitty agent check-prerequisites --json --paths-only` from repo root **once** (combined `--json --paths-only` mode / `-Json -PathsOnly`). Parse minimal JSON payload fields:
    - `FEATURE_DIR`
    - `FEATURE_SPEC`
    - (Optionally capture `IMPL_PLAN`, `TASKS` for future chained flows.)

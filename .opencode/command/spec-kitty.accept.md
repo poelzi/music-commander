@@ -1,12 +1,9 @@
 ---
 description: Validate feature readiness and guide final acceptance steps.
+scripts:
+  sh: .kittify/scripts/bash/accept-feature.sh --json {ARGS}
+  ps: .kittify/scripts/powershell/accept-feature.ps1 --json {ARGS}
 ---
-
-**Path reference rule:** When you mention directories or files, provide either the absolute path or a path relative to the project root (for example, `kitty-specs/<feature>/tasks/`). Never refer to a folder by name alone.
-
-
-*Path: [.kittify/templates/commands/accept.md](.kittify/templates/commands/accept.md)*
-
 
 ## User Input
 
@@ -33,11 +30,11 @@ Ask one focused question per item and confirm the summary before continuing. End
 ## Execution Plan
 
 1. Compile the acceptance options into an argument list:
-   - Always include `--actor "opencode"`.
+   - Always include `--actor "__AGENT__"`.
    - Append `--feature "<slug>"` when the user supplied a slug.
    - Append `--mode <mode>` (`pr`, `local`, or `checklist`).
    - Append `--test "<command>"` for each validation command provided.
-2. Run `.kittify/scripts/bash/accept-feature.sh --json $ARGUMENTS` (the CLI wrapper) with the assembled arguments **and** `--json`.
+2. Run `{SCRIPT}` (the CLI wrapper) with the assembled arguments **and** `--json`.
 3. Parse the JSON response. It contains:
    - `summary.ok` (boolean) and other readiness details.
    - `summary.outstanding` categories when issues remain.

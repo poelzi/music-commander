@@ -2,11 +2,26 @@
 description: Create or update the feature specification from a natural language feature description.
 ---
 
-**Path reference rule:** When you mention directories or files, provide either the absolute path or a path relative to the project root (for example, `kitty-specs/<feature>/tasks/`). Never refer to a folder by name alone.
 
+# /spec-kitty.specify - Create Feature Specification
 
-*Path: [.kittify/templates/commands/specify.md](.kittify/templates/commands/specify.md)*
+**Version**: 0.11.0+
 
+## 📍 WORKING DIRECTORY: Stay in MAIN repository
+
+**IMPORTANT**: Specify works in the main repository. NO worktrees are created.
+
+```bash
+# Run from project root:
+cd /path/to/project/root  # Your main repository
+
+# All planning artifacts are created in main and committed:
+# - kitty-specs/###-feature/spec.md → Created in main
+# - Committed to main branch
+# - NO worktrees created
+```
+
+**Worktrees are created later** during `/spec-kitty.implement`, not during planning.
 
 ## User Input
 
@@ -15,44 +30,6 @@ $ARGUMENTS
 ```
 
 You **MUST** consider the user input before proceeding (if not empty).
-
----
-
-## Workflow Entry Point Context
-
-**IMPORTANT**: This is the FIRST command in the spec-kitty feature workflow.
-
-**Location Context**:
-- **Before running .kittify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"**: You are in the main repository root
-- **After running .kittify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"**: A new feature worktree is created at `.worktrees/001-feature-name/`
-
-The script handles location setup automatically. You do NOT need to navigate anywhere before running it.
-
-**What .kittify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS" Provides**:
-When you run the creation script, it returns JSON with:
-- **BRANCH_NAME**: Your feature branch name (e.g., "001-checkout-flow")
-- **SPEC_FILE**: Absolute path to newly created spec.md
-- **FEATURE_NUM**: Feature number (e.g., "001")
-- **FRIENDLY_NAME**: Your feature title (e.g., "Checkout Upsell Flow")
-- **WORKTREE_PATH**: Absolute path to your feature worktree (e.g., `.worktrees/001-checkout-flow`)
-
----
-
-## Workflow Context
-
-**This is the START** of the spec-kitty feature lifecycle.
-
-**After this command**:
-1. Navigate to your new worktree: `cd <WORKTREE_PATH>`
-2. (Optional) Run `/spec-kitty.clarify` to resolve ambiguities in the spec
-3. Run `/spec-kitty.plan` to create the implementation plan
-4. Run `/spec-kitty.tasks` to break down into work packages
-5. Run `/spec-kitty.implement` to write the code
-6. Run `/spec-kitty.review` to get code feedback
-7. Run `/spec-kitty.accept` to validate readiness
-8. Run `/spec-kitty.merge` to integrate into main
-
----
 
 ## Discovery Gate (mandatory)
 
@@ -81,13 +58,65 @@ Discovery requirements (scale to feature complexity):
 3. When you have sufficient context for the feature's scope, paraphrase into an **Intent Summary** and confirm. For trivial features, this can be very brief.
 4. If user explicitly asks to skip questions or says "just testing", acknowledge and proceed with minimal discovery.
 
+## Mission Selection
+
+After completing discovery and confirming the Intent Summary, determine the appropriate mission for this feature.
+
+### Available Missions
+
+- **software-dev**: For building software features, APIs, CLI tools, applications
+  - Phases: research → design → implement → test → review
+  - Best for: code changes, new features, bug fixes, refactoring
+
+- **research**: For investigations, literature reviews, technical analysis
+  - Phases: question → methodology → gather → analyze → synthesize → publish
+  - Best for: feasibility studies, market research, technology evaluation
+
+### Mission Inference
+
+1. **Analyze the feature description** to identify the primary goal:
+   - Building, coding, implementing, creating software → **software-dev**
+   - Researching, investigating, analyzing, evaluating → **research**
+
+2. **Check for explicit mission requests** in the user's description:
+   - If user mentions "research project", "investigation", "analysis" → use research
+   - If user mentions "build", "implement", "create feature" → use software-dev
+
+3. **Confirm with user** (unless explicit):
+   > "Based on your description, this sounds like a **[software-dev/research]** project.
+   > I'll use the **[mission name]** mission. Does that work for you?"
+
+4. **Handle user response**:
+   - If confirmed: proceed with selected mission
+   - If user wants different mission: use their choice
+
+5. **Handle --mission flag**: If the user provides `--mission <key>` in their command, skip inference and use the specified mission directly.
+
+Store the final mission selection in your notes and include it in the spec output. Do not pass a `--mission` flag to feature creation.
+
+## Workflow (0.11.0+)
+
+**Planning happens in main repository - NO worktree created!**
+
+1. Creates `kitty-specs/###-feature/spec.md` directly in main repo
+2. Automatically commits to main branch
+3. No worktree created during specify
+
+**Worktrees created later**: Use `spec-kitty implement WP##` to create a workspace for each work package. Worktrees are created later during implement (e.g., `.worktrees/###-feature-WP##`).
+
+## Location
+
+- Work in: **Main repository** (not a worktree)
+- Creates: `kitty-specs/###-feature/spec.md`
+- Commits to: `main` branch
+
 ## Outline
 
 ### 0. Generate a Friendly Feature Title
 
 - Summarize the agreed intent into a short, descriptive title (aim for ≤7 words; avoid filler like "feature" or "thing").
 - Read that title back during the Intent Summary and revise it if the user requests changes.
-- You will pass this confirmed title to the feature creation script via `--feature-name "<Friendly Title>"` so downstream tooling surfaces it consistently.
+- Use the confirmed title to derive the kebab-case feature slug for the create-feature command.
 
 The text the user typed after `/spec-kitty.specify` in the triggering message **is** the initial feature description. Capture it verbatim, but treat it only as a starting point for discovery—not the final truth. Your job is to interrogate the request, surface gaps, and co-create a complete specification with the user.
 
@@ -97,44 +126,59 @@ Given that feature description, do this:
 - **Interactive Interview Mode (no arguments)**: Use the discovery interview to elicit all necessary context, synthesize the working feature description, and confirm it with the user before you generate any specification artifacts.
 
 1. **Check discovery status**:
-   - If this is your first message or discovery questions remain unanswered, stay in the one-question loop, capture the user’s response, update your internal table, and end with `WAITING_FOR_DISCOVERY_INPUT`. Do **not** surface the table; keep it internal. Do **not** call `.kittify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` yet.
+   - If this is your first message or discovery questions remain unanswered, stay in the one-question loop, capture the user's response, update your internal table, and end with `WAITING_FOR_DISCOVERY_INPUT`. Do **not** surface the table; keep it internal. Do **not** call the creation command yet.
    - Only proceed once every discovery question has an explicit answer and the user has acknowledged the Intent Summary.
-   - Empty invocation rule: stay in interview mode until you can restate the agreed-upon feature description. Do **not** call `.kittify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` while the description is missing or provisional.
+   - Empty invocation rule: stay in interview mode until you can restate the agreed-upon feature description. Do **not** call the creation command while the description is missing or provisional.
 
-2. When discovery is complete and the intent summary **and title** are confirmed, run the script `.kittify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` from repo root, inserting `--feature-name "<Friendly Title>"` (replace the quoted text with the confirmed title) immediately before the feature description argument. For example:
+2. When discovery is complete and the intent summary, **title**, and **mission** are confirmed, run the feature creation command from repo root:
 
-   - **bash/zsh**: `.kittify/scripts/bash/create-new-feature.sh --json --feature-name "Checkout Upsell Flow" "$ARGUMENTS"`
-   - **PowerShell**: `.kittify/scripts/powershell/create-new-feature.ps1 -Json -FeatureName "Checkout Upsell Flow" "$ARGUMENTS"`
+   ```bash
+   spec-kitty agent feature create-feature "<slug>" --json
+   ```
 
-   Parse its JSON output for `BRANCH_NAME`, `SPEC_FILE`, `FEATURE_NUM`, and `FRIENDLY_NAME`. All file paths must be absolute.
+   Where `<slug>` is a kebab-case version of the friendly title (e.g., "Checkout Upsell Flow" → "checkout-upsell-flow").
 
-   **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
-3. Load `.kittify/templates/spec-template.md` to understand required sections.
+   The command returns JSON with:
+   - `result`: "success" or error message
+   - `feature`: Feature number and slug (e.g., "014-checkout-upsell-flow")
+   - `feature_dir`: Absolute path to the feature directory inside the main repo
 
-4. Follow this execution flow:
+   Parse these values for use in subsequent steps. All file paths are absolute.
 
-    1. Use the discovery answers as your authoritative source of truth (do **not** rely on raw `$ARGUMENTS`). For empty invocations, treat the synthesized interview summary as the canonical feature description and propagate the confirmed friendly title anywhere `[FEATURE NAME]` appears.
-       Identify: actors, actions, data, constraints, motivations, success metrics
-    2. For any remaining ambiguity:
-       - Ask the user a focused follow-up question immediately and halt work until they answer
-       - Only use `[NEEDS CLARIFICATION: …]` when the user explicitly defers the decision
-       - Record any interim assumption in the Assumptions section and flag it for confirmation later
-       - Prioritize clarifications by impact: scope > outcomes > risks/security > user experience > technical details
-    4. Fill User Scenarios & Testing section
-       If no clear user flow: ERROR "Cannot determine user scenarios"
-    5. Generate Functional Requirements
-       Each requirement must be testable
-       Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
-    6. Define Success Criteria
-       Create measurable, technology-agnostic outcomes
-       Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion)
-       Each criterion must be verifiable without implementation details
-    7. Identify Key Entities (if data involved)
-    8. Return: SUCCESS (spec ready for planning)
+   **IMPORTANT**: You must only ever run this command once. The JSON is provided in the terminal output - always refer to it to get the actual paths you're looking for.
+3. **Stay in the main repository**: No worktree is created during specify.
 
-4. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
+4. Load the spec template from `.kittify/templates/spec-template.md` (or `.kittify/templates/spec-template.md`) to understand required sections.
 
-5. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
+5. Create meta.json in the feature directory with:
+   ```json
+   {
+     "feature_number": "<number>",
+     "slug": "<full-slug>",
+     "friendly_name": "<Friendly Title>",
+     "mission": "<selected-mission>",
+     "source_description": "$ARGUMENTS",
+     "created_at": "<ISO timestamp>"
+   }
+   ```
+
+6. Generate the specification content by following this flow:
+    - Use the discovery answers as your authoritative source of truth (do **not** rely on raw `$ARGUMENTS`)
+    - For empty invocations, treat the synthesized interview summary as the canonical feature description
+    - Identify: actors, actions, data, constraints, motivations, success metrics
+    - For any remaining ambiguity:
+      * Ask the user a focused follow-up question immediately and halt work until they answer
+      * Only use `[NEEDS CLARIFICATION: …]` when the user explicitly defers the decision
+      * Record any interim assumption in the Assumptions section
+      * Prioritize clarifications by impact: scope > outcomes > risks/security > user experience > technical details
+    - Fill User Scenarios & Testing section (ERROR if no clear user flow can be determined)
+    - Generate Functional Requirements (each requirement must be testable)
+    - Define Success Criteria (measurable, technology-agnostic outcomes)
+    - Identify Key Entities (if data involved)
+
+7. Write the specification to `<feature_dir>/spec.md` using the template structure, replacing placeholders with concrete details derived from the feature description while preserving section order and headings.
+
+8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 
    a. **Create Spec Quality Checklist**: Generate a checklist file at `FEATURE_DIR/checklists/requirements.md` using the checklist template structure with these validation items:
    
@@ -210,7 +254,7 @@ Given that feature description, do this:
    
    d. **Update Checklist**: After each validation iteration, update the checklist file with current pass/fail status
 
-6. Report completion with branch name, spec file path, checklist results, and readiness for the next phase (`/spec-kitty.clarify` or `/spec-kitty.plan`).
+9. Report completion with feature directory, spec file path, checklist results, and readiness for the next phase (`/spec-kitty.clarify` or `/spec-kitty.plan`).
 
 **NOTE:** The script creates and checks out the new branch and initializes the spec file before writing.
 

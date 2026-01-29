@@ -1,8 +1,52 @@
 ---
 description: Perform structured research review with citation validation.
-scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --include-tasks
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -IncludeTasks
+---
+
+## Research Review Overview
+
+Research WPs produce deliverables in a **worktree**, which merge to main like code.
+
+### Two Types of Artifacts
+
+| Type | Location | Review Focus |
+|------|----------|--------------|
+| **Research Deliverables** | `{{deliverables_path}}` (in worktree) | PRIMARY - Your main review target |
+| **Planning Artifacts** | `kitty-specs/{{feature_slug}}/research/` (in main) | SECONDARY - Citation validation only |
+
+### Review Checklist
+
+- [ ] Research deliverables exist in `{{deliverables_path}}/`
+- [ ] Findings address the WP objectives
+- [ ] Citations/sources are properly documented
+- [ ] Deliverables are committed to worktree branch
+- [ ] Quality meets research standards
+
+---
+
+## Understanding Research Dependencies
+
+**For research missions, `dependencies: []` is often NORMAL.**
+
+Research phases typically work like this:
+- **Investigation phase**: WPs run in parallel, no inter-dependencies
+- **Synthesis phase**: WPs depend on investigation WPs
+- **Final/Validation phase**: Depends on synthesis
+
+Empty dependencies means this WP CAN start immediately - it's **not an error**.
+
+**To see dependency relationships:**
+```bash
+spec-kitty agent tasks list-dependents WP##
+
+# Output shows both:
+#   Depends on: (upstream - what blocks this WP)
+#   Depended on by: (downstream - what this WP blocks)
+```
+
+**Why this matters for review:**
+- If a WP has dependents and you request changes, those downstream WPs may need updates
+- The review workflow will warn you about incomplete dependents
+
 ---
 
 ## User Input
@@ -18,14 +62,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 Before proceeding with review, verify you are in the correct working directory by running the shared pre-flight validation:
 
 ```python
-import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.guards import validate_worktree_location
-
-# Validate location
-result = validate_worktree_location()
-if not result.is_valid:
-    print(result.format_error())
-    print("\nThis command MUST run from a feature worktree, not the main repository.")
-    exit(1)
 ```
 
 **What this validates**:
@@ -41,7 +77,7 @@ Before reviewing research tasks, validate all citations and sources:
 
 ```python
 from pathlib import Path
-import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.validators.research import validate_citations, validate_source_register
+import sys; sys.path.insert(0, '/nix/store/kl5lh42dcv24j6dn5f0wq2g5pxyzjk2d-python3-3.13.11-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8s2vmxd4dplgq4cygmdd5pzs0nn2n1h6-spec-kitty-0.13.7/lib/python3.13/site-packages'); from specify_cli.validators.research import validate_citations, validate_source_register
 
 # Validate evidence log
 evidence_log = FEATURE_DIR / "research" / "evidence-log.csv"
@@ -76,8 +112,8 @@ if source_register.exists():
 1. Run `{SCRIPT}` from repo root; capture `FEATURE_DIR`, `AVAILABLE_DOCS`, and `tasks.md` path.
 
 2. Determine the review target:
-   - If user input specifies a filename, validate it exists under `tasks/for_review/` (support phase subdirectories).
-   - Otherwise, select the oldest file in `tasks/for_review/` (lexical order is sufficient because filenames retain task ordering).
+   - If user input specifies a filename, validate it exists under `tasks/` (flat structure, check `lane: "for_review"` in frontmatter).
+   - Otherwise, select the oldest file in `tasks/` (lexical order is sufficient because filenames retain task ordering).
    - Abort with instructional message if no files are waiting for review.
 
 3. Load context for the selected task:
@@ -96,15 +132,15 @@ if source_register.exists():
      * Append a new entry in the prompt’s **Activity Log** detailing feedback (include timestamp, reviewer agent, shell PID).
      * Update frontmatter `lane` back to `planned`, clear `assignee` if necessary, keep history entry.
      * Add/revise a `## Review Feedback` section (create if missing) summarizing action items.
-     * Run `.kittify/scripts/bash/tasks-move-to-lane.sh <FEATURE> <TASK_ID> planned --note "Returned for changes"` (use the PowerShell equivalent on Windows) so the move and history update are staged consistently.
+     * Run `spec-kitty agent tasks move-task <FEATURE> <TASK_ID> planned --note "Returned for changes"` (use the PowerShell equivalent on Windows) so the move and history update are staged consistently.
   - **Approved**:
      * Append Activity Log entry capturing approval details (capture shell PID via `echo $$` or helper script).
      * Update frontmatter: set `lane=done`, set reviewer metadata (`agent`, `shell_pid`), optional `assignee` for approver.
      * Use helper script to mark the task complete in `tasks.md` (see Step 6).
-     * Run `.kittify/scripts/bash/tasks-move-to-lane.sh <FEATURE> <TASK_ID> done --note "Approved for release"` (PowerShell variant available) to transition the prompt into `tasks/done/`.
+     * Run `spec-kitty agent tasks move-task <FEATURE> <TASK_ID> done --note "Approved for release"` (PowerShell variant available) to transition the prompt into `tasks/`.
 
 6. Update `tasks.md` automatically:
-   - Run `scripts/bash/mark-task-status.sh --task-id <TASK_ID> --status done` (POSIX) or `scripts/powershell/Set-TaskStatus.ps1 -TaskId <TASK_ID> -Status done` (PowerShell) from repo root.
+   - Run `spec-kitty agent tasks mark-status --task-id <TASK_ID> --status done` (POSIX) or `spec-kitty agent tasks mark-status --task-id <TASK_ID> --status done` (PowerShell) from repo root.
    - Confirm the task entry now shows `[X]` and includes a reference to the prompt file in its notes.
 
 7. Produce a review report summarizing:
@@ -124,7 +160,7 @@ Before reviewing research tasks, validate all citations and sources:
 
 ```python
 from pathlib import Path
-import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.validators.research import validate_citations, validate_source_register
+import sys; sys.path.insert(0, '/nix/store/kl5lh42dcv24j6dn5f0wq2g5pxyzjk2d-python3-3.13.11-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8s2vmxd4dplgq4cygmdd5pzs0nn2n1h6-spec-kitty-0.13.7/lib/python3.13/site-packages'); from specify_cli.validators.research import validate_citations, validate_source_register
 
 # Validate evidence log
 evidence_log = FEATURE_DIR / "research" / "evidence-log.csv"

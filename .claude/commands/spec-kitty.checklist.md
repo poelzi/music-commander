@@ -65,7 +65,7 @@ This command creates checklists in your feature directory. You must be in the fe
 
 ## What You Have Available
 
-After running `.kittify/scripts/bash/check-prerequisites.sh --json`, you will have paths to:
+After running `spec-kitty agent check-prerequisites --json`, you will have paths to:
 - **FEATURE_DIR**: Absolute path to your feature directory (kitty-specs/001-feature-name/)
 - **AVAILABLE_DOCS**: List of available documents (spec.md, plan.md, tasks.md, etc.)
 
@@ -95,7 +95,7 @@ Your checklist will be created at:
 
 ## Execution Steps
 
-1. **Setup**: Run `.kittify/scripts/bash/check-prerequisites.sh --json` from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS list.
+1. **Setup**: Run `spec-kitty agent check-prerequisites --json` from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS list.
    - All file paths must be absolute.
 
 2. **Clarify intent (dynamic)**: Derive up to THREE initial contextual clarifying questions (no pre-baked catalog). They MUST:

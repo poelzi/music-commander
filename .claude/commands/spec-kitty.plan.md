@@ -3,6 +3,26 @@ description: Execute the implementation planning workflow using the plan templat
 ---
 
 
+# /spec-kitty.plan - Create Implementation Plan
+
+**Version**: 0.11.0+
+
+## 📍 WORKING DIRECTORY: Stay in MAIN repository
+
+**IMPORTANT**: Plan works in the main repository. NO worktrees created.
+
+```bash
+# Run from project root (same directory as /spec-kitty.specify):
+# You should already be here if you just ran /spec-kitty.specify
+
+# Creates:
+# - kitty-specs/###-feature/plan.md → In main repository
+# - Commits to main branch
+# - NO worktrees created
+```
+
+**Do NOT cd anywhere**. Stay in the main repository root.
+
 ## User Input
 
 ```text
@@ -11,25 +31,13 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
-## Location Pre-flight Check (CRITICAL for AI Agents)
+## Location Check (0.11.0+)
 
-Before proceeding with planning, verify you are in the correct working directory by running the shared pre-flight validation:
+This command runs in the **main repository**, not in a worktree.
 
-```python
-import sys; sys.path.insert(0, '/nix/store/dnbpai36npa6vq22kms9h09gy8gn6kb4-python3-3.13.9-env/lib/python3.13/site-packages'); sys.path.insert(0, '/nix/store/8pd3b2rxdjvzmqb00n0ik3a006dh65q0-spec-kitty-cli-0.9.4/lib/python3.13/site-packages'); from specify_cli.guards import validate_worktree_location
-
-# Validate location
-result = validate_worktree_location()
-if not result.is_valid:
-    print(result.format_error())
-    print("\nThis command MUST run from a feature worktree, not the main repository.")
-    exit(1)
-```
-
-**What this validates**:
-- Current branch follows the feature pattern like `001-feature-name`
-- You're not attempting to run from `main` or any release branch
-- The validator prints clear navigation instructions if you're outside the feature worktree
+- Verify you're on `main` (or `master`) before scaffolding plan.md
+- Planning artifacts live in `kitty-specs/###-feature/`
+- The plan template is committed to the main branch after generation
 
 **Path reference rule:** When you mention directories or files, provide either the absolute path or a path relative to the project root (for example, `kitty-specs/<feature>/tasks/`). Never refer to a folder by name alone.
 
@@ -63,16 +71,19 @@ Planning requirements (scale to complexity):
 ## Outline
 
 1. **Check planning discovery status**:
-   - If any planning questions remain unanswered or the user has not confirmed the **Engineering Alignment** summary, stay in the one-question cadence, capture the user’s response, update your internal table, and end with `WAITING_FOR_PLANNING_INPUT`. Do **not** surface the table. Do **not** run `.kittify/scripts/bash/setup-plan.sh --json` yet.
+   - If any planning questions remain unanswered or the user has not confirmed the **Engineering Alignment** summary, stay in the one-question cadence, capture the user's response, update your internal table, and end with `WAITING_FOR_PLANNING_INPUT`. Do **not** surface the table. Do **not** run the setup command yet.
    - Once every planning question has a concrete answer and the alignment summary is confirmed by the user, continue.
 
-2. **Setup**: Run `.kittify/scripts/bash/setup-plan.sh --json` from repo root and parse JSON for FEATURE_SPEC, IMPL_PLAN, SPECS_DIR, BRANCH.
+2. **Setup**: Run `spec-kitty agent feature setup-plan --json` from the repository root and parse JSON for:
+   - `result`: "success" or error message
+   - `plan_file`: Absolute path to the created plan.md
+   - `feature_dir`: Absolute path to the feature directory
 
-3. **Load context**: Read FEATURE_SPEC and `.kittify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
+3. **Load context**: Read FEATURE_SPEC and `.kittify/memory/constitution.md` if it exists. If the constitution file is missing, skip Constitution Check and note that it is absent. Load IMPL_PLAN template (already copied).
 
 4. **Execute plan workflow**: Follow the structure in IMPL_PLAN template, using the validated planning answers as ground truth:
    - Update Technical Context with explicit statements from the user or discovery research; mark `[NEEDS CLARIFICATION: …]` only when the user deliberately postpones a decision
-   - Fill Constitution Check section from constitution and challenge any conflicts directly with the user
+   - If a constitution exists, fill Constitution Check section from it and challenge any conflicts directly with the user. If no constitution exists, mark the section as skipped.
    - Evaluate gates (ERROR if violations unjustified or questions remain unanswered)
    - Phase 0: Generate research.md (commission research to resolve every outstanding clarification)
    - Phase 1: Generate data-model.md, contracts/, quickstart.md based on confirmed intent
@@ -122,7 +133,7 @@ Planning requirements (scale to complexity):
    - Output OpenAPI/GraphQL schema to `/contracts/`
 
 3. **Agent context update**:
-   - Run `.kittify/scripts/bash/update-agent-context.sh claude`
+   - Run ``
    - These scripts detect which AI agent is in use
    - Update the appropriate agent-specific context file
    - Add only new technology from current plan

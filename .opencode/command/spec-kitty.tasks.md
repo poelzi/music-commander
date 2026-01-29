@@ -1,9 +1,9 @@
 ---
 description: Generate grouped work packages with actionable subtasks and matching prompt files for the feature in one pass.
+scripts:
+  sh: scripts/bash/check-prerequisites.sh --json --include-tasks
+  ps: scripts/powershell/check-prerequisites.ps1 -Json -IncludeTasks
 ---
-
-*Path: [.kittify/templates/commands/tasks.md](.kittify/templates/commands/tasks.md)*
-
 
 ## User Input
 
@@ -33,14 +33,11 @@ If you're on the `main` branch:
 3. Verify you're in the right place: `git branch --show-current` should show the feature branch
 4. Then re-run this command
 
-The script will fail if you're not in a feature worktree.
-**Path reference rule:** When you mention directories or files, provide either the absolute path or a path relative to the project root (for example, `kitty-specs/<feature>/tasks/`). Never refer to a folder by name alone.
-
-This is intentional - worktrees provide isolation for parallel feature development.
+The script will fail if you're not in a feature worktree. This is intentional - worktrees provide isolation for parallel feature development.
 
 ## Outline
 
-1. **Setup**: Run `.kittify/scripts/bash/check-prerequisites.sh --json --include-tasks` from repo root and capture `FEATURE_DIR` plus `AVAILABLE_DOCS`. All paths must be absolute.
+1. **Setup**: Run `{SCRIPT}` from repo root and capture `FEATURE_DIR` plus `AVAILABLE_DOCS`. All paths must be absolute.
 
    **CRITICAL**: The script returns JSON with `FEATURE_DIR` as an ABSOLUTE path (e.g., `/Users/robert/Code/new_specify/kitty-specs/001-feature-name`).
 
@@ -84,24 +81,18 @@ This is intentional - worktrees provide isolation for parallel feature developme
 
 6. **Generate prompt files (one per work package)**:
    - **CRITICAL PATH RULE**: All task directories and prompt files MUST be created under `FEATURE_DIR/tasks/`, NOT in the repo root!
-   - **v0.9.0+ FLAT STRUCTURE**: All WP files go directly in `FEATURE_DIR/tasks/`, NOT in subdirectories
-   - Correct structure: `FEATURE_DIR/tasks/WP01-slug.md`, `FEATURE_DIR/tasks/WP02-slug.md`
-   - WRONG (do not create):
-     - ❌ `FEATURE_DIR/tasks/planned/WP01.md` (no lane subdirectories!)
-     - ❌ `FEATURE_DIR/tasks/phase-1/WP01.md` (no phase subdirectories!)
-     - ❌ `FEATURE_DIR/tasks/backend/WP01.md` (no organizational subdirectories!)
-     - ❌ `/tasks/WP01.md` (missing FEATURE_DIR prefix)
-   - **NEVER CREATE SUBDIRECTORIES** in `tasks/` - even for phases, components, or organization
+   - Correct structure: `FEATURE_DIR/tasks/planned/WPxx-slug.md`, `FEATURE_DIR/tasks/doing/`, `FEATURE_DIR/tasks/for_review/`, `FEATURE_DIR/tasks/done/`
+   - WRONG (do not create): `/tasks/planned/`, `tasks/planned/`, or any path not under FEATURE_DIR
+   - Ensure `FEATURE_DIR/tasks/planned/` exists (create `FEATURE_DIR/tasks/doing/`, `FEATURE_DIR/tasks/for_review/`, `FEATURE_DIR/tasks/done/` if missing)
+   - Create optional phase subfolders under each lane when teams will benefit (e.g., `FEATURE_DIR/tasks/planned/phase-1-setup/`)
    - For each work package:
      - Derive a kebab-case slug from the title; filename: `WPxx-slug.md`
-     - Full path example: `FEATURE_DIR/tasks/WP01-create-html-page.md` (use ABSOLUTE path from FEATURE_DIR variable)
-     - **ALWAYS place directly in FEATURE_DIR/tasks/**, never in a subdirectory
+     - Full path example: `FEATURE_DIR/tasks/planned/WP01-create-html-page.md` (use ABSOLUTE path from FEATURE_DIR variable)
      - Use `.kittify/templates/task-prompt-template.md` to capture:
-       - Frontmatter with `work_package_id`, `subtasks` array, `lane: "planned"`, `phase` field (for organization), history entry
+       - Frontmatter with `work_package_id`, `subtasks` array, `lane=planned`, history entry
        - Objective, context, detailed guidance per subtask
        - Test strategy (only if requested)
        - Definition of Done, risks, reviewer guidance
-   - **Organization**: Use frontmatter fields (`phase: "Phase 1"`, `component: "Backend"`) instead of directories
      - Update `tasks.md` to reference the prompt filename
    - Keep prompts exhaustive enough that a new agent can complete the work package unaided
 
@@ -113,7 +104,7 @@ This is intentional - worktrees provide isolation for parallel feature developme
   - Prompt generation stats (files written, directory structure, any skipped items with rationale)
    - Next suggested command (e.g., `/spec-kitty.analyze` or `/spec-kitty.implement`)
 
-Context for work-package planning: $ARGUMENTS
+Context for work-package planning: {ARGS}
 
 The combination of `tasks.md` and the bundled prompt files must enable a new engineer to pick up any work package and deliver it end-to-end without further specification spelunking.
 
