@@ -9,7 +9,7 @@ subtasks:
   - "T028"
 title: "View Integration Tests"
 phase: "Phase 1 - Core Tests"
-lane: "planned"
+lane: "doing"
 assignee: ""
 agent: ""
 shell_pid: ""
@@ -128,3 +128,4 @@ history:
 ## Activity Log
 
 - 2026-01-29T17:54:16Z - system - lane=planned - Prompt created.
+- 2026-01-29T18:47:54Z – unknown – lane=doing – Moved to doing
