@@ -57,11 +57,11 @@
 **Prompt**: `kitty-specs/004-real-git-annex-integration-tests/tasks/WP02-git-annex-fixtures.md`
 
 ### Included Subtasks
-- [ ] T007 Create `audio_files` session-scoped fixture: generates 6 audio files (2 mp3, 2 flac, 2 aiff) with distinct metadata per the plan's track table
-- [ ] T008 Create `origin_repo` session-scoped fixture: git init, git annex init, add files, commit, set git-annex metadata for all 6 tracks
-- [ ] T009 Create `partial_clone` session-scoped fixture: clone origin, `git annex get` first 3 files only
-- [ ] T010 Create `origin_cache_session` fixture: build cache against origin repo, yield session
-- [ ] T011 Create `clone_cache_session` fixture: build cache against partial clone, yield session
+- [x] T007 Create `audio_files` session-scoped fixture: generates 6 audio files (2 mp3, 2 flac, 2 aiff) with distinct metadata per the plan's track table
+- [x] T008 Create `origin_repo` session-scoped fixture: git init, git annex init, add files, commit, set git-annex metadata for all 6 tracks
+- [x] T009 Create `partial_clone` session-scoped fixture: clone origin, `git annex get` first 3 files only
+- [x] T010 Create `origin_cache_session` fixture: build cache against origin repo, yield session
+- [x] T011 Create `clone_cache_session` fixture: build cache against partial clone, yield session
 
 ### Implementation Notes
 - Use `tmp_path_factory` for session-scoped temp dirs
