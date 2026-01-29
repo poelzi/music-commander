@@ -132,7 +132,7 @@
 ### Included Subtasks
 - [x] T029 Create `music_commander/view/__init__.py`
 - [x] T030 Create `music_commander/view/template.py` — Jinja2 environment with custom filters (`round_to`)
-- [ ] T031 Create `music_commander/view/symlinks.py` — Symlink tree creation logic
+- [x] T031 Create `music_commander/view/symlinks.py` — Symlink tree creation logic
 - [ ] T032 Implement multi-value field expansion (crate → one symlink per value)
 - [ ] T033 Implement path sanitization (filesystem-safe characters)
 - [ ] T034 Implement duplicate path handling (numeric suffix)
