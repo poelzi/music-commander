@@ -43,7 +43,7 @@
 - [x] T006 Create `music_commander/cache/builder.py` — Full cache build from git-annex branch
 - [x] T007 Implement raw git-annex branch reader (`git ls-tree` + `git cat-file --batch` for `.log.met` files)
 - [x] T008 Implement metadata log parser (parse `key=value` format from `.log.met` content)
-- [ ] T009 Implement key-to-file mapper (`git annex find --format='${key}\t${file}\n'`)
+- [x] T009 Implement key-to-file mapper (`git annex find --format='${key}\t${file}\n'`)
 - [ ] T010 Implement incremental refresh via `git diff-tree` on git-annex branch
 - [ ] T011 Create FTS5 virtual table for full-text search on artist, title, album, genre, file
 - [ ] T012 Create `tests/test_cache_builder.py` — Unit tests for builder, parser, incremental refresh
