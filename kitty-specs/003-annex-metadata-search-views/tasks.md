@@ -141,7 +141,7 @@
 - [x] T037 Create `music_commander/commands/view.py` — CLI view command
 - [x] T038 Create `tests/test_view_template.py` — Unit tests for template rendering
 - [x] T039 Create `tests/test_view_symlinks.py` — Unit tests for symlink creation
-- [ ] T040 Create `tests/test_cmd_view.py` — CLI integration tests
+- [x] T040 Create `tests/test_cmd_view.py` — CLI integration tests
 
 ### Implementation Notes
 - Jinja2 sandbox environment for safety
