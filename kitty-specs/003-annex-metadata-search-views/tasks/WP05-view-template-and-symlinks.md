@@ -15,11 +15,11 @@ subtasks:
   - "T040"
 title: "View Template & Symlink Export"
 phase: "Phase 1 - Core"
-lane: "for_review"
+lane: "doing"
 dependencies: ["WP04"]
 assignee: ""
 agent: "claude-opus"
-shell_pid: ""
+shell_pid: "194846"
 review_status: ""
 reviewed_by: ""
 history:
@@ -186,3 +186,4 @@ spec-kitty implement WP05 --base WP04
 - 2026-01-29T02:41:50Z -- system -- lane=planned -- Prompt created.
 - 2026-01-29T13:41:07Z – claude-opus – shell_pid= – lane=doing – Starting implementation of WP05: View Export
 - 2026-01-29T13:46:50Z – claude-opus – shell_pid= – lane=for_review – All 40 tests pass (18 template, 18 symlinks, 4 CLI). 173 total tests green. Commit 5a4e80e.
+- 2026-01-29T14:23:35Z – claude-opus – shell_pid=194846 – lane=doing – Started review via workflow command
