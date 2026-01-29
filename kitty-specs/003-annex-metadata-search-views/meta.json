@@ -1,0 +1,8 @@
+{
+  "feature_number": "003",
+  "slug": "003-annex-metadata-search-views",
+  "friendly_name": "Annex Metadata Search & Symlink Views",
+  "mission": "software-dev",
+  "source_description": "add search capabilities similar to the mixxx tracks db, but based on the metadata in git annex and filename. add capabilities to export git annex views based on filtering by this search. I want a folder that shows the files in proper subfolders when i specify a filter and pattern like this: \"dark psy rating:>3\" pattern \"dark/%[bpm|round(10)]/%bpm% - %artist% - %track%\". The pattern is only an example.",
+  "created_at": "2026-01-29T00:00:00Z"
+}
