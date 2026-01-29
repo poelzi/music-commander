@@ -3,9 +3,9 @@
 # DO NOT EDIT MANUALLY
 
 spec_kitty:
-  version: 0.13.7
+  version: 0.13.8
   initialized_at: '2026-01-06T17:01:40.081700'
-  last_upgraded_at: '2026-01-28T17:45:00.004701'
+  last_upgraded_at: '2026-01-29T21:33:31.202290'
 environment:
   python_version: 3.13.9
   platform: linux
@@ -109,3 +109,9 @@ migrations:
     applied_at: '2026-01-28T17:45:00.004693'
     result: skipped
     notes: Not applicable
+  - id: 0.13.8_target_branch
+    applied_at: '2026-01-29T21:33:31.202231'
+    result: success
+    notes: Added target_branch=main to 004-real-git-annex-integration-tests; Added
+      target_branch=main to 002-mixxx-to-git; Added target_branch=main to 003-annex-metadata-search-views;
+      Added target_branch=main to 001-core-framework-with

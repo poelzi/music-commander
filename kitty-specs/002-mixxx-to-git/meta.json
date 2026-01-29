@@ -31,5 +31,6 @@
   "feature_number": "002",
   "friendly_name": "Mixxx to Git-Annex Metadata Sync",
   "slug": "002-mixxx-to-git",
-  "source_description": "Sync Mixxx library metadata (rating, BPM, color, name, artist, title, album, crates) to git-annex metadata on music files. One-way sync from Mixxx to git-annex, designed for future bidirectional support. Manual CLI command trigger. Default to tracks changed since last sync, with option for full resync or specific files. Always overwrite git-annex metadata with Mixxx values. Research and implement efficient batching to minimize git history bloat."
+  "source_description": "Sync Mixxx library metadata (rating, BPM, color, name, artist, title, album, crates) to git-annex metadata on music files. One-way sync from Mixxx to git-annex, designed for future bidirectional support. Manual CLI command trigger. Default to tracks changed since last sync, with option for full resync or specific files. Always overwrite git-annex metadata with Mixxx values. Research and implement efficient batching to minimize git history bloat.",
+  "target_branch": "main"
 }

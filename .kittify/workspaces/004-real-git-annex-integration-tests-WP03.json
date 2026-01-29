@@ -1,0 +1,14 @@
+{
+  "wp_id": "WP03",
+  "feature_slug": "004-real-git-annex-integration-tests",
+  "worktree_path": ".worktrees/004-real-git-annex-integration-tests-WP03",
+  "branch_name": "004-real-git-annex-integration-tests-WP03",
+  "base_branch": "004-real-git-annex-integration-tests-WP02",
+  "base_commit": "c0006eedf11bf52dd2c7a2b3865976012f3b4db1",
+  "dependencies": [
+    "WP02"
+  ],
+  "created_at": "2026-01-29T18:46:04.524590+00:00",
+  "created_by": "implement-command",
+  "vcs_backend": "git"
+}
