@@ -7,12 +7,19 @@
       "accepted_from_commit": "30ec6b4d50f0511517b0944a00ed2c045f18919f",
       "branch": "master",
       "mode": "local"
+    },
+    {
+      "accepted_at": "2026-01-29T15:21:48Z",
+      "accepted_by": "poelzi",
+      "accepted_from_commit": "68931e3c5e081ff766369e687f8292748bea5716",
+      "branch": "master",
+      "mode": "local"
     }
   ],
   "acceptance_mode": "local",
-  "accepted_at": "2026-01-29T15:15:17Z",
+  "accepted_at": "2026-01-29T15:21:48Z",
   "accepted_by": "poelzi",
-  "accepted_from_commit": "30ec6b4d50f0511517b0944a00ed2c045f18919f",
+  "accepted_from_commit": "68931e3c5e081ff766369e687f8292748bea5716",
   "created_at": "2026-01-29T00:00:00Z",
   "feature_number": "003",
   "friendly_name": "Annex Metadata Search & Symlink Views",
