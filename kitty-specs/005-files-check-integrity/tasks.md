@@ -145,13 +145,13 @@
 **Prompt**: `tasks/WP05-tests-and-polish.md`
 
 ### Included Subtasks
-- [ ] T027 Add CLI integration tests in `tests/integration/test_check_command.py` (mock subprocess calls)
-- [ ] T028 Test edge case: missing checker tool (verify "checker_missing" status)
-- [ ] T029 Test edge case: unrecognized file extension (verify ffmpeg fallback)
-- [ ] T030 Test edge case: not-present annexed file (verify "not_present" status)
-- [ ] T031 Test JSON report structure validation
-- [ ] T032 Test `--dry-run` output format
-- [ ] T033 Verify `resolve_args_to_files()` integration with `files check`
+- [x] T027 Add CLI integration tests in `tests/integration/test_check_command.py` (mock subprocess calls)
+- [x] T028 Test edge case: missing checker tool (verify "checker_missing" status)
+- [x] T029 Test edge case: unrecognized file extension (verify ffmpeg fallback)
+- [x] T030 Test edge case: not-present annexed file (verify "not_present" status)
+- [x] T031 Test JSON report structure validation
+- [x] T032 Test `--dry-run` output format
+- [x] T033 Verify `resolve_args_to_files()` integration with `files check`
 
 ### Implementation Notes
 - Mock `subprocess.run()` calls to avoid requiring actual checker tools in CI.
