@@ -50,10 +50,10 @@
 **Prompt**: `tasks/WP02-auto-detect-utility.md`
 
 ### Included Subtasks
-- [ ] T009 Implement `resolve_args_to_files()` in `music_commander/utils/search_ops.py`
-- [ ] T010 Implement directory recursive scanning for path arguments
-- [ ] T011 Implement "list all annexed files" fallback when no args provided
-- [ ] T012 Add unit tests in `tests/unit/test_search_ops_resolve.py`
+- [x] T009 Implement `resolve_args_to_files()` in `music_commander/utils/search_ops.py`
+- [x] T010 Implement directory recursive scanning for path arguments
+- [x] T011 Implement "list all annexed files" fallback when no args provided
+- [x] T012 Add unit tests in `tests/unit/test_search_ops_resolve.py`
 
 ### Implementation Notes
 - For each positional argument: check if `Path(arg)` exists relative to CWD, then relative to repo root. If it exists as a file or directory, treat as path. Otherwise, treat as search query term.
