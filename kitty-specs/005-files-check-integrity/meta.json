@@ -4,5 +4,7 @@
   "friendly_name": "Files Check Integrity",
   "mission": "software-dev",
   "source_description": "add a \"files check\" command that checks the files for problems. depending on the filetype use \"flac -t\" or other file format checkers that they are up to spec. Ensure nix has the deps. The command should create a output file that can be used later for automatic repair progress.",
-  "created_at": "2026-01-30T00:00:00Z"
+  "created_at": "2026-01-30T00:00:00Z",
+  "vcs": "git",
+  "vcs_locked_at": "2026-01-30T21:34:07.610177+00:00"
 }
