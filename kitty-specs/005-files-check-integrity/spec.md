@@ -113,8 +113,8 @@ A user wants to preview which files would be checked and with which tool without
 
 - **FR-001**: The command MUST be registered as `files check` under the existing `files` command group.
 - **FR-002**: With no arguments, the command MUST check all locally-present annexed files in the repository.
-- **FR-003**: The command MUST accept an optional search query (same syntax as `files get`) to filter files.
-- **FR-004**: The command MUST accept optional file/directory path arguments for direct path-based selection. Directories MUST be scanned recursively.
+- **FR-003**: The command MUST accept optional positional arguments that are auto-detected as either file/directory paths or search query terms. If an argument resolves to an existing file or directory on disk, it is treated as a path (directories scanned recursively); otherwise it is treated as a search query term (same syntax as `files get`).
+- **FR-004**: The auto-detection logic (path vs search query) MUST be implemented as a shared utility in `music_commander/utils/` so it can be reused by `files get`, `files drop`, and future `files` subcommands.
 - **FR-005**: The command MUST select the checking tool based on file extension:
   - `.flac` -> `flac -t -s -w`
   - `.mp3` -> `mp3val` (structural) then `ffmpeg` (full decode)
@@ -150,9 +150,16 @@ A user wants to preview which files would be checked and with which tool without
 - **SC-004**: Parallel checking with `--jobs N` reduces wall-clock time proportionally for I/O-bound checks.
 - **SC-005**: Files not present locally are clearly distinguished from files that failed validation.
 
+## Clarifications
+
+### Session 2026-01-30
+
+- Q: How should the command distinguish between search query arguments and file/directory path arguments? → A: Auto-detect -- if the argument is an existing file or directory on disk, treat it as a path; otherwise treat it as a search query term. This detection logic MUST be implemented as a shared utility so it can be reused by other `files` subcommands (`get`, `drop`, etc.).
+- Q: For two-tier checks (e.g., mp3val + ffmpeg), if one tool passes but the other fails, what is the overall status? → A: Strict -- any tool reporting a problem means the file status is "error". Both tools' outputs are preserved in the result.
+
 ## Assumptions
 
 - The user's Nix environment provides all checker tools. Non-Nix environments may lack some tools; the command degrades gracefully by skipping unsupported formats.
 - File format is determined by extension, not by probing file contents (consistent with how the rest of music-commander operates).
 - The ffmpeg fallback checks both exit code AND stderr output to detect non-fatal errors that ffmpeg reports but does not fail on.
-- For formats with two-tier checking (MP3: mp3val + ffmpeg; OGG: ogginfo + ffmpeg; WAV: shntool + sox), both tools run and errors from either are reported.
+- For formats with two-tier checking (MP3: mp3val + ffmpeg; OGG: ogginfo + ffmpeg; WAV: shntool + sox), both tools always run. If ANY tool reports a problem, the file's overall status is "error". Both tools' outputs are preserved in the result entry.
