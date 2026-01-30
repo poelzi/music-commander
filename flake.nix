@@ -80,6 +80,11 @@
             python-music-cmd
             pkgs.git-annex
             pkgs.ffmpeg
+            pkgs.flac
+            pkgs.mp3val
+            pkgs.shntool
+            pkgs.vorbis-tools # provides ogginfo
+            pkgs.sox
             spec-kitty.packages.${system}.default
           ];
 
