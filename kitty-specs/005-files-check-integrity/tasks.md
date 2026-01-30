@@ -116,10 +116,10 @@
 **Prompt**: `tasks/WP04-parallel-checking.md`
 
 ### Included Subtasks
-- [ ] T023 Implement `ThreadPoolExecutor`-based parallel check loop
-- [ ] T024 Implement thread-safe result collection with progress callbacks
-- [ ] T025 Ensure `MultilineFileProgress` handles concurrent `start_file`/`complete_file` calls
-- [ ] T026 Add `--jobs` / `-J` Click option (default 1; jobs=1 uses sequential loop)
+- [x] T023 Implement `ThreadPoolExecutor`-based parallel check loop
+- [x] T024 Implement thread-safe result collection with progress callbacks
+- [x] T025 Ensure `MultilineFileProgress` handles concurrent `start_file`/`complete_file` calls
+- [x] T026 Add `--jobs` / `-J` Click option (default 1; jobs=1 uses sequential loop)
 
 ### Implementation Notes
 - When `--jobs > 1`, submit `check_file()` calls to a `ThreadPoolExecutor(max_workers=jobs)`.
