@@ -14,14 +14,14 @@
 **Prompt**: `tasks/WP01-nix-deps-and-checker-registry.md`
 
 ### Included Subtasks
-- [ ] T001 Add `mp3val`, `shntool`, `vorbis-tools`, `sox` to `flake.nix` devShell `buildInputs`
-- [ ] T002 Create `music_commander/utils/checkers.py` with data classes: `CheckerSpec`, `ToolResult`, `CheckResult`, `CheckReport`
-- [ ] T003 [P] Implement `CHECKER_REGISTRY` mapping extensions to checker specs
-- [ ] T004 [P] Implement tool-specific result parsers: `_parse_flac_result`, `_parse_mp3val_result`, `_parse_ffmpeg_result`, `_parse_shntool_result`, `_parse_sox_result`, `_parse_ogginfo_result`
-- [ ] T005 Implement `check_file(repo_path, file_path) -> CheckResult` function
-- [ ] T006 Implement `check_tool_available(tool_name) -> bool` using `shutil.which()`
-- [ ] T007 Implement `write_report(report, output_path)` JSON serializer
-- [ ] T008 Add unit tests in `tests/unit/test_checkers.py`
+- [x] T001 Add `mp3val`, `shntool`, `vorbis-tools`, `sox` to `flake.nix` devShell `buildInputs`
+- [x] T002 Create `music_commander/utils/checkers.py` with data classes: `CheckerSpec`, `ToolResult`, `CheckResult`, `CheckReport`
+- [x] T003 [P] Implement `CHECKER_REGISTRY` mapping extensions to checker specs
+- [x] T004 [P] Implement tool-specific result parsers: `_parse_flac_result`, `_parse_mp3val_result`, `_parse_ffmpeg_result`, `_parse_shntool_result`, `_parse_sox_result`, `_parse_ogginfo_result`
+- [x] T005 Implement `check_file(repo_path, file_path) -> CheckResult` function
+- [x] T006 Implement `check_tool_available(tool_name) -> bool` using `shutil.which()`
+- [x] T007 Implement `write_report(report, output_path)` JSON serializer
+- [x] T008 Add unit tests in `tests/unit/test_checkers.py`
 
 ### Implementation Notes
 - Each `CheckerSpec` holds tool name, command template list, and a parser callable.
