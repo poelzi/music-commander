@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import click
@@ -703,21 +704,11 @@ def check(
             info(f"Checking {len(present_files)} files...")
 
         with MultilineFileProgress(total=len(present_files), operation="Checking") as progress:
-            for file_path in present_files:
-                progress.start_file(file_path)
-
-                # Check the file
-                result = check_file(file_path, repo_path)
-                results.append(result)
-
-                # Update progress
-                success = result.status == "ok"
-                message = ""
-                if not success and result.errors:
-                    # Show first error message (truncated)
-                    message = result.errors[0].output[:80].replace("\n", " ")
-
-                progress.complete_file(file_path, success=success, message=message)
+            # Choose sequential or parallel checking based on jobs parameter
+            if jobs > 1:
+                _check_files_parallel(present_files, repo_path, results, progress, jobs)
+            else:
+                _check_files_sequential(present_files, repo_path, results, progress)
 
         duration = time.time() - start_time
 
@@ -781,6 +772,79 @@ def check(
     if has_errors:
         raise SystemExit(EXIT_PARTIAL_FAILURE)
     raise SystemExit(EXIT_SUCCESS)
+
+
+def _check_files_sequential(
+    files: list[Path],
+    repo_path: Path,
+    results: list[CheckResult],
+    progress: MultilineFileProgress,
+) -> None:
+    """Check files sequentially (jobs=1)."""
+    for file_path in files:
+        progress.start_file(file_path)
+
+        # Check the file
+        result = check_file(file_path, repo_path)
+        results.append(result)
+
+        # Update progress
+        success = result.status == "ok"
+        message = ""
+        if not success and result.errors:
+            # Show first error message (truncated)
+            message = result.errors[0].output[:80].replace("\n", " ")
+
+        progress.complete_file(file_path, success=success, message=message)
+
+
+def _check_files_parallel(
+    files: list[Path],
+    repo_path: Path,
+    results: list[CheckResult],
+    progress: MultilineFileProgress,
+    jobs: int,
+) -> None:
+    """Check files in parallel using ThreadPoolExecutor.
+
+    Progress updates happen from the main thread as futures complete,
+    ensuring thread-safe interaction with Rich.
+    """
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        # Submit all files for checking
+        future_to_file = {
+            executor.submit(check_file, file_path, repo_path): file_path for file_path in files
+        }
+
+        # Process results as they complete
+        for future in as_completed(future_to_file):
+            file_path = future_to_file[future]
+
+            try:
+                result = future.result()
+                results.append(result)
+
+                # Update progress (called from main thread)
+                success = result.status == "ok"
+                message = ""
+                if not success and result.errors:
+                    # Show first error message (truncated)
+                    message = result.errors[0].output[:80].replace("\n", " ")
+
+                progress.complete_file(file_path, success=success, message=message)
+
+            except Exception as e:
+                # Handle unexpected errors in worker thread
+                rel_path = str(file_path.relative_to(repo_path))
+                results.append(
+                    CheckResult(
+                        file=rel_path,
+                        status="error",
+                        tools=[],
+                        errors=[],
+                    )
+                )
+                progress.complete_file(file_path, success=False, message=str(e)[:80])
 
 
 def _show_check_summary(repo_path: Path, results: list[CheckResult], report: CheckReport) -> None:
