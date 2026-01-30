@@ -80,16 +80,16 @@
 **Prompt**: `tasks/WP03-files-check-command.md`
 
 ### Included Subtasks
-- [ ] T013 Register `files check` subcommand in `music_commander/commands/get_commit_files.py` with Click decorators
-- [ ] T014 Implement argument resolution: no args (all files), path/query auto-detect via `resolve_args_to_files()`
-- [ ] T015 Implement file filtering: annexed files only, separate present vs not-present
-- [ ] T016 Implement tool availability pre-check with warnings for missing tools
-- [ ] T017 Implement `--dry-run` mode: list files with their checker tool
-- [ ] T018 Implement main check loop with `MultilineFileProgress(operation="Checking")`
-- [ ] T019 Implement JSON report writing with `try/finally` for SIGINT safety
-- [ ] T020 Implement summary table display using `show_operation_summary()` pattern
-- [ ] T021 Add `--output` / `-o` option for custom output path
-- [ ] T022 Add `--verbose` / `-v` option to show per-file checker commands
+- [x] T013 Register `files check` subcommand in `music_commander/commands/get_commit_files.py` with Click decorators
+- [x] T014 Implement argument resolution: no args (all files), path/query auto-detect via `resolve_args_to_files()`
+- [x] T015 Implement file filtering: annexed files only, separate present vs not-present
+- [x] T016 Implement tool availability pre-check with warnings for missing tools
+- [x] T017 Implement `--dry-run` mode: list files with their checker tool
+- [x] T018 Implement main check loop with `MultilineFileProgress(operation="Checking")`
+- [x] T019 Implement JSON report writing with `try/finally` for SIGINT safety
+- [x] T020 Implement summary table display using `show_operation_summary()` pattern
+- [x] T021 Add `--output` / `-o` option for custom output path
+- [x] T022 Add `--verbose` / `-v` option to show per-file checker commands
 
 ### Implementation Notes
 - Follow the exact pattern of `files get` and `files drop` commands for Click registration, context handling, and exit codes.
