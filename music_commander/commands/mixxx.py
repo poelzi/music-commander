@@ -46,7 +46,16 @@ EXIT_DB_ERROR = 2
 EXIT_NOT_ANNEX_REPO = 3
 
 
-@click.command("sync-metadata")
+@click.group("mixxx")
+def cli() -> None:
+    """Mixxx DJ software integration commands.
+
+    Commands for syncing and managing Mixxx library metadata.
+    """
+    pass
+
+
+@cli.command("sync")
 @click.option(
     "--all",
     "-a",
@@ -75,7 +84,7 @@ EXIT_NOT_ANNEX_REPO = 3
     type=click.Path(exists=True, path_type=Path),
 )
 @pass_context
-def cli(
+def sync(
     ctx: Context,
     sync_all: bool,
     dry_run: bool,
@@ -95,23 +104,23 @@ def cli(
 
     \b
       # Sync tracks changed since last sync
-      music-commander sync-metadata
+      music-commander mixxx sync
 
     \b
       # Force sync all tracks
-      music-commander sync-metadata --all
+      music-commander mixxx sync --all
 
     \b
       # Preview changes without syncing
-      music-commander sync-metadata --dry-run
+      music-commander mixxx sync --dry-run
 
     \b
       # Sync specific directory
-      music-commander sync-metadata ./darkpsy/
+      music-commander mixxx sync ./darkpsy/
 
     \b
       # Sync with intermediate commits every 1000 files
-      music-commander sync-metadata --batch-size 1000
+      music-commander mixxx sync --batch-size 1000
 
     After syncing, query tracks with git-annex:
 
@@ -175,6 +184,128 @@ def cli(
     # Exit with appropriate code
     if result.failed:
         raise SystemExit(EXIT_PARTIAL_FAILURE)
+    raise SystemExit(EXIT_SUCCESS)
+
+
+@cli.command("backup")
+@click.option(
+    "--path",
+    "-p",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Backup destination path (default: from config or [repo]/Mixxx/mixxxdb.sqlite)",
+)
+@click.option(
+    "--message",
+    "-m",
+    type=str,
+    default=None,
+    help="Custom commit message (default: 'Backup Mixxx database - YYYY-MM-DD HH:MM:SS')",
+)
+@pass_context
+def backup(
+    ctx: Context,
+    path: Path | None,
+    message: str | None,
+) -> None:
+    """Backup Mixxx database to git-annex.
+
+    Copies the Mixxx database to a git-annex repository and commits it.
+    The file is unlocked first (for editing), then copied, then committed.
+
+    The backup path can be configured in the config file under
+    [paths].mixxx_backup_path. Default is [music_repo]/Mixxx/mixxxdb.sqlite.
+
+    Examples:
+
+    \b
+      # Backup with default settings
+      music-commander mixxx backup
+
+    \b
+      # Backup to specific path
+      music-commander mixxx backup --path ./backups/mixxx.db
+
+    \b
+      # Backup with custom commit message
+      music-commander mixxx backup --message "Pre-festival backup"
+    """
+    from music_commander.utils.git import (
+        annex_init_file,
+        annex_unlock_file,
+        git_commit_file,
+        is_file_in_git_annex,
+    )
+
+    # Get config
+    config = ctx.config
+    if config is None:
+        error("Configuration not loaded")
+        raise SystemExit(EXIT_NOT_ANNEX_REPO)
+
+    # Determine backup path
+    if path is not None:
+        backup_path = path.expanduser().resolve()
+    elif config.mixxx_backup_path is not None:
+        backup_path = config.mixxx_backup_path.expanduser().resolve()
+    else:
+        # Default: [music_repo]/Mixxx/mixxxdb.sqlite
+        backup_path = config.music_repo / "Mixxx" / "mixxxdb.sqlite"
+
+    # Validate source database exists
+    if not config.mixxx_db.exists():
+        error(
+            f"Mixxx database not found: {config.mixxx_db}",
+            hint="Check mixxx_db path in config",
+        )
+        raise SystemExit(EXIT_DB_ERROR)
+
+    # Ensure backup directory exists
+    backup_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Check if backup file is already in git-annex
+    if backup_path.exists() and not is_file_in_git_annex(config.music_repo, backup_path):
+        # File exists but not in annex - we need to add it first
+        info(f"Initializing backup file in git-annex: {backup_path}")
+        # Copy file temporarily to add it
+        import shutil
+        temp_backup = backup_path.with_suffix('.sqlite.tmp')
+        shutil.copy2(config.mixxx_db, temp_backup)
+        shutil.move(temp_backup, backup_path)
+
+        if not annex_init_file(config.music_repo, backup_path):
+            error(f"Failed to initialize backup file in git-annex: {backup_path}")
+            raise SystemExit(EXIT_PARTIAL_FAILURE)
+        success(f"Initialized backup file in git-annex: {backup_path}")
+
+    # Unlock the file for editing
+    if backup_path.exists():
+        info(f"Unlocking backup file: {backup_path}")
+        if not annex_unlock_file(config.music_repo, backup_path):
+            error(f"Failed to unlock backup file: {backup_path}")
+            raise SystemExit(EXIT_PARTIAL_FAILURE)
+
+    # Copy the database
+    try:
+        import shutil
+        info(f"Copying database from {config.mixxx_db} to {backup_path}")
+        shutil.copy2(config.mixxx_db, backup_path)
+    except Exception as e:
+        error(f"Failed to copy database: {e}")
+        raise SystemExit(EXIT_PARTIAL_FAILURE)
+
+    # Commit with message
+    if message is None:
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        message = f"Backup Mixxx database - {timestamp}"
+
+    info(f"Committing backup: {message}")
+    if not git_commit_file(config.music_repo, backup_path, message):
+        error(f"Failed to commit backup file")
+        raise SystemExit(EXIT_PARTIAL_FAILURE)
+
+    success(f"Successfully backed up Mixxx database to {backup_path}")
     raise SystemExit(EXIT_SUCCESS)
 
 

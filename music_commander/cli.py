@@ -100,10 +100,10 @@ def cli(
     Examples:
 
         # Fetch files from recent commits
-        music-commander get-commit-files HEAD~5..HEAD
+        music-commander files get-commit HEAD~5..HEAD
 
         # Show help for a specific command
-        music-commander get-commit-files --help
+        music-commander files get-commit --help
     """
     # Initialize context
     ctx.ensure_object(Context)

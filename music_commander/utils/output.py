@@ -109,7 +109,10 @@ def pager_print(content: str, *, header_lines: int = 0) -> None:
         sys.stdout.flush()
 
 
-from rich.console import Console
+from pathlib import Path
+
+from rich.console import Console, Group
+from rich.live import Live
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -249,3 +252,156 @@ def print_path(path: str, prefix: str = "") -> None:
         console.print(f"{prefix} [path]{path}[/path]")
     else:
         console.print(f"[path]{path}[/path]")
+
+
+class MultilineFileProgress:
+    """Multiline progress display for file operations.
+
+    Shows permanently-printed completed/failed lines above a live region
+    that contains in-flight file names and a progress bar:
+
+        Fetched: file1
+        Fetched: file2
+        Fetching: currentfile      <- live (cleared on next update)
+        Fetching: currentfile2     <- live
+        [bar] 2/100 2% 0:00:05 4:57:16  <- live
+
+    Usage:
+        with MultilineFileProgress(total=100, operation="Fetching") as progress:
+            for file_path in files:
+                progress.start_file(file_path)
+                # ... do work ...
+                progress.complete_file(file_path, success=True)
+    """
+
+    def __init__(self, total: int, operation: str = "Processing"):
+        """Initialize multiline progress display.
+
+        Args:
+            total: Total number of files to process.
+            operation: Operation name (e.g., "Fetching", "Dropping").
+        """
+        self.total = total
+        self.operation = operation
+        # Derive past-tense label: "Fetching" -> "Fetched", "Dropping" -> "Dropped"
+        self._completed_label = (
+            operation[:-3] + "ed" if operation.endswith("ing") else operation + "ed"
+        )
+        self.current = 0
+        self.current_file: Path | None = None
+        self._progress: Progress | None = None
+        self._task_id: int | None = None
+        self._live: Live | None = None
+        self._in_flight: list[Path] = []
+
+    def _build_renderable(self) -> Group:
+        """Build the live-region renderable: in-flight lines + progress bar."""
+        parts: list = []
+        for fp in self._in_flight:
+            parts.append(console.render_str(f"  {self.operation}: [path]{fp}[/path]"))
+        if self._progress:
+            parts.append(self._progress)
+        return Group(*parts)
+
+    def __enter__(self):
+        """Enter context - start Live display with progress bar."""
+        self._progress = Progress(
+            SpinnerColumn(),
+            BarColumn(bar_width=40),
+            MofNCompleteColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
+            TimeRemainingColumn(),
+        )
+        self._task_id = self._progress.add_task(self.operation, total=self.total)
+        self._live = Live(
+            self._build_renderable(),
+            console=console,
+            refresh_per_second=10,
+        )
+        self._live.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context - stop Live display."""
+        if self._live:
+            self._live.__exit__(exc_type, exc_val, exc_tb)
+            self._live = None
+        self._progress = None
+        return False
+
+    def _refresh(self) -> None:
+        """Update the live display with current in-flight files and progress."""
+        if self._live:
+            self._live.update(self._build_renderable())
+
+    def start_file(self, file_path: Path) -> None:
+        """Mark a file as in-flight (shown in the live region).
+
+        Args:
+            file_path: Path to the file being processed.
+        """
+        self.current_file = file_path
+        if file_path not in self._in_flight:
+            self._in_flight.append(file_path)
+        self._refresh()
+
+    def complete_file(self, file_path: Path, success: bool = True, message: str = "") -> None:
+        """Mark a file as completed.
+
+        Removes it from the live in-flight list and prints a permanent
+        line above the live region.
+
+        Args:
+            file_path: Path to the completed file.
+            success: Whether the operation succeeded.
+            message: Optional status message (e.g., "already present").
+        """
+        self.current += 1
+
+        # Remove from in-flight
+        if file_path in self._in_flight:
+            self._in_flight.remove(file_path)
+
+        # Print permanent line above the live region
+        if self._live:
+            if success:
+                self._live.console.print(f"  {self._completed_label}: [path]{file_path}[/path]")
+            else:
+                msg = f"  Failed: [path]{file_path}[/path]"
+                if message:
+                    msg += f" [dim]({message})[/dim]"
+                self._live.console.print(msg)
+
+        # Update progress bar
+        if self._progress and self._task_id is not None:
+            self._progress.update(self._task_id, advance=1)
+
+        self.current_file = None
+        self._refresh()
+
+    def skip_file(self, file_path: Path, reason: str = "") -> None:
+        """Mark a file as skipped.
+
+        Args:
+            file_path: Path to the skipped file.
+            reason: Reason for skipping.
+        """
+        self.current += 1
+
+        # Remove from in-flight
+        if file_path in self._in_flight:
+            self._in_flight.remove(file_path)
+
+        # Print permanent line above the live region
+        if self._live:
+            msg = f"  Skipped: [path]{file_path}[/path]"
+            if reason:
+                msg += f" [dim]({reason})[/dim]"
+            self._live.console.print(msg)
+
+        # Update progress bar
+        if self._progress and self._task_id is not None:
+            self._progress.update(self._task_id, advance=1)
+
+        self._refresh()

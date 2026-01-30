@@ -44,6 +44,7 @@ class Config:
     mixxx_db: Path = field(default_factory=get_default_mixxx_db_path)
     music_repo: Path = field(default_factory=Path.cwd)
     mixxx_music_root: Path | None = None
+    mixxx_backup_path: Path | None = None
     colored_output: bool = True
     default_remote: str | None = None
     config_path: Path | None = None
@@ -145,6 +146,12 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
         if not isinstance(value, str):
             raise ConfigValidationError("paths.mixxx_music_root", value, "must be a string path")
         config.mixxx_music_root = Path(value)
+
+    if "mixxx_backup_path" in paths:
+        value = paths["mixxx_backup_path"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("paths.mixxx_backup_path", value, "must be a string path")
+        config.mixxx_backup_path = Path(value)
 
     # Parse [display] section
     display = data.get("display", {})

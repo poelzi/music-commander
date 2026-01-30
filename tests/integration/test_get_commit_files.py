@@ -1,4 +1,4 @@
-"""Integration tests for get-commit-files command."""
+"""Integration tests for files get-commit command."""
 
 from pathlib import Path
 from unittest.mock import patch
@@ -18,7 +18,7 @@ def runner() -> CliRunner:
 
 def test_help(runner: CliRunner) -> None:
     """Test --help works."""
-    result = runner.invoke(cli, ["get-commit-files", "--help"])
+    result = runner.invoke(cli, ["files", "get-commit", "--help"])
     assert result.exit_code == 0
     assert "REVISION" in result.output
 
@@ -29,7 +29,7 @@ def test_dry_run(runner: CliRunner, git_annex_repo: Path, mock_config: Config) -
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        result = runner.invoke(cli, ["get-commit-files", "--dry-run", "HEAD"])
+        result = runner.invoke(cli, ["files", "get-commit", "--dry-run", "HEAD"])
         assert result.exit_code == 0
         # Either shows files to fetch, or indicates no files/annexed files found
         assert (
@@ -45,7 +45,7 @@ def test_invalid_revision(runner: CliRunner, git_annex_repo: Path, mock_config: 
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        result = runner.invoke(cli, ["get-commit-files", "nonexistent-branch-xyz"])
+        result = runner.invoke(cli, ["files", "get-commit", "nonexistent-branch-xyz"])
         assert result.exit_code == 2
         assert "Invalid revision" in result.output
 
@@ -56,5 +56,5 @@ def test_not_annex_repo(runner: CliRunner, temp_dir: Path, mock_config: Config) 
         mock_config.music_repo = temp_dir
         mock_load.return_value = (mock_config, [])
 
-        result = runner.invoke(cli, ["get-commit-files", "HEAD"])
+        result = runner.invoke(cli, ["files", "get-commit", "HEAD"])
         assert result.exit_code == 3

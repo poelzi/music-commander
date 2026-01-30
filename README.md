@@ -59,21 +59,21 @@ default_remote = "nas"  # Optional: preferred remote for fetching
 
 ```bash
 # Get files from the last commit
-music-commander get-commit-files HEAD~1
+music-commander files get-commit HEAD~1
 
 # Get files from the last 5 commits
-music-commander get-commit-files HEAD~5..HEAD
+music-commander files get-commit HEAD~5..HEAD
 
 # Preview without fetching
-music-commander get-commit-files --dry-run HEAD~3..HEAD
+music-commander files get-commit --dry-run HEAD~3..HEAD
 
 # Fetch from a specific remote
-music-commander get-commit-files --remote nas HEAD~1
+music-commander files get-commit --remote nas HEAD~1
 ```
 
 ## Usage
 
-### sync-metadata Command
+### mixxx sync Command
 
 Sync track metadata from your Mixxx library to git-annex metadata.
 
@@ -90,19 +90,19 @@ Synchronizes metadata fields including rating, BPM, color, key, artist, title, a
 
 ```bash
 # Sync tracks changed since last sync
-music-commander sync-metadata
+music-commander mixxx sync
 
 # Force sync all tracks (initial setup)
-music-commander sync-metadata --all
+music-commander mixxx sync --all
 
 # Preview changes without syncing
-music-commander sync-metadata --dry-run
+music-commander mixxx sync --dry-run
 
 # Sync only a specific directory
-music-commander sync-metadata ./darkpsy/
+music-commander mixxx sync ./darkpsy/
 
 # Sync with commits every 1000 files
-music-commander sync-metadata --all --batch-size 1000
+music-commander mixxx sync --all --batch-size 1000
 ```
 
 **After syncing**, query tracks with git-annex:
@@ -118,7 +118,7 @@ git annex find --metadata crate="Festival Sets"
 git annex find --metadata bpm=140.*
 ```
 
-### get-commit-files Command
+### files get-commit Command
 
 Fetch git-annexed files from any git revision.
 
@@ -139,13 +139,13 @@ Fetch git-annexed files from any git revision.
 
 ```bash
 # Fetch files from a feature branch
-music-commander get-commit-files feature/summer-playlist
+music-commander files get-commit feature/summer-playlist
 
 # Fetch files from a tagged release
-music-commander get-commit-files v2025-summer-set
+music-commander files get-commit v2025-summer-set
 
 # Preview files in a commit range
-music-commander get-commit-files --dry-run main..feature-branch
+music-commander files get-commit --dry-run main..feature-branch
 ```
 
 ### Global Options
@@ -174,7 +174,7 @@ Configuration is loaded from:
 # Path to Mixxx database (required for DB commands)
 mixxx_db = "~/.mixxx/mixxxdb.sqlite"
 
-# Path to git-annex music repository (required for get-commit-files)
+# Path to git-annex music repository (required for files get-commit)
 music_repo = "~/Music"
 
 [display]

@@ -12,6 +12,7 @@ from music_commander.exceptions import (
     NotGitAnnexRepoError,
     NotGitRepoError,
 )
+from music_commander.utils.output import MultilineFileProgress
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -90,7 +91,69 @@ def is_valid_revision(repo_path: Path, revision: str) -> bool:
         capture_output=True,
         text=True,
     )
+
     return result.returncode == 0
+
+
+def annex_drop_files(
+    repo_path: Path,
+    files: list[Path],
+    *,
+    force: bool = False,
+    verbose: bool = False,
+) -> FetchResult:
+    """Drop annexed files to free up local disk space.
+
+    Args:
+        repo_path: Git repository path.
+        files: List of files to drop.
+        force: If True, drop even if insufficient copies exist.
+        verbose: If True, print per-file status.
+
+    Returns:
+        FetchResult with dropped, already_dropped, and failed lists.
+    """
+    result = FetchResult()
+
+    # Filter to only files that are present locally
+    to_drop = []
+    for file_path in files:
+        if is_annex_present(file_path):
+            to_drop.append(file_path)
+        else:
+            result.already_present.append(file_path)
+
+    if not to_drop:
+        return result
+
+    with MultilineFileProgress(total=len(to_drop), operation="Dropping") as progress:
+        for file_path in to_drop:
+            progress.start_file(file_path)
+            rel_path = str(file_path.relative_to(repo_path))
+
+            # Build drop command
+            cmd = ["git", "annex", "drop"]
+            if force:
+                cmd.append("--force")
+            cmd.append(rel_path)
+
+            # Execute drop
+            proc = subprocess.run(
+                cmd,
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+            )
+
+            if proc.returncode == 0:
+                result.fetched.append(file_path)  # Use fetched as "dropped"
+                progress.complete_file(file_path, success=True)
+            else:
+                reason = proc.stderr.strip() or "Unknown error"
+                result.failed.append((file_path, reason))
+                progress.complete_file(file_path, success=False, message=reason)
+
+    return result
 
 
 def get_files_from_revision(
@@ -321,7 +384,7 @@ def annex_get_files_with_progress(
     jobs: int = 1,
     verbose: bool = False,
 ) -> FetchResult:
-    """Fetch annexed files with Rich progress display.
+    """Fetch annexed files with multiline progress display.
 
     Args:
         repo_path: Git repository path.
@@ -334,8 +397,6 @@ def annex_get_files_with_progress(
         FetchResult with fetched, already_present, and failed lists.
     """
     import json
-
-    from music_commander.utils.output import console, create_progress, info
 
     result = FetchResult()
 
@@ -359,19 +420,12 @@ def annex_get_files_with_progress(
     rel_paths = [str(f.relative_to(repo_path)) for f in to_fetch]
     cmd.extend(rel_paths)
 
-    if verbose:
-        info(f"Running: {' '.join(cmd[:6])}... ({len(rel_paths)} files)")
-
     # Track which files we've seen results for
     file_map = {str(f.relative_to(repo_path)): f for f in to_fetch}
     seen_files: set[str] = set()
+    current_file: Path | None = None
 
-    with create_progress() as progress:
-        task = progress.add_task(
-            "Fetching files...",
-            total=len(to_fetch),
-        )
-
+    with MultilineFileProgress(total=len(to_fetch), operation="Fetching") as progress:
         # Run git annex get with streaming JSON output
         proc = subprocess.Popen(
             cmd,
@@ -392,34 +446,37 @@ def annex_get_files_with_progress(
             except json.JSONDecodeError:
                 continue
 
-            # Handle progress updates
-            if "action" in data:
+            # git-annex emits two JSON formats:
+            # Progress: {"action": {"command":..., "file":...}, "byte-progress":..., "total-size":...}
+            # Result:   {"command":..., "file":..., "success": true/false, "error-messages": [...]}
+
+            if "success" in data:
+                # Final result line - file key is at top level
+                file_key = data.get("file", "")
+                full_path = file_map.get(file_key)
+
+                if file_key and file_key not in seen_files and full_path:
+                    seen_files.add(file_key)
+
+                    if data.get("success"):
+                        result.fetched.append(full_path)
+                        progress.complete_file(full_path, success=True)
+                    else:
+                        reason = data.get("error-messages", ["Unknown error"])
+                        reason_str = reason[0] if reason else "Unknown error"
+                        result.failed.append((full_path, reason_str))
+                        progress.complete_file(full_path, success=False, message=reason_str)
+
+            elif "action" in data:
+                # Progress update - file key is nested under action
                 action = data.get("action", {})
                 file_key = action.get("file", "")
+                full_path = file_map.get(file_key)
 
-                if "success" in data:
-                    # Final result for a file
-                    if file_key and file_key not in seen_files:
-                        seen_files.add(file_key)
-                        full_path = file_map.get(file_key)
-
-                        if full_path:
-                            if data.get("success"):
-                                result.fetched.append(full_path)
-                                if verbose:
-                                    console.print(f"  [success]✓[/success] {file_key}")
-                            else:
-                                reason = data.get("error-messages", ["Unknown error"])
-                                reason_str = reason[0] if reason else "Unknown error"
-                                result.failed.append((full_path, reason_str))
-                                if verbose:
-                                    console.print(f"  [error]✗[/error] {file_key}: {reason_str}")
-
-                            progress.advance(task)
-
-                elif file_key:
-                    # Progress update - show current file
-                    progress.update(task, description=f"[cyan]{file_key}[/cyan]")
+                if file_key and full_path:
+                    if current_file != full_path:
+                        current_file = full_path
+                        progress.start_file(full_path)
 
         proc.wait()
 
@@ -429,12 +486,133 @@ def annex_get_files_with_progress(
                 # Check if file is now present
                 if is_annex_present(full_path):
                     result.fetched.append(full_path)
-                    if verbose:
-                        console.print(f"  [success]✓[/success] {rel_path}")
+                    progress.complete_file(full_path, success=True)
                 else:
                     result.failed.append((full_path, "No response from git-annex"))
-                    if verbose:
-                        console.print(f"  [error]✗[/error] {rel_path}: No response")
-                progress.advance(task)
+                    progress.complete_file(full_path, success=False, message="No response")
 
     return result
+
+
+def annex_unlock_file(repo_path: Path, file_path: Path) -> bool:
+    """Unlock a git-annex file for editing.
+
+    Args:
+        repo_path: Git repository path.
+        file_path: Path to the file to unlock (relative or absolute).
+
+    Returns:
+        True if unlock succeeded, False otherwise.
+    """
+    rel_path = str(file_path.relative_to(repo_path)) if file_path.is_absolute() else str(file_path)
+
+    result = subprocess.run(
+        ["git", "annex", "unlock", rel_path],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    return result.returncode == 0
+
+
+def annex_add_file(repo_path: Path, file_path: Path) -> bool:
+    """Add a file to git-annex.
+
+    Args:
+        repo_path: Git repository path.
+        file_path: Path to the file to add (relative or absolute).
+
+    Returns:
+        True if add succeeded, False otherwise.
+    """
+    rel_path = str(file_path.relative_to(repo_path)) if file_path.is_absolute() else str(file_path)
+
+    result = subprocess.run(
+        ["git", "annex", "add", rel_path],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    return result.returncode == 0
+
+
+def git_commit_file(repo_path: Path, file_path: Path, message: str) -> bool:
+    """Commit a specific file to git with a message.
+
+    Args:
+        repo_path: Git repository path.
+        file_path: Path to the file to commit (relative or absolute).
+        message: Commit message.
+
+    Returns:
+        True if commit succeeded, False otherwise.
+    """
+    rel_path = str(file_path.relative_to(repo_path)) if file_path.is_absolute() else str(file_path)
+
+    # Stage the file
+    result = subprocess.run(
+        ["git", "add", rel_path],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        return False
+
+    # Commit
+    result = subprocess.run(
+        ["git", "commit", "-m", message, rel_path],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    return result.returncode == 0
+
+
+def is_file_in_git_annex(repo_path: Path, file_path: Path) -> bool:
+    """Check if a file is tracked by git-annex.
+
+    Args:
+        repo_path: Git repository path.
+        file_path: Path to check (relative or absolute).
+
+    Returns:
+        True if file is tracked by git-annex, False otherwise.
+    """
+    rel_path = str(file_path.relative_to(repo_path)) if file_path.is_absolute() else str(file_path)
+
+    result = subprocess.run(
+        ["git", "annex", "lookupkey", rel_path],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    # If lookupkey returns a key (non-empty stdout), file is in annex
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
+def annex_init_file(repo_path: Path, file_path: Path) -> bool:
+    """Initialize a file as a git-annex file.
+
+    Args:
+        repo_path: Git repository path.
+        file_path: Path to the file to init (relative or absolute).
+
+    Returns:
+        True if init succeeded, False otherwise.
+    """
+    rel_path = str(file_path.relative_to(repo_path)) if file_path.is_absolute() else str(file_path)
+
+    result = subprocess.run(
+        ["git", "annex", "add", rel_path],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    return result.returncode == 0
