@@ -18,12 +18,12 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP01-foundation-models-config.md`
 
 ### Included Subtasks
-- [ ] T001 Add BandcampRelease, BandcampTrack, BandcampReleaseFormat, BandcampSyncState models to `music_commander/cache/models.py`
-- [ ] T002 Extend Config dataclass in `music_commander/config.py` with `[bandcamp]` section (session_cookie, default_format, match_threshold)
-- [ ] T003 [P] Add BandcampError, BandcampAuthError, BandcampParseError to `music_commander/exceptions.py`
-- [ ] T004 [P] Create `music_commander/bandcamp/__init__.py` package
-- [ ] T005 Create `music_commander/bandcamp/credentials.py` (read/write `~/.config/music-commander/bandcamp-credentials.json`)
-- [ ] T006 Create `music_commander/commands/bandcamp/__init__.py` Click group skeleton with shared constants
+- [x] T001 Add BandcampRelease, BandcampTrack, BandcampReleaseFormat, BandcampSyncState models to `music_commander/cache/models.py`
+- [x] T002 Extend Config dataclass in `music_commander/config.py` with `[bandcamp]` section (session_cookie, default_format, match_threshold)
+- [x] T003 [P] Add BandcampError, BandcampAuthError, BandcampParseError to `music_commander/exceptions.py`
+- [x] T004 [P] Create `music_commander/bandcamp/__init__.py` package
+- [x] T005 Create `music_commander/bandcamp/credentials.py` (read/write `~/.config/music-commander/bandcamp-credentials.json`)
+- [x] T006 Create `music_commander/commands/bandcamp/__init__.py` Click group skeleton with shared constants
 
 ### Implementation Notes
 - Models follow existing CacheTrack pattern: SQLAlchemy 2.0 Mapped syntax, proper indexes
