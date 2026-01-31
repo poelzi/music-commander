@@ -20,6 +20,7 @@ dependencies = [
     "python-magic>=0.4",
     "requests>=2.28",
     "rich>=13.0",
+    "rookiepy>=0.3",
     "sqlalchemy>=2.0",
     "tomli-w>=1.0",
 ]

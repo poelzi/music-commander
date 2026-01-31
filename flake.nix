@@ -95,6 +95,11 @@
 
           shellHook = ''
             export PYTHONPATH="$PWD:$PYTHONPATH"
+            # rookiepy is not in nixpkgs; install via pip if missing
+            if ! python -c "import rookiepy" 2>/dev/null; then
+              echo "Installing rookiepy via pip..."
+              pip install --quiet rookiepy 2>/dev/null || true
+            fi
           '';
         };
 
