@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
-from music_commander.utils.checkers import CheckResult
 
 from music_commander.cli import cli
 from music_commander.config import Config
 from music_commander.utils import checkers as checkers_module
+from music_commander.utils.checkers import CheckResult
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def test_basic_check_success(runner: CliRunner, git_annex_repo: Path, mock_confi
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             return _ok_result(rel)
 
@@ -99,7 +99,7 @@ def test_check_with_directory_arg(
 
         tracks_dir = git_annex_repo / "tracks"
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             return _ok_result(rel)
 
@@ -125,7 +125,7 @@ def test_check_with_failures_exits_1(
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             return _error_result(rel)
 
@@ -156,7 +156,7 @@ def test_missing_checker_tool(runner: CliRunner, git_annex_repo: Path, mock_conf
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             return _missing_result(rel)
 
@@ -244,7 +244,7 @@ def test_unrecognized_extension_uses_ffmpeg(
         # Track tools used in check_file
         tools_used = []
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             # Verify the extension triggers ffmpeg fallback by checking the registry
             ext = file_path.suffix.lower()
@@ -353,7 +353,7 @@ def test_not_present_file(runner: CliRunner, temp_dir: Path, mock_config: Config
         # the command separates present/not-present before calling check_file
         check_calls = []
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             check_calls.append(file_path)
             rel = str(file_path.relative_to(repo_path))
             return _ok_result(rel)
@@ -401,7 +401,7 @@ def test_json_report_structure(
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             return _ok_result(rel)
 
@@ -477,7 +477,7 @@ def test_dry_run_no_execution(runner: CliRunner, git_annex_repo: Path, mock_conf
 
         check_calls = []
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             check_calls.append(file_path)
             rel = str(file_path.relative_to(repo_path))
             return _ok_result(rel)
@@ -568,7 +568,7 @@ def test_resolve_args_directory(runner: CliRunner, temp_dir: Path, mock_config: 
 
         checked_files = []
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             checked_files.append(rel)
             return _ok_result(rel)
@@ -643,7 +643,7 @@ def test_parallel_checking(runner: CliRunner, git_annex_repo: Path, mock_config:
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             return _ok_result(rel)
 
@@ -707,7 +707,7 @@ def test_zero_byte_file_reported_as_error(
         mock_config.music_repo = repo_path
         mock_load.return_value = (mock_config, [])
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             rel = str(file_path.relative_to(repo_path))
             return _error_result(rel)
 
@@ -745,7 +745,7 @@ def test_sigint_writes_partial_report(
         mock_config.music_repo = git_annex_repo
         mock_load.return_value = (mock_config, [])
 
-        def mock_check_file(file_path: Path, repo_path: Path) -> CheckResult:
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
             raise KeyboardInterrupt()
 
         with patch(

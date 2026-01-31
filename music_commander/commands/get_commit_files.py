@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -46,6 +45,7 @@ from music_commander.utils.output import (
 from music_commander.utils.search_ops import (
     FileOperationResult,
     execute_search_files,
+    resolve_args_to_files,
     show_operation_summary,
 )
 
@@ -595,7 +595,7 @@ def check(
         raise SystemExit(EXIT_NOT_ANNEX_REPO)
 
     # Resolve arguments to files (T014)
-    file_paths = _resolve_args_to_files(
+    file_paths = resolve_args_to_files(
         ctx,
         args,
         config,
@@ -949,45 +949,3 @@ def _show_check_summary(repo_path: Path, results: list[CheckResult], report: Che
         success(f"All {summary['ok']} files passed integrity checks")
     else:
         warning(f"{summary['error']} of {summary['total']} files failed integrity checks")
-
-
-def _resolve_args_to_files(
-    ctx: Context,
-    args: tuple[str, ...],
-    config,
-    *,
-    require_present: bool,
-    verbose: bool,
-    dry_run: bool,
-) -> list[Path] | None:
-    if not args:
-        if verbose or not ctx.quiet:
-            info("No args provided; checking all annexed files")
-        return _list_all_annexed_files(config.music_repo)
-
-    return execute_search_files(
-        ctx,
-        args,
-        config,
-        "Check",
-        verbose=verbose,
-        dry_run=dry_run,
-        require_present=require_present,
-    )
-
-
-def _list_all_annexed_files(repo_path: Path) -> list[Path] | None:
-    try:
-        result = subprocess.run(
-            ["git", "annex", "find"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except subprocess.CalledProcessError as exc:
-        error(f"git-annex find failed: {exc.stderr.strip() or exc}")
-        return None
-
-    files = [line for line in result.stdout.splitlines() if line.strip()]
-    return [repo_path / file_path for file_path in files]
