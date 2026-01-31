@@ -48,11 +48,11 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP02-authentication.md`
 
 ### Included Subtasks
-- [ ] T007 Create `music_commander/bandcamp/cookies.py` with browser cookie extraction (rookiepy for Firefox/Chrome)
-- [ ] T008 Add mini-browser login flow in `cookies.py` (temporary Firefox profile, subprocess launch, DISPLAY check, cookie extraction from profile's cookies.sqlite)
-- [ ] T009 Create cookie validation function: fetch Bandcamp homepage, extract fan_id from `#HomepageApp` data-blob
-- [ ] T010 Create `music_commander/commands/bandcamp/auth.py` CLI subcommand with `--browser`, `--login` options
-- [ ] T011 Wire manual config cookie fallback (read from config.toml `[bandcamp].session_cookie`)
+- [x] T007 Create `music_commander/bandcamp/cookies.py` with browser cookie extraction (rookiepy for Firefox/Chrome)
+- [x] T008 Add mini-browser login flow in `cookies.py` (temporary Firefox profile, subprocess launch, DISPLAY check, cookie extraction from profile's cookies.sqlite)
+- [x] T009 Create cookie validation function: fetch Bandcamp homepage, extract fan_id from `#HomepageApp` data-blob
+- [x] T010 Create `music_commander/commands/bandcamp/auth.py` CLI subcommand with `--browser`, `--login` options
+- [x] T011 Wire manual config cookie fallback (read from config.toml `[bandcamp].session_cookie`)
 
 ### Implementation Notes
 - rookiepy extracts the `identity` cookie from `bandcamp.com` domain
