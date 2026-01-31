@@ -49,6 +49,9 @@ class Config:
     default_remote: str | None = None
     flac_multichannel_check: bool = False
     meta_editor: str | None = None
+    bandcamp_session_cookie: str | None = None
+    bandcamp_default_format: str = "flac"
+    bandcamp_match_threshold: int = 60
     config_path: Path | None = None
 
     def validate(self) -> list[str]:
@@ -78,6 +81,12 @@ class Config:
             warnings.append(f"Music repository not found: {self.music_repo}")
         elif not (self.music_repo / ".git").exists():
             warnings.append(f"Music repository is not a git repo: {self.music_repo}")
+
+        if not 0 <= self.bandcamp_match_threshold <= 100:
+            warnings.append(
+                f"bandcamp.match_threshold={self.bandcamp_match_threshold} "
+                f"is outside valid range 0-100"
+            )
 
         return warnings
 
@@ -189,6 +198,28 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
             raise ConfigValidationError("editors.meta_editor", value, "must be a string or null")
         config.meta_editor = value
 
+    # Parse [bandcamp] section
+    bandcamp = data.get("bandcamp", {})
+    if "session_cookie" in bandcamp:
+        value = bandcamp["session_cookie"]
+        if value is not None and not isinstance(value, str):
+            raise ConfigValidationError(
+                "bandcamp.session_cookie", value, "must be a string or null"
+            )
+        config.bandcamp_session_cookie = value
+
+    if "default_format" in bandcamp:
+        value = bandcamp["default_format"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("bandcamp.default_format", value, "must be a string")
+        config.bandcamp_default_format = value
+
+    if "match_threshold" in bandcamp:
+        value = bandcamp["match_threshold"]
+        if not isinstance(value, int):
+            raise ConfigValidationError("bandcamp.match_threshold", value, "must be an integer")
+        config.bandcamp_match_threshold = value
+
     return config
 
 
@@ -229,6 +260,17 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     if config.meta_editor is not None:
         data["editors"] = {"meta_editor": config.meta_editor}
+
+    # Build [bandcamp] section (only if non-default values)
+    bandcamp_data: dict[str, Any] = {}
+    if config.bandcamp_session_cookie is not None:
+        bandcamp_data["session_cookie"] = config.bandcamp_session_cookie
+    if config.bandcamp_default_format != "flac":
+        bandcamp_data["default_format"] = config.bandcamp_default_format
+    if config.bandcamp_match_threshold != 60:
+        bandcamp_data["match_threshold"] = config.bandcamp_match_threshold
+    if bandcamp_data:
+        data["bandcamp"] = bandcamp_data
 
     with open(config_path, "wb") as f:
         tomli_w.dump(data, f)
