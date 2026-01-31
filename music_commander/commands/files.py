@@ -1318,8 +1318,6 @@ def _export_files_parallel(
 
                 if verbose:
                     rel_path = source_path.relative_to(repo_path)
-                    from music_commander.utils.output import verbose as output_verbose
-
                     output_verbose(f"Exported: {rel_path} -> {result.status}")
 
                 # Update progress (called from main thread)
@@ -1574,7 +1572,7 @@ def export(
             else:
                 # Probe source to determine copy vs encode
                 try:
-                    source_info = probe_source(source_path, repo_path)
+                    source_info = probe_source(source_path)
                     if can_copy(source_info, preset):
                         action = "copy"
 
