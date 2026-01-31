@@ -139,11 +139,11 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP05-collection-sync.md`
 
 ### Included Subtasks
-- [ ] T021 Create `music_commander/commands/bandcamp/sync.py` CLI subcommand
-- [ ] T022 Implement full sync flow: authenticate → paginate collection → store releases, tracks, formats
-- [ ] T023 Implement incremental sync: check BandcampSyncState.last_token, resume pagination from last position
-- [ ] T024 Handle discography bundles: expand into individual releases
-- [ ] T025 Add Rich progress display for sync operation
+- [x] T021 Create `music_commander/commands/bandcamp/sync.py` CLI subcommand
+- [x] T022 Implement full sync flow: authenticate → paginate collection → store releases, tracks, formats
+- [x] T023 Implement incremental sync: check BandcampSyncState.last_token, resume pagination from last position
+- [x] T024 Handle discography bundles: expand into individual releases
+- [x] T025 Add Rich progress display for sync operation
 
 ### Implementation Notes
 - Auth: load cookie from credentials file or config, validate, get fan_id
