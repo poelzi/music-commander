@@ -29,7 +29,10 @@ from music_commander.utils.encoder import (
     PRESETS,
     ExportReport,
     ExportResult,
+    can_copy,
     export_file,
+    find_cover_art,
+    probe_source,
     write_export_report,
 )
 from music_commander.utils.git import (
@@ -1250,6 +1253,118 @@ def _export_files_sequential(
         progress.complete_file(source_path, success=success, message=message, status=result.status)
 
 
+def _export_files_parallel(
+    file_pairs: list[tuple[Path, Path]],
+    preset,
+    repo_path: Path,
+    results: list[ExportResult],
+    progress: MultilineFileProgress,
+    jobs: int,
+    *,
+    verbose: bool = False,
+    force: bool = False,
+) -> None:
+    """Export files in parallel using ThreadPoolExecutor.
+
+    Progress updates happen from the main thread as futures complete,
+    ensuring thread-safe interaction with Rich.
+
+    On KeyboardInterrupt, cancels pending futures and shuts down the
+    executor so no new ffmpeg processes are spawned.
+
+    Args:
+        file_pairs: List of (source_path, output_path) tuples.
+        preset: FormatPreset instance.
+        repo_path: Repository root path.
+        results: Mutable list to append results to.
+        progress: Progress display instance.
+        jobs: Number of parallel workers.
+        verbose: If True, show verbose output.
+        force: If True, re-export all files (ignore incremental).
+    """
+
+    def _export_worker(source_path: Path, output_path: Path):
+        """Worker function for parallel export."""
+        # Check incremental skip
+        if _should_skip(source_path, output_path, force):
+            rel_source = str(source_path.relative_to(repo_path))
+            return ExportResult(
+                source=rel_source,
+                output=output_path.name,
+                status="skipped",
+                preset=preset.name,
+                action="skipped",
+                duration_seconds=0.0,
+            )
+
+        # Export the file
+        return export_file(source_path, output_path, preset, repo_path, verbose=verbose)
+
+    executor = ThreadPoolExecutor(max_workers=jobs)
+    try:
+        # Submit all files for export
+        future_to_pair = {
+            executor.submit(_export_worker, source_path, output_path): (source_path, output_path)
+            for source_path, output_path in file_pairs
+        }
+
+        # Process results as they complete
+        for future in as_completed(future_to_pair):
+            source_path, output_path = future_to_pair[future]
+
+            try:
+                result = future.result()
+                results.append(result)
+
+                if verbose:
+                    rel_path = source_path.relative_to(repo_path)
+                    from music_commander.utils.output import verbose as output_verbose
+
+                    output_verbose(f"Exported: {rel_path} -> {result.status}")
+
+                # Update progress (called from main thread)
+                success = result.status in ("ok", "copied", "skipped")
+                message = ""
+                if not success and result.error_message:
+                    message = result.error_message[:80].replace("\n", " ")
+
+                progress.complete_file(
+                    source_path,
+                    success=success,
+                    message=message,
+                    status=result.status,
+                )
+
+            except Exception as e:
+                # Handle unexpected errors in worker thread
+                rel_source = str(source_path.relative_to(repo_path))
+                results.append(
+                    ExportResult(
+                        source=rel_source,
+                        output=output_path.name,
+                        status="error",
+                        preset=preset.name,
+                        action="encode",
+                        duration_seconds=0.0,
+                        error_message=str(e),
+                    )
+                )
+                progress.complete_file(
+                    source_path,
+                    success=False,
+                    message=str(e)[:80],
+                    status="error",
+                )
+    except KeyboardInterrupt:
+        # Cancel all pending futures so no new ffmpeg processes start
+        for future in future_to_pair:
+            future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    finally:
+        executor.shutdown(wait=True)
+
+
 def _show_export_summary(summary: dict, results: list[ExportResult]) -> None:
     """Display export summary with colored counts.
 
@@ -1434,9 +1549,73 @@ def export(
 
     # Dry-run mode
     if dry_run:
-        info("Dry-run mode: showing preview")
-        # TODO: implement dry-run preview (WP05)
-        info(f"Would export {len(file_pairs)} files to {output}")
+        if not ctx.quiet:
+            info("Dry-run mode: preview only, no files will be written")
+
+        # Build preview table
+        from rich.table import Table
+
+        table = Table(title="Export Preview", show_header=True, header_style="bold")
+        table.add_column("Source", style="cyan", no_wrap=False)
+        table.add_column("Output", style="green", no_wrap=False)
+        table.add_column("Action", style="yellow")
+        table.add_column("Cover", style="magenta")
+
+        action_counts = {"encode": 0, "copy": 0, "skip": 0, "error": 0}
+
+        for source_path, output_path in file_pairs:
+            # Determine action
+            action = "encode"
+            cover_status = "-"
+
+            # Check if would skip
+            if _should_skip(source_path, output_path, force):
+                action = "skip"
+            else:
+                # Probe source to determine copy vs encode
+                try:
+                    source_info = probe_source(source_path, repo_path)
+                    if can_copy(source_info, preset):
+                        action = "copy"
+
+                    # Find cover art
+                    cover_path = find_cover_art(source_path)
+                    if source_info.has_cover_art:
+                        cover_status = "embedded"
+                    elif cover_path:
+                        cover_status = cover_path.name
+                except Exception as e:
+                    action = "error"
+                    cover_status = str(e)[:20]
+
+            action_counts[action] += 1
+
+            # Truncate paths for display
+            rel_source = str(source_path.relative_to(repo_path))
+            if len(rel_source) > 50:
+                rel_source = "..." + rel_source[-47:]
+
+            output_name = output_path.name
+            if len(output_name) > 40:
+                output_name = output_name[:37] + "..."
+
+            table.add_row(rel_source, output_name, action, cover_status)
+
+        console.print(table)
+        console.print()
+
+        # Show summary
+        summary_table = create_table("Dry-Run Summary", ["Action", "Count"])
+        if action_counts["encode"] > 0:
+            summary_table.add_row("Would encode", str(action_counts["encode"]))
+        if action_counts["copy"] > 0:
+            summary_table.add_row("Would copy", str(action_counts["copy"]))
+        if action_counts["skip"] > 0:
+            summary_table.add_row("Would skip", str(action_counts["skip"]))
+        if action_counts["error"] > 0:
+            summary_table.add_row("Errors", str(action_counts["error"]))
+
+        console.print(summary_table)
         return
 
     # Export files
@@ -1445,16 +1624,28 @@ def export(
 
     try:
         with MultilineFileProgress(total=len(file_pairs), operation="Exporting") as progress:
-            # Sequential export (parallel is WP05)
-            _export_files_sequential(
-                file_pairs,
-                preset,
-                repo_path,
-                results,
-                progress,
-                verbose=verbose,
-                force=force,
-            )
+            # Use parallel or sequential export based on jobs
+            if jobs > 1:
+                _export_files_parallel(
+                    file_pairs,
+                    preset,
+                    repo_path,
+                    results,
+                    progress,
+                    jobs,
+                    verbose=verbose,
+                    force=force,
+                )
+            else:
+                _export_files_sequential(
+                    file_pairs,
+                    preset,
+                    repo_path,
+                    results,
+                    progress,
+                    verbose=verbose,
+                    force=force,
+                )
 
             duration = time.time() - start_time
 
