@@ -6,6 +6,16 @@
 **Mission**: software-dev
 **Input**: User description: "Add bandcamp subcommand for managing Bandcamp purchases, downloading releases, fuzzy-matching against local library, repairing broken files, and generating download report pages."
 
+## Clarifications
+
+### Session 2026-01-31
+
+- Q: Where should the Bandcamp session cookie be stored persistently? → A: In a separate credentials file under `~/.config/music-commander/`.
+- Q: How should the repair confirmation flow work when multiple broken files have Bandcamp matches? → A: TUI with scrollable list where the user can browse items and select/deselect individual files for replacement.
+- Q: When the mini-browser login is requested but no GUI environment is available (e.g., SSH without X/Wayland), what should happen? → A: Fail with an error message suggesting the other two authentication methods (browser cookie extraction or manual config).
+- Q: When repairing a broken file, should the replacement match the original format or respect `--format`? → A: Use `--format` if provided, otherwise default to the original file's format.
+- Q: How should the system handle unexpected response formats from Bandcamp (page structure changes)? → A: Fail fast with a clear error message including the raw response snippet for debugging.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Authenticate with Bandcamp (Priority: P1)
@@ -22,6 +32,7 @@ A user wants to connect music-commander to their Bandcamp account so that subseq
 2. **Given** the user has set `bandcamp.session_cookie` in config.toml, **When** they run any bandcamp subcommand, **Then** the manually provided cookie is used for authentication.
 3. **Given** the user has no existing browser session, **When** they run `bandcamp auth --login`, **Then** a minimal browser window opens with a dedicated profile, the user logs in, and the cookie is extracted from that profile upon completion.
 4. **Given** the stored cookie has expired, **When** the user runs any bandcamp subcommand, **Then** they receive a clear error message indicating re-authentication is needed.
+5. **Given** the user is in a headless environment (SSH without X/Wayland), **When** they run `bandcamp auth --login`, **Then** the command fails with a clear error suggesting browser cookie extraction or manual config as alternatives.
 
 ---
 
@@ -104,10 +115,11 @@ A user has run `files check` and has a JSON report identifying broken audio file
 **Acceptance Scenarios**:
 
 1. **Given** a `files check` JSON report with broken files, **When** the user runs `bandcamp repair --report <path>`, **Then** the system matches broken files against the Bandcamp collection and displays a table of proposed replacements with match confidence.
-2. **Given** proposed replacements are displayed, **When** the user confirms specific replacements, **Then** only the confirmed files are downloaded in the appropriate format and placed alongside the broken originals (the user handles git-annex integration).
+2. **Given** proposed replacements are displayed in a TUI with a scrollable list, **When** the user selects/deselects individual items and confirms, **Then** only the selected files are downloaded in the appropriate format and placed alongside the broken originals (the user handles git-annex integration).
 3. **Given** a broken file has no Bandcamp match, **When** the repair command runs, **Then** the file is listed as "no match found" and skipped.
 4. **Given** the user runs repair with `--dry-run`, **When** the command executes, **Then** only the match results and proposed actions are shown — no downloads occur.
 5. **Given** the user wants a specific format for replacements, **When** they provide `--format flac`, **Then** all replacements are downloaded in that format.
+6. **Given** the user does not provide `--format`, **When** the repair downloads a replacement, **Then** the format defaults to the original broken file's format (e.g., a broken .flac is replaced with FLAC).
 
 ---
 
@@ -124,24 +136,25 @@ A user has run `files check` and has a JSON report identifying broken audio file
 
 ### Functional Requirements
 
-- **FR-001**: System MUST support three authentication methods: browser cookie extraction (Firefox/Chrome), manual cookie in config.toml (`[bandcamp]` section), and interactive login via a minimal browser with a dedicated profile.
-- **FR-002**: System MUST store the session cookie persistently across sessions and detect when it has expired.
+- **FR-001**: System MUST support three authentication methods: browser cookie extraction (Firefox/Chrome), manual cookie in config.toml (`[bandcamp]` section), and interactive login via a minimal browser with a dedicated profile. The mini-browser login MUST fail with a clear error suggesting the other two methods when no GUI environment is available.
+- **FR-002**: System MUST store the session cookie in a separate credentials file under `~/.config/music-commander/`, persistently across sessions, and detect when it has expired.
 - **FR-003**: System MUST fetch the user's complete Bandcamp purchase collection, including individual purchases and expanded discography bundles.
 - **FR-004**: System MUST store Bandcamp collection data in a dedicated SQLite table (separate from the track metadata cache), including artist, album, track listings, available download formats, and purchase metadata.
 - **FR-005**: System MUST support incremental collection sync to avoid re-fetching unchanged data.
 - **FR-006**: System MUST perform fuzzy matching at both release level (artist + album) and track level (artist + title) between local library metadata and Bandcamp collection entries.
 - **FR-007**: System MUST present match results with confidence levels to help users assess match quality.
-- **FR-008**: System MUST allow downloading owned releases in a user-specified audio format.
+- **FR-008**: System MUST allow downloading owned releases in a user-specified audio format. For repair operations, the system MUST use `--format` if provided, otherwise default to the original broken file's format.
 - **FR-009**: System MUST support downloading multiple releases in a single operation with progress indication.
 - **FR-010**: System MUST generate an HTML report page with direct download links for Bandcamp purchases in the desired format.
 - **FR-011**: The HTML report MUST handle Bandcamp's time-limited download URLs by providing an automatic refresh mechanism when links are accessed after expiration.
 - **FR-012**: System MUST accept a `files check` JSON report as input for the repair workflow.
 - **FR-013**: System MUST match broken files from the check report against the Bandcamp collection using fuzzy matching and display proposed replacements with confidence scores.
-- **FR-014**: System MUST require explicit user confirmation before downloading replacement files.
+- **FR-014**: System MUST present repair candidates in a TUI with a scrollable list where the user can browse and select/deselect individual files before confirming the replacement operation.
 - **FR-015**: System MUST support `--dry-run` mode for the repair workflow showing proposed actions without executing downloads.
 - **FR-016**: System MUST NOT automatically perform git-annex operations on replacement files — the user handles annex integration.
 - **FR-017**: System MUST display progress feedback for long-running operations (sync, download, matching).
 - **FR-018**: System MUST handle Bandcamp rate limiting gracefully with appropriate backoff behavior.
+- **FR-019**: When Bandcamp responses have unexpected formats (e.g., page structure changes), the system MUST fail fast with a clear error message that includes the raw response snippet for debugging.
 
 ### Key Entities
 
