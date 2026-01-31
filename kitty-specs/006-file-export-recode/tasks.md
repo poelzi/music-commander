@@ -76,7 +76,7 @@
 **Prompt**: `tasks/WP03-encoder-unit-tests.md`
 
 ### Included Subtasks
-- [ ] T008 Unit tests for FormatPreset registry, probe_source, find_cover_art, can_copy, build_ffmpeg_command, export_file, write_export_report
+- [x] T008 Unit tests for FormatPreset registry, probe_source, find_cover_art, can_copy, build_ffmpeg_command, export_file, write_export_report
 
 ### Implementation Notes
 - Test `PRESETS` registry: all 8 presets present, correct codec/container/args.
