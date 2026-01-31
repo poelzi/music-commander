@@ -1,0 +1,14 @@
+{
+  "wp_id": "WP03",
+  "feature_slug": "005-files-check-integrity",
+  "worktree_path": ".worktrees/005-files-check-integrity-WP03",
+  "branch_name": "005-files-check-integrity-WP03",
+  "base_branch": "005-files-check-integrity-WP01",
+  "base_commit": "bce269c3dfbb903ad670f494125153c2e87b0b2a",
+  "dependencies": [
+    "WP01"
+  ],
+  "created_at": "2026-01-30T21:34:08.097296+00:00",
+  "created_by": "implement-command",
+  "vcs_backend": "git"
+}
