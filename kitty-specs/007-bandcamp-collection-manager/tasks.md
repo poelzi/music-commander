@@ -109,11 +109,11 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP04-fuzzy-matching.md`
 
 ### Included Subtasks
-- [ ] T016 Create `music_commander/bandcamp/matcher.py` with normalization functions (lowercase, strip punctuation, collapse whitespace, remove common suffixes)
-- [ ] T017 Implement release-level matching: compare (artist, album) tuples with weighted token_sort_ratio
-- [ ] T018 Implement track-level matching: compare (artist, title) tuples with weighted token_sort_ratio
-- [ ] T019 Add confidence tier classification (exact >=95, high >=80, low >=60, no match <60)
-- [ ] T020 Add batch matching function that processes all local tracks against all Bandcamp releases efficiently
+- [x] T016 Create `music_commander/bandcamp/matcher.py` with normalization functions (lowercase, strip punctuation, collapse whitespace, remove common suffixes)
+- [x] T017 Implement release-level matching: compare (artist, album) tuples with weighted token_sort_ratio
+- [x] T018 Implement track-level matching: compare (artist, title) tuples with weighted token_sort_ratio
+- [x] T019 Add confidence tier classification (exact >=95, high >=80, low >=60, no match <60)
+- [x] T020 Add batch matching function that processes all local tracks against all Bandcamp releases efficiently
 
 ### Implementation Notes
 - Normalization: `re.sub(r'\([^)]*(?:edition|remaster|deluxe|bonus)[^)]*\)', '', s, flags=re.IGNORECASE)` for common suffixes
