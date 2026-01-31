@@ -46,9 +46,9 @@
 **Prompt**: `tasks/WP02-encoder-export-logic.md`
 
 ### Included Subtasks
-- [ ] T005 Implement `build_ffmpeg_command(input, output, preset, source_info, cover_path)` for all encoding scenarios
-- [ ] T006 Implement `export_file(file_path, output_path, preset, repo_path, *, verbose)` orchestrating probe -> decide -> encode/copy -> post-process
-- [ ] T007 Create `ExportResult` and `ExportReport` dataclasses and implement `write_export_report()`
+- [x] T005 Implement `build_ffmpeg_command(input, output, preset, source_info, cover_path)` for all encoding scenarios
+- [x] T006 Implement `export_file(file_path, output_path, preset, repo_path, *, verbose)` orchestrating probe -> decide -> encode/copy -> post-process
+- [x] T007 Create `ExportResult` and `ExportReport` dataclasses and implement `write_export_report()`
 
 ### Implementation Notes
 - `build_ffmpeg_command()` handles 4 scenarios per plan.md: (1) full encode without cover, (2) full encode with external cover, (3) stream copy without cover, (4) stream copy with external cover. For source files with embedded art, use `-map 0:a -map 0:v` to preserve it. Always include `-map_metadata 0` and `-y` (overwrite).
