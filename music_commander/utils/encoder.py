@@ -7,8 +7,11 @@ encoding decision logic for the files export command.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -36,6 +39,34 @@ class SourceInfo:
     bit_depth: int
     channels: int
     has_cover_art: bool
+
+
+@dataclass
+class ExportResult:
+    """Result of exporting a single file."""
+
+    source: str
+    output: str
+    status: str  # "ok" | "copied" | "skipped" | "error" | "not_present"
+    preset: str
+    action: str  # "encoded" | "stream_copied" | "file_copied" | "skipped" | "error"
+    duration_seconds: float
+    error_message: str | None = None
+
+
+@dataclass
+class ExportReport:
+    """Top-level report for an export run."""
+
+    version: int  # Always 1
+    timestamp: str  # ISO 8601
+    duration_seconds: float
+    repository: str
+    output_dir: str
+    preset: str
+    arguments: list[str]
+    summary: dict
+    results: list[ExportResult] = field(default_factory=list)
 
 
 # Format preset definitions
@@ -299,3 +330,265 @@ def can_copy(source_info: SourceInfo, preset: FormatPreset) -> bool:
         return False
 
     return True
+
+
+def build_ffmpeg_command(
+    input_path: Path,
+    output_path: Path,
+    preset: FormatPreset,
+    source_info: SourceInfo,
+    cover_path: Path | None = None,
+    *,
+    stream_copy: bool = False,
+) -> list[str]:
+    """Build complete ffmpeg command for encoding.
+
+    Args:
+        input_path: Source audio file path.
+        output_path: Destination file path.
+        preset: Target format preset.
+        source_info: Probed source file parameters.
+        cover_path: Optional external cover art path.
+        stream_copy: If True, use stream copy instead of re-encoding.
+
+    Returns:
+        Complete ffmpeg command as a list of strings.
+    """
+    cmd = ["ffmpeg", "-y", "-i", str(input_path)]
+
+    # Handle cover art inputs and mapping
+    if cover_path and preset.supports_cover_art:
+        # External cover art
+        cmd.extend(["-i", str(cover_path)])
+        cmd.extend(["-map", "0:a", "-map", "1:0"])
+        cmd.extend(["-codec:v:0", "copy", "-disposition:v:0", "attached_pic"])
+    elif source_info.has_cover_art and preset.supports_cover_art:
+        # Preserve embedded cover art
+        cmd.extend(["-map", "0:a", "-map", "0:v"])
+        cmd.extend(["-codec:v:0", "copy"])
+
+    # Audio codec selection
+    if stream_copy:
+        cmd.extend(["-codec:a", "copy"])
+    else:
+        # For AIFF/WAV non-pioneer presets, select bit-depth-aware codec
+        codec = preset.codec
+        if preset.bit_depth is None:  # Preserve source bit depth
+            if preset.codec == "pcm_s16be":  # AIFF
+                codec = f"pcm_s{source_info.bit_depth}be"
+            elif preset.codec == "pcm_s16le":  # WAV
+                codec = f"pcm_s{source_info.bit_depth}le"
+
+        cmd.extend(["-codec:a", codec])
+        cmd.extend(preset.ffmpeg_args)
+
+    # Metadata copying
+    cmd.extend(["-map_metadata", "0"])
+
+    # Output file
+    cmd.append(str(output_path))
+
+    return cmd
+
+
+def export_file(
+    file_path: Path,
+    output_path: Path,
+    preset: FormatPreset,
+    repo_path: Path,
+    *,
+    verbose: bool = False,
+) -> ExportResult:
+    """Export a single file using the specified preset.
+
+    Args:
+        file_path: Source file path (absolute).
+        output_path: Destination file path (absolute).
+        preset: Target format preset.
+        repo_path: Repository root path.
+        verbose: If True, log commands and output.
+
+    Returns:
+        ExportResult with status and timing information.
+    """
+    start_time = time.time()
+    rel_source = str(file_path.relative_to(repo_path))
+    rel_output = output_path.name  # Just filename for output field
+
+    # Check if source file exists
+    if not file_path.exists():
+        duration = time.time() - start_time
+        return ExportResult(
+            source=rel_source,
+            output=rel_output,
+            status="not_present",
+            preset=preset.name,
+            action="error",
+            duration_seconds=duration,
+            error_message="Source file not present",
+        )
+
+    try:
+        # Probe source file
+        source_info = probe_source(file_path)
+
+        # Determine cover art path
+        cover_path = None
+        if not source_info.has_cover_art and preset.supports_cover_art:
+            cover_path = find_cover_art(file_path)
+
+        # Determine action: copy vs encode
+        is_copy_eligible = can_copy(source_info, preset)
+
+        # File copy path (no re-encoding needed, no cover art needed, no post-processing)
+        if is_copy_eligible and cover_path is None and preset.post_commands is None:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(file_path, output_path)
+            duration = time.time() - start_time
+            return ExportResult(
+                source=rel_source,
+                output=rel_output,
+                status="copied",
+                preset=preset.name,
+                action="file_copied",
+                duration_seconds=duration,
+            )
+
+        # ffmpeg path (stream copy or full encode)
+        is_stream_copy = is_copy_eligible and cover_path is not None
+
+        # Create output directory
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Use temporary file for atomic write
+        temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+
+        try:
+            # Build and run ffmpeg command
+            cmd = build_ffmpeg_command(
+                file_path,
+                temp_path,
+                preset,
+                source_info,
+                cover_path,
+                stream_copy=is_stream_copy,
+            )
+
+            if verbose:
+                print(f"Running: {' '.join(cmd)}")
+
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+
+            if proc.returncode != 0:
+                # Clean up temp file
+                if temp_path.exists():
+                    temp_path.unlink()
+
+                duration = time.time() - start_time
+                return ExportResult(
+                    source=rel_source,
+                    output=rel_output,
+                    status="error",
+                    preset=preset.name,
+                    action="error",
+                    duration_seconds=duration,
+                    error_message=proc.stderr[:500] if proc.stderr else "ffmpeg failed",
+                )
+
+            # Run post-processing commands
+            if preset.post_commands:
+                for post_cmd in preset.post_commands:
+                    # Append the output file path to the command
+                    full_cmd = list(post_cmd) + [str(temp_path)]
+
+                    if verbose:
+                        print(f"Running: {' '.join(full_cmd)}")
+
+                    post_proc = subprocess.run(
+                        full_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                    )
+
+                    if post_proc.returncode != 0:
+                        # Clean up temp file
+                        if temp_path.exists():
+                            temp_path.unlink()
+
+                        duration = time.time() - start_time
+                        return ExportResult(
+                            source=rel_source,
+                            output=rel_output,
+                            status="error",
+                            preset=preset.name,
+                            action="error",
+                            duration_seconds=duration,
+                            error_message=f"Post-processing failed: {post_proc.stderr[:500]}",
+                        )
+
+            # Atomic rename
+            temp_path.rename(output_path)
+
+            duration = time.time() - start_time
+            action = "stream_copied" if is_stream_copy else "encoded"
+            status = "copied" if is_stream_copy else "ok"
+
+            return ExportResult(
+                source=rel_source,
+                output=rel_output,
+                status=status,
+                preset=preset.name,
+                action=action,
+                duration_seconds=duration,
+            )
+
+        except Exception as e:
+            # Clean up temp file on any error
+            if temp_path.exists():
+                temp_path.unlink()
+            raise
+
+    except Exception as e:
+        duration = time.time() - start_time
+        return ExportResult(
+            source=rel_source,
+            output=rel_output,
+            status="error",
+            preset=preset.name,
+            action="error",
+            duration_seconds=duration,
+            error_message=str(e)[:500],
+        )
+
+
+def write_export_report(report: ExportReport, output_path: Path) -> None:
+    """Write export report to JSON file with atomic write.
+
+    Args:
+        report: Export report to serialize.
+        output_path: Destination file path.
+    """
+    # Convert dataclasses to dicts
+    from dataclasses import asdict
+
+    report_dict = asdict(report)
+
+    # Write to temp file, then rename (atomic)
+    temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+
+    try:
+        with temp_path.open("w") as f:
+            json.dump(report_dict, f, indent=2)
+
+        temp_path.rename(output_path)
+    except Exception:
+        # Clean up temp file on error
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
