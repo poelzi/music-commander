@@ -24,10 +24,12 @@
         # Runtime dependencies
         pythonDeps =
           ps: with ps; [
+            beautifulsoup4
             click
             jinja2
             lark
             python-magic
+            requests
             rich
             sqlalchemy
             tomli-w
