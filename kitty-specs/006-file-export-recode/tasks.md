@@ -14,10 +14,10 @@
 **Prompt**: `tasks/WP01-encoder-presets-and-probing.md`
 
 ### Included Subtasks
-- [ ] T001 Create `FormatPreset` frozen dataclass and `PRESETS` registry with all 8 presets, plus `EXTENSION_TO_PRESET` mapping
-- [ ] T002 Create `SourceInfo` dataclass and implement `probe_source(file_path)` using ffprobe JSON output
-- [ ] T003 [P] Implement `find_cover_art(file_path)` to search source directory for external cover files
-- [ ] T004 [P] Implement `can_copy(source_info, preset)` to compare source parameters against preset requirements
+- [x] T001 Create `FormatPreset` frozen dataclass and `PRESETS` registry with all 8 presets, plus `EXTENSION_TO_PRESET` mapping
+- [x] T002 Create `SourceInfo` dataclass and implement `probe_source(file_path)` using ffprobe JSON output
+- [x] T003 [P] Implement `find_cover_art(file_path)` to search source directory for external cover files
+- [x] T004 [P] Implement `can_copy(source_info, preset)` to compare source parameters against preset requirements
 
 ### Implementation Notes
 - `FormatPreset` fields: name, codec, container, ffmpeg_args, sample_rate, bit_depth, channels, post_commands, supports_cover_art (see data-model.md).
