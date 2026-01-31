@@ -1,0 +1,9 @@
+{
+  "feature_number": "006",
+  "slug": "006-file-export-recode",
+  "friendly_name": "File Export Recode",
+  "mission": "software-dev",
+  "source_description": "Add a file export recoding feature. Like view but it will recode the files in the specified format. Create a list of format definitions, like mp3-320, aiff, flac, flac-pioneer (16 bit, 2 channels no multichannel, 44.1 kHz - full Pioneer compatible). Format can be specified on encoding. Make sure all metatags and cover are transferred. Use ffmpeg as the backend. If no cover art is embedded and a cover file exists, embed the file. Files already in the correct format can be copied. Add incremental skip-existing support. Also add aiff-pioneer and wav-pioneer for downscaling to 16-bit 44.1kHz stereo.",
+  "created_at": "2026-01-31T00:00:00Z",
+  "vcs": "git"
+}
