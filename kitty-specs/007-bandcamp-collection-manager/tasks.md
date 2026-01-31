@@ -169,10 +169,10 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP06-match-command.md`
 
 ### Included Subtasks
-- [ ] T026 Create `music_commander/commands/bandcamp/match.py` CLI subcommand
-- [ ] T027 Load local cache tracks and Bandcamp releases, run batch matching
-- [ ] T028 Display results in Rich table grouped by confidence tier (exact, high, low, unmatched)
-- [ ] T029 Add `--output` option to write match results as JSON for downstream use
+- [x] T026 Create `music_commander/commands/bandcamp/match.py` CLI subcommand
+- [x] T027 Load local cache tracks and Bandcamp releases, run batch matching
+- [x] T028 Display results in Rich table grouped by confidence tier (exact, high, low, unmatched)
+- [x] T029 Add `--output` option to write match results as JSON for downstream use
 
 ### Implementation Notes
 - Load all CacheTrack records and BandcampRelease records from DB
