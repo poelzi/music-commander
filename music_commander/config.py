@@ -197,7 +197,6 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
         if value is not None and not isinstance(value, str):
             raise ConfigValidationError("editors.meta_editor", value, "must be a string or null")
         config.meta_editor = value
-
     # Parse [bandcamp] section
     bandcamp = data.get("bandcamp", {})
     if "session_cookie" in bandcamp:
@@ -260,7 +259,6 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     if config.meta_editor is not None:
         data["editors"] = {"meta_editor": config.meta_editor}
-
     # Build [bandcamp] section (only if non-default values)
     bandcamp_data: dict[str, Any] = {}
     if config.bandcamp_session_cookie is not None:
