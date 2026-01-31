@@ -17,6 +17,7 @@ dependencies = [
     "jinja2>=3.0",
     "lark>=1.0",
     "python-magic>=0.4",
+    "rapidfuzz>=3.0",
     "rich>=13.0",
     "sqlalchemy>=2.0",
     "tomli-w>=1.0",

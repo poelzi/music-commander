@@ -28,6 +28,7 @@
             jinja2
             lark
             python-magic
+            rapidfuzz
             rich
             sqlalchemy
             tomli-w
