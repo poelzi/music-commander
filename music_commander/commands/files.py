@@ -1371,7 +1371,10 @@ def _show_export_summary(summary: dict, results: list[ExportResult]) -> None:
         results: List of ExportResult instances.
     """
     # Create summary table
-    table = create_table("Export Summary", ["Status", "Count", "Description"])
+    table = create_table("Export Summary")
+    table.add_column("Status", style="bold")
+    table.add_column("Count", justify="right")
+    table.add_column("Description")
 
     if summary["ok"] > 0:
         table.add_row("[green]OK (Encoded)[/green]", str(summary["ok"]), "Successfully encoded")
@@ -1481,11 +1484,12 @@ def export(
         return
 
     # Load track metadata for template rendering
-    from music_commander.cache.query import get_cache
+    from music_commander.cache.models import CacheTrack
+    from music_commander.cache.session import get_cache_session
 
-    cache = get_cache(config)
-    tracks = cache.get_all_tracks()
-    track_by_file = {Path(t.file): t for t in tracks}
+    with get_cache_session(repo_path) as session:
+        tracks = list(session.query(CacheTrack).all())
+    track_by_file = {repo_path / t.file: t for t in tracks if t.file}
 
     # Render output paths
     file_pairs: list[tuple[Path, Path]] = []
@@ -1507,7 +1511,7 @@ def export(
             "genre": track.genre,
             "bpm": track.bpm,
             "rating": track.rating,
-            "key": track.key,
+            "key": track.key_musical,
             "year": track.year,
             "tracknumber": track.tracknumber,
             "comment": track.comment,
@@ -1603,7 +1607,9 @@ def export(
         console.print()
 
         # Show summary
-        summary_table = create_table("Dry-Run Summary", ["Action", "Count"])
+        summary_table = create_table("Dry-Run Summary")
+        summary_table.add_column("Action", style="bold")
+        summary_table.add_column("Count", justify="right")
         if action_counts["encode"] > 0:
             summary_table.add_row("Would encode", str(action_counts["encode"]))
         if action_counts["copy"] > 0:

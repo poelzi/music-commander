@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+
 from music_commander.utils.encoder import (
     AIFF,
     AIFF_PIONEER,
@@ -499,13 +500,19 @@ class TestExportFile:
         # Mock probe_source
         mock_source_info = SourceInfo("flac", 44100, 16, 2, False)
 
-        # Mock ffmpeg subprocess
-        mock_proc = Mock()
-        mock_proc.returncode = 0
-        mock_proc.stderr = ""
+        # Mock ffmpeg subprocess - create temp file so rename succeeds
+        def fake_run(cmd, **kwargs):
+            # ffmpeg writes to the temp file path (last arg)
+            temp_file = Path(cmd[-1])
+            temp_file.parent.mkdir(parents=True, exist_ok=True)
+            temp_file.touch()
+            mock_proc = Mock()
+            mock_proc.returncode = 0
+            mock_proc.stderr = ""
+            return mock_proc
 
         with patch("music_commander.utils.encoder.probe_source", return_value=mock_source_info):
-            with patch("subprocess.run", return_value=mock_proc):
+            with patch("subprocess.run", side_effect=fake_run):
                 result = export_file(source, output, MP3_320, repo)
 
         assert result.status == "ok"
@@ -584,22 +591,28 @@ class TestExportFile:
 
         mock_source_info = SourceInfo("flac", 96000, 24, 2, False)
 
-        # Mock ffmpeg success
-        mock_ffmpeg = Mock()
-        mock_ffmpeg.returncode = 0
-        mock_ffmpeg.stderr = ""
+        call_count = 0
 
-        # Mock metaflac success
-        mock_metaflac = Mock()
-        mock_metaflac.returncode = 0
+        def fake_run(cmd, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # ffmpeg call - create temp file
+                temp_file = Path(cmd[-1])
+                temp_file.parent.mkdir(parents=True, exist_ok=True)
+                temp_file.touch()
+            mock_proc = Mock()
+            mock_proc.returncode = 0
+            mock_proc.stderr = ""
+            return mock_proc
 
         with patch("music_commander.utils.encoder.probe_source", return_value=mock_source_info):
-            with patch("subprocess.run", side_effect=[mock_ffmpeg, mock_metaflac]):
+            with patch("subprocess.run", side_effect=fake_run):
                 result = export_file(source, output, FLAC_PIONEER, repo)
 
         assert result.status == "ok"
-        # Should have called metaflac
-        assert mock_metaflac.returncode == 0
+        # Should have called both ffmpeg and metaflac
+        assert call_count == 2
 
 
 class TestExportReport:
