@@ -619,7 +619,7 @@ def check_file(
                 capture_output=True,
                 text=True,
                 cwd=repo_path,
-                timeout=300,
+                timeout=600,
             )
             if verbose_output:
                 output_text = (
