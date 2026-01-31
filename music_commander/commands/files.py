@@ -1487,9 +1487,24 @@ def export(
     from music_commander.cache.models import CacheTrack
     from music_commander.cache.session import get_cache_session
 
+    # Eagerly load all attributes into dicts while session is open
+    # (CacheTrack ORM instances become detached after session closes)
+    track_metadata_by_file: dict[Path, dict] = {}
     with get_cache_session(repo_path) as session:
-        tracks = list(session.query(CacheTrack).all())
-    track_by_file = {repo_path / t.file: t for t in tracks if t.file}
+        for t in session.query(CacheTrack).all():
+            if t.file:
+                track_metadata_by_file[repo_path / t.file] = {
+                    "artist": t.artist,
+                    "title": t.title,
+                    "album": t.album,
+                    "genre": t.genre,
+                    "bpm": t.bpm,
+                    "rating": t.rating,
+                    "key": t.key_musical,
+                    "year": t.year,
+                    "tracknumber": t.tracknumber,
+                    "comment": t.comment,
+                }
 
     # Render output paths
     file_pairs: list[tuple[Path, Path]] = []
@@ -1497,24 +1512,15 @@ def export(
 
     for file_path in file_paths:
         # Get track metadata
-        track = track_by_file.get(file_path)
-        if not track:
+        track_meta = track_metadata_by_file.get(file_path)
+        if not track_meta:
             if verbose:
                 warning(f"No metadata for {file_path}, skipping")
             continue
 
-        # Convert track to dict for template rendering
+        # Build template context
         metadata = {
-            "artist": track.artist,
-            "title": track.title,
-            "album": track.album,
-            "genre": track.genre,
-            "bpm": track.bpm,
-            "rating": track.rating,
-            "key": track.key_musical,
-            "year": track.year,
-            "tracknumber": track.tracknumber,
-            "comment": track.comment,
+            **track_meta,
             "file": str(file_path),
             "filename": file_path.stem,
             "ext": file_path.suffix,
