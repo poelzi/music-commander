@@ -36,7 +36,6 @@ Outcome of checking a single file (may involve multiple tools).
 | status | str | "ok", "error", "not_present", "checker_missing" |
 | tools | list[str] | Tool names used |
 | errors | list[ToolResult] | Only the failing tool results (empty if status is "ok") |
-| all_results | list[ToolResult] | All tool results (for verbose/debug output) |
 
 **Status rules**:
 - `"ok"` -- all tools passed
@@ -108,12 +107,15 @@ Top-level JSON output structure.
 
 Extension-to-tools mapping:
 
-| Extension | Tools (in order) | Fallback |
-|-----------|-----------------|----------|
-| .flac | flac | - |
-| .mp3 | mp3val, ffmpeg | ffmpeg only if mp3val missing |
-| .ogg | ogginfo, ffmpeg | ffmpeg only if ogginfo missing |
-| .wav | shntool, sox | ffmpeg if both missing |
-| .aiff, .aif | sox | ffmpeg if sox missing |
-| .m4a | ffmpeg | - |
-| * (other) | ffmpeg | - |
+| Extension | Tools (in order) | On Missing Tool |
+|-----------|-----------------|-----------------|
+| .flac | flac | checker_missing |
+| .mp3 | mp3val, ffmpeg | checker_missing if either is absent |
+| .ogg | ogginfo, ffmpeg | checker_missing if either is absent |
+| .wav | shntool, sox | checker_missing if either is absent |
+| .aiff, .aif | sox | checker_missing |
+| .m4a | ffmpeg | checker_missing |
+| * (other) | ffmpeg | checker_missing |
+
+**Note**: If ANY tool in the chain is unavailable, the file is marked `checker_missing`.
+There is no partial fallback. This matches FR-013: "skip files of that type".
