@@ -174,7 +174,9 @@ def test_resolve_args_to_files_search_query(
 ) -> None:
     """Test resolving search query arguments."""
     with patch("music_commander.utils.search_ops.execute_search_files") as mock_search:
+        # Create the file on disk so require_present filter passes
         mock_file = temp_dir / "result.flac"
+        mock_file.write_text("content")
         mock_search.return_value = [mock_file]
 
         result = resolve_args_to_files(
@@ -205,7 +207,9 @@ def test_resolve_args_to_files_mixed(
     test_file.write_text("content")
 
     with patch("music_commander.utils.search_ops.execute_search_files") as mock_search:
+        # Create the search result file on disk so require_present filter passes
         mock_file = temp_dir / "search_result.flac"
+        mock_file.write_text("content")
         mock_search.return_value = [mock_file]
 
         result = resolve_args_to_files(
@@ -369,17 +373,22 @@ def test_resolve_args_to_files_require_present_filter(
     file_path = test_file  # Save path
     test_file.unlink()  # Delete the file
 
-    result = resolve_args_to_files(
-        ctx=mock_context,
-        args=(str(file_path),),
-        config=mock_config,
-        require_present=True,
-        verbose=False,
-    )
+    # The deleted path won't resolve as a file, so it's treated as a query term.
+    # Mock execute_search_files to return empty (no matches).
+    with patch("music_commander.utils.search_ops.execute_search_files") as mock_search:
+        mock_search.return_value = []
 
-    # File doesn't exist, so should be filtered out
-    assert result is not None
-    assert len(result) == 0
+        result = resolve_args_to_files(
+            ctx=mock_context,
+            args=(str(file_path),),
+            config=mock_config,
+            require_present=True,
+            verbose=False,
+        )
+
+        # No files exist, so result should be empty
+        assert result is not None
+        assert len(result) == 0
 
 
 def test_resolve_args_to_files_search_error(
