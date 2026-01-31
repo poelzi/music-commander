@@ -1,0 +1,8 @@
+{
+  "feature_number": "007",
+  "slug": "007-bandcamp-collection-manager",
+  "friendly_name": "Bandcamp Collection Manager",
+  "mission": "software-dev",
+  "source_description": "Add bandcamp subcommand. The goal is to help with bandcamp releases from the user collection.\n- Support multiple purchases and discography downloads\n- Check if the release is found in the collection\n  - support fuzzy search in the cache\n  - tags might not match 100%\n- Allows to download the release in the format requested\n- Add support for the session cookie extraction\n- Add support for generating a report page (html) that includes direct links to the download of bandcamp in the desired format\n- Goal is to have a semi-automatic repair mechanism when \"files check\" detected a broken bandcamp file to redownload and replace the file\nsee:\nhttps://github.com/RustyRin/bandcamp-api/\nhttps://github.com/Evolution0/bandcamp-dl",
+  "created_at": "2026-01-31T23:10:00Z"
+}
