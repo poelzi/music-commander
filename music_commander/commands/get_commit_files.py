@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 
 import click
 
@@ -12,6 +13,14 @@ from music_commander.exceptions import (
     NotGitAnnexRepoError,
     NotGitRepoError,
 )
+from music_commander.utils.checkers import (
+    CheckReport,
+    CheckResult,
+    check_file,
+    check_tool_available,
+    get_checkers_for_extension,
+    write_report,
+)
 from music_commander.utils.git import (
     FetchResult,
     annex_drop_files,
@@ -19,13 +28,16 @@ from music_commander.utils.git import (
     check_git_annex_repo,
     filter_annexed_files,
     get_files_from_revision,
+    is_annex_present,
 )
 from music_commander.utils.output import (
+    MultilineFileProgress,
     console,
     create_table,
     error,
     info,
     success,
+    verbose as output_verbose,
     warning,
 )
 from music_commander.utils.search_ops import (
@@ -343,7 +355,9 @@ def get(
         raise SystemExit(EXIT_NOT_ANNEX_REPO)
 
     # Execute search to get files (include all files, not just present ones)
-    file_paths = execute_search_files(ctx, query, config, "Fetch", verbose=verbose, dry_run=dry_run, require_present=False)
+    file_paths = execute_search_files(
+        ctx, query, config, "Fetch", verbose=verbose, dry_run=dry_run, require_present=False
+    )
     if file_paths is None:
         raise SystemExit(EXIT_CACHE_ERROR)
 
@@ -451,7 +465,9 @@ def drop(
         raise SystemExit(EXIT_NOT_ANNEX_REPO)
 
     # Execute search to get files (only include files that are present locally)
-    file_paths = execute_search_files(ctx, query, config, "Drop", verbose=verbose, dry_run=dry_run, require_present=True)
+    file_paths = execute_search_files(
+        ctx, query, config, "Drop", verbose=verbose, dry_run=dry_run, require_present=True
+    )
     if file_paths is None:
         raise SystemExit(EXIT_CACHE_ERROR)
 
@@ -501,3 +517,422 @@ def drop(
     if drop_result.failed:
         raise SystemExit(EXIT_PARTIAL_FAILURE)
     raise SystemExit(EXIT_SUCCESS)
+
+
+@cli.command("check")
+@click.argument("args", nargs=-1)
+@_DRY_RUN_OPTION
+@_JOBS_OPTION
+@_VERBOSE_OPTION
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default=None,
+    help="Output JSON report path",
+)
+@pass_context
+def check(
+    ctx: Context,
+    args: tuple[str, ...],
+    dry_run: bool,
+    jobs: int,
+    verbose: bool,
+    output: str | None,
+) -> None:
+    """Check integrity of audio files using format-specific tools.
+
+    Can check files by path, directory, search query, or all annexed files.
+    Writes a JSON report of all results.
+
+    Examples:
+
+    \b
+      # Check all annexed files
+      music-commander files check
+
+    \b
+      # Check specific file
+      music-commander files check tracks/artist/song.flac
+
+    \b
+      # Check all files in a directory
+      music-commander files check tracks/artist/
+
+    \b
+      # Check files matching search query
+      music-commander files check "artist:Basinski rating:>=4"
+
+    \b
+      # Preview what would be checked
+      music-commander files check --dry-run "genre:techno"
+
+    \b
+      # Custom output path
+      music-commander files check --output /tmp/check-report.json
+    """
+    import time
+    from datetime import datetime, timezone
+
+    config = ctx.config
+    if config is None:
+        error("Configuration not loaded")
+        raise SystemExit(EXIT_NO_REPO)
+
+    repo_path = config.music_repo
+
+    # Validate repository
+    try:
+        check_git_annex_repo(repo_path)
+    except NotGitRepoError:
+        error(f"Not a git repository: {repo_path}")
+        raise SystemExit(EXIT_NOT_ANNEX_REPO)
+    except NotGitAnnexRepoError:
+        error(f"Not a git-annex repository: {repo_path}")
+        raise SystemExit(EXIT_NOT_ANNEX_REPO)
+
+    # Resolve arguments to files (T014)
+    file_paths = _resolve_args_to_files(
+        ctx,
+        args,
+        config,
+        require_present=False,  # We want to report not-present files
+        verbose=verbose,
+        dry_run=dry_run,
+    )
+
+    if file_paths is None:
+        raise SystemExit(EXIT_CACHE_ERROR)
+
+    if not file_paths:
+        info("No files to check")
+        raise SystemExit(EXIT_NO_RESULTS)
+
+    # Filter to annexed files only (T015)
+    annexed_files = filter_annexed_files(file_paths)
+
+    if not annexed_files:
+        info("No annexed files found")
+        raise SystemExit(EXIT_SUCCESS)
+
+    # Separate present vs not-present files (T015)
+    present_files = []
+    not_present_files = []
+
+    for file_path in annexed_files:
+        if is_annex_present(file_path):
+            present_files.append(file_path)
+        else:
+            not_present_files.append(file_path)
+
+    # Tool availability pre-check (T016)
+    ext_tools: dict[str, list[str]] = {}
+    for file_path in present_files:
+        ext = file_path.suffix.lower() or ".unknown"
+        if ext not in ext_tools:
+            checker_specs = get_checkers_for_extension(ext)
+            ext_tools[ext] = [spec.command[0] for spec in checker_specs]
+
+    missing_tools_by_ext: dict[str, list[str]] = {}
+    missing_files: list[Path] = []
+    to_check: list[Path] = []
+
+    for file_path in present_files:
+        ext = file_path.suffix.lower() or ".unknown"
+        tools = ext_tools.get(ext, [])
+        if tools and all(not check_tool_available(tool_name) for tool_name in tools):
+            missing_files.append(file_path)
+            missing_tools_by_ext.setdefault(ext, []).extend(tools)
+        else:
+            to_check.append(file_path)
+
+    missing_tools = sorted(
+        {tool for tool_list in missing_tools_by_ext.values() for tool in tool_list}
+    )
+    if missing_tools and (verbose or not ctx.quiet):
+        warning("Missing checker tools detected:")
+        for ext in sorted(missing_tools_by_ext.keys()):
+            tools = ", ".join(sorted(set(missing_tools_by_ext[ext])))
+            warning(f"  {ext}: {tools}")
+        warning("Files requiring these tools will be marked as 'checker_missing'")
+
+    # Dry-run mode (T017)
+    if dry_run:
+        console.print(f"\n[bold]Would check {len(present_files)} annexed files:[/bold]\n")
+
+        # Show files grouped by extension with their checkers
+        by_ext: dict[str, list[Path]] = {}
+        for file_path in present_files:
+            ext = file_path.suffix.lower() or ".unknown"
+            if ext not in by_ext:
+                by_ext[ext] = []
+            by_ext[ext].append(file_path)
+
+        for ext in sorted(by_ext.keys()):
+            files = by_ext[ext]
+            checker_specs = get_checkers_for_extension(ext)
+            tools = [spec.name for spec in checker_specs]
+
+            console.print(f"  [bold]{ext}[/bold] ({len(files)} files) - tools: {', '.join(tools)}")
+            if verbose:
+                for file_path in files[:5]:  # Show first 5
+                    rel_path = file_path.relative_to(repo_path)
+                    console.print(f"    [path]{rel_path}[/path]")
+                if len(files) > 5:
+                    console.print(f"    ... and {len(files) - 5} more")
+
+        if not_present_files:
+            console.print(f"\n  [dim]Not present ({len(not_present_files)} files):[/dim]")
+            for file_path in not_present_files:
+                rel_path = file_path.relative_to(repo_path)
+                console.print(f"    [path]{rel_path}[/path]")
+
+        console.print()
+        raise SystemExit(EXIT_SUCCESS)
+
+    # Initialize results list
+    results: list[CheckResult] = []
+
+    # Add not-present results upfront (T015)
+    for file_path in not_present_files:
+        rel_path = str(file_path.relative_to(repo_path))
+        results.append(
+            CheckResult(
+                file=rel_path,
+                status="not_present",
+                tools=[],
+                errors=[],
+            )
+        )
+
+    # Add checker-missing results upfront (T016)
+    for file_path in missing_files:
+        rel_path = str(file_path.relative_to(repo_path))
+        ext = file_path.suffix.lower() or ".unknown"
+        tools = sorted(set(missing_tools_by_ext.get(ext, [])))
+        results.append(
+            CheckResult(
+                file=rel_path,
+                status="checker_missing",
+                tools=tools,
+                errors=[],
+            )
+        )
+
+    # Main check loop with progress (T018 + T019 with SIGINT safety)
+    start_time = time.time()
+    report = None
+
+    try:
+        if not ctx.quiet:
+            info(f"Checking {len(to_check)} files...")
+
+        with MultilineFileProgress(total=len(to_check), operation="Checking") as progress:
+            for file_path in to_check:
+                progress.start_file(file_path)
+
+                # Check the file
+                result = check_file(file_path, repo_path, verbose_output=verbose)
+                results.append(result)
+
+                if verbose:
+                    rel_path = file_path.relative_to(repo_path)
+                    output_verbose(f"Checked: {rel_path} -> {result.status}")
+
+                # Update progress
+                success = result.status == "ok"
+                message = ""
+                if not success and result.errors:
+                    # Show first error message (truncated)
+                    message = result.errors[0].output[:80].replace("\n", " ")
+
+                progress.complete_file(file_path, success=success, message=message)
+
+        duration = time.time() - start_time
+
+        # Build final report (T019)
+        summary = {
+            "total": len(results),
+            "ok": sum(1 for r in results if r.status == "ok"),
+            "error": sum(1 for r in results if r.status == "error"),
+            "not_present": sum(1 for r in results if r.status == "not_present"),
+            "checker_missing": sum(1 for r in results if r.status == "checker_missing"),
+        }
+
+        report = CheckReport(
+            version=1,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            duration_seconds=duration,
+            repository=str(repo_path),
+            arguments=list(args) if args else [],
+            summary=summary,
+            results=results,
+        )
+
+    finally:
+        # Write report even if interrupted (T019)
+        if report or results:
+            # Use provided output path or default
+            output_path = (
+                Path(output) if output else repo_path / ".music-commander-check-results.json"
+            )
+
+            # Build partial report if we don't have a complete one
+            if report is None:
+                duration = time.time() - start_time
+                summary = {
+                    "total": len(results),
+                    "ok": sum(1 for r in results if r.status == "ok"),
+                    "error": sum(1 for r in results if r.status == "error"),
+                    "not_present": sum(1 for r in results if r.status == "not_present"),
+                    "checker_missing": sum(1 for r in results if r.status == "checker_missing"),
+                }
+                report = CheckReport(
+                    version=1,
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    duration_seconds=duration,
+                    repository=str(repo_path),
+                    arguments=list(args) if args else [],
+                    summary=summary,
+                    results=results,
+                )
+
+            write_report(report, output_path)
+
+            if not ctx.quiet:
+                info(f"Report written to: {output_path}")
+
+    if report is None:
+        duration = time.time() - start_time
+        summary = {
+            "total": len(results),
+            "ok": sum(1 for r in results if r.status == "ok"),
+            "error": sum(1 for r in results if r.status == "error"),
+            "not_present": sum(1 for r in results if r.status == "not_present"),
+            "checker_missing": sum(1 for r in results if r.status == "checker_missing"),
+        }
+        report = CheckReport(
+            version=1,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            duration_seconds=duration,
+            repository=str(repo_path),
+            arguments=list(args) if args else [],
+            summary=summary,
+            results=results,
+        )
+
+    # Show summary (T020)
+    _show_check_summary(repo_path, results, report)
+
+    # Exit with appropriate code
+    has_errors = any(r.status == "error" for r in results)
+    if has_errors:
+        raise SystemExit(EXIT_PARTIAL_FAILURE)
+    raise SystemExit(EXIT_SUCCESS)
+
+
+def _show_check_summary(repo_path: Path, results: list[CheckResult], report: CheckReport) -> None:
+    """Show check results summary table."""
+    console.print()
+
+    # Create summary table
+    table = create_table(title="Check Summary")
+    table.add_column("Status", style="bold")
+    table.add_column("Count", justify="right")
+    table.add_column("Details")
+
+    summary = report.summary
+
+    if summary["ok"] > 0:
+        table.add_row(
+            "[success]OK[/success]",
+            str(summary["ok"]),
+            "No errors detected",
+        )
+
+    if summary["error"] > 0:
+        table.add_row(
+            "[error]Error[/error]",
+            str(summary["error"]),
+            "Integrity check failed",
+        )
+
+    if summary["not_present"] > 0:
+        table.add_row(
+            "[info]Not Present[/info]",
+            str(summary["not_present"]),
+            "Files not available locally",
+        )
+
+    if summary["checker_missing"] > 0:
+        table.add_row(
+            "[warning]Checker Missing[/warning]",
+            str(summary["checker_missing"]),
+            "Required checker tools not found",
+        )
+
+    console.print(table)
+
+    # Show first N failed files with error details
+    failed_results = [r for r in results if r.status == "error"]
+    if failed_results:
+        console.print("\n[error]Failed files:[/error]")
+        for result in failed_results[:10]:  # Show first 10
+            console.print(f"  [path]{result.file}[/path]")
+            for tool_result in result.errors:
+                # Show first line of error output
+                first_line = tool_result.output.split("\n")[0][:100]
+                console.print(f"    [{tool_result.tool}] {first_line}")
+
+        if len(failed_results) > 10:
+            console.print(f"  [dim]... and {len(failed_results) - 10} more failures[/dim]")
+
+    console.print()
+
+    # Final status message
+    if summary["error"] == 0:
+        success(f"All {summary['ok']} files passed integrity checks")
+    else:
+        warning(f"{summary['error']} of {summary['total']} files failed integrity checks")
+
+
+def _resolve_args_to_files(
+    ctx: Context,
+    args: tuple[str, ...],
+    config,
+    *,
+    require_present: bool,
+    verbose: bool,
+    dry_run: bool,
+) -> list[Path] | None:
+    if not args:
+        if verbose or not ctx.quiet:
+            info("No args provided; checking all annexed files")
+        return _list_all_annexed_files(config.music_repo)
+
+    return execute_search_files(
+        ctx,
+        args,
+        config,
+        "Check",
+        verbose=verbose,
+        dry_run=dry_run,
+        require_present=require_present,
+    )
+
+
+def _list_all_annexed_files(repo_path: Path) -> list[Path] | None:
+    try:
+        result = subprocess.run(
+            ["git", "annex", "find"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        error(f"git-annex find failed: {exc.stderr.strip() or exc}")
+        return None
+
+    files = [line for line in result.stdout.splitlines() if line.strip()]
+    return [repo_path / file_path for file_path in files]

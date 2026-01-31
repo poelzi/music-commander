@@ -284,7 +284,7 @@ class TestCheckFile:
         mock_run.return_value = mock_proc
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert
         assert result.status == "ok"
@@ -307,7 +307,7 @@ class TestCheckFile:
         mock_run.return_value = mock_proc
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert
         assert result.status == "error"
@@ -321,7 +321,7 @@ class TestCheckFile:
         repo_path = tmp_path
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert
         assert result.status == "not_present"
@@ -338,7 +338,7 @@ class TestCheckFile:
         mock_tool_available.return_value = False
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert
         assert result.status == "checker_missing"
@@ -359,7 +359,7 @@ class TestCheckFile:
         mock_run.return_value = mock_proc
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert - should use ffmpeg fallback
         assert result.status == "ok"
@@ -396,7 +396,7 @@ class TestCheckFile:
         mock_run.side_effect = [mock_proc1, mock_proc2]
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert
         assert result.status == "ok"
@@ -427,7 +427,7 @@ class TestCheckFile:
         mock_run.side_effect = [mock_proc1, mock_proc2]
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert - ANY failure means overall error status
         assert result.status == "error"
@@ -446,7 +446,7 @@ class TestCheckFile:
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=["flac"], timeout=300)
 
         # Execute
-        result = check_file(test_file, repo_path)
+        result = check_file(test_file, repo_path, verbose_output=True)
 
         # Assert
         assert result.status == "error"

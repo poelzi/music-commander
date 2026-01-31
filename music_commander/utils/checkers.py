@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from music_commander.utils.output import verbose
+
 
 @dataclass
 class ToolResult:
@@ -257,7 +259,15 @@ FFMPEG_FALLBACK = CheckerSpec(
 )
 
 
-def check_file(file_path: Path, repo_path: Path) -> CheckResult:
+def get_checkers_for_extension(extension: str) -> list[CheckerSpec]:
+    """Return checker specs for a file extension.
+
+    Falls back to ffmpeg when extension is not registered.
+    """
+    return CHECKER_REGISTRY.get(extension.lower(), [FFMPEG_FALLBACK])
+
+
+def check_file(file_path: Path, repo_path: Path, *, verbose_output: bool = False) -> CheckResult:
     """Check a single audio file for integrity issues.
 
     Args:
@@ -284,28 +294,28 @@ def check_file(file_path: Path, repo_path: Path) -> CheckResult:
 
     # Get file extension and look up checkers
     ext = file_path.suffix.lower()
-    checker_specs = CHECKER_REGISTRY.get(ext, [FFMPEG_FALLBACK])
+    checker_specs = get_checkers_for_extension(ext)
 
     tools_used = []
     all_results = []
     failed_results = []
 
+    missing_tools = []
+
     for spec in checker_specs:
         # Check if tool is available
         tool_name = spec.command[0]
         if not check_tool_available(tool_name):
-            return CheckResult(
-                file=rel_path,
-                status="checker_missing",
-                tools=[tool_name],
-                errors=[],
-            )
+            missing_tools.append(tool_name)
+            continue
 
         # Build command with file path
         if spec.file_arg_position == "append":
             cmd = spec.command + [str(file_path)]
         elif spec.file_arg_position == "middle":
             cmd = spec.command.copy()
+            if spec.file_arg_index is None:
+                raise ValueError("file_arg_index required for middle insertion")
             cmd.insert(spec.file_arg_index, str(file_path))
             # For ffmpeg and sox, add trailing arguments
             if spec.name == "ffmpeg":
@@ -316,6 +326,9 @@ def check_file(file_path: Path, repo_path: Path) -> CheckResult:
             cmd = spec.command + [str(file_path)]
 
         # Run the checker
+        if verbose_output:
+            verbose(f"Running checker: {' '.join(cmd)}")
+
         try:
             proc = subprocess.run(
                 cmd,
@@ -324,6 +337,12 @@ def check_file(file_path: Path, repo_path: Path) -> CheckResult:
                 cwd=repo_path,
                 timeout=300,  # 5 minute timeout
             )
+            if verbose_output:
+                output_text = f"{getattr(proc, 'stdout', '') or ''}{getattr(proc, 'stderr', '') or ''}".rstrip()
+                if output_text:
+                    verbose(f"Output ({spec.name}):\n{output_text}")
+                else:
+                    verbose(f"Output ({spec.name}): <no output>")
             result = spec.parse_fn(proc)
             tools_used.append(spec.name)
             all_results.append(result)
@@ -353,6 +372,14 @@ def check_file(file_path: Path, repo_path: Path) -> CheckResult:
             tools_used.append(spec.name)
             all_results.append(result)
             failed_results.append(result)
+
+    if not tools_used and missing_tools:
+        return CheckResult(
+            file=rel_path,
+            status="checker_missing",
+            tools=sorted(set(missing_tools)),
+            errors=[],
+        )
 
     # Determine overall status
     if failed_results:
