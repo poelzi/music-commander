@@ -6,6 +6,7 @@ performing git-annex operations on files matching a search query.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -314,13 +315,13 @@ def resolve_args_to_files(
         # Check relative to CWD
         cwd_path = Path.cwd() / arg
         if cwd_path.exists():
-            resolved_path = cwd_path.resolve()
+            resolved_path = Path(os.path.abspath(cwd_path))
 
         # Check relative to repo root
         if not resolved_path:
             repo_rel_path = repo_path / arg
             if repo_rel_path.exists():
-                resolved_path = repo_rel_path.resolve()
+                resolved_path = Path(os.path.abspath(repo_rel_path))
 
         # Check if arg itself is an absolute path
         if not resolved_path:
