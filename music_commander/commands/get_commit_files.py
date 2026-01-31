@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 
 import click
 
@@ -13,11 +14,11 @@ from music_commander.exceptions import (
     NotGitRepoError,
 )
 from music_commander.utils.checkers import (
-    CHECKER_REGISTRY,
     CheckReport,
     CheckResult,
     check_file,
     check_tool_available,
+    get_checkers_for_extension,
     write_report,
 )
 from music_commander.utils.git import (
@@ -36,12 +37,12 @@ from music_commander.utils.output import (
     error,
     info,
     success,
+    verbose as output_verbose,
     warning,
 )
 from music_commander.utils.search_ops import (
     FileOperationResult,
     execute_search_files,
-    resolve_args_to_files,
     show_operation_summary,
 )
 
@@ -591,7 +592,7 @@ def check(
         raise SystemExit(EXIT_NOT_ANNEX_REPO)
 
     # Resolve arguments to files (T014)
-    file_paths = resolve_args_to_files(
+    file_paths = _resolve_args_to_files(
         ctx,
         args,
         config,
@@ -625,23 +626,34 @@ def check(
             not_present_files.append(file_path)
 
     # Tool availability pre-check (T016)
-    # Collect all extensions that need checking
-    extensions_needed = set()
+    ext_tools: dict[str, list[str]] = {}
     for file_path in present_files:
-        ext = file_path.suffix.lower()
-        extensions_needed.add(ext)
+        ext = file_path.suffix.lower() or ".unknown"
+        if ext not in ext_tools:
+            checker_specs = get_checkers_for_extension(ext)
+            ext_tools[ext] = [spec.command[0] for spec in checker_specs]
 
-    # Check which tools are needed and available
-    missing_tools = set()
-    for ext in extensions_needed:
-        checker_specs = CHECKER_REGISTRY.get(ext, [])
-        for spec in checker_specs:
-            tool_name = spec.command[0]
-            if not check_tool_available(tool_name):
-                missing_tools.add(tool_name)
+    missing_tools_by_ext: dict[str, list[str]] = {}
+    missing_files: list[Path] = []
+    to_check: list[Path] = []
 
+    for file_path in present_files:
+        ext = file_path.suffix.lower() or ".unknown"
+        tools = ext_tools.get(ext, [])
+        if tools and all(not check_tool_available(tool_name) for tool_name in tools):
+            missing_files.append(file_path)
+            missing_tools_by_ext.setdefault(ext, []).extend(tools)
+        else:
+            to_check.append(file_path)
+
+    missing_tools = sorted(
+        {tool for tool_list in missing_tools_by_ext.values() for tool in tool_list}
+    )
     if missing_tools and (verbose or not ctx.quiet):
-        warning(f"Missing checker tools: {', '.join(sorted(missing_tools))}")
+        warning("Missing checker tools detected:")
+        for ext in sorted(missing_tools_by_ext.keys()):
+            tools = ", ".join(sorted(set(missing_tools_by_ext[ext])))
+            warning(f"  {ext}: {tools}")
         warning("Files requiring these tools will be marked as 'checker_missing'")
 
     # Dry-run mode (T017)
@@ -658,10 +670,8 @@ def check(
 
         for ext in sorted(by_ext.keys()):
             files = by_ext[ext]
-            checker_specs = CHECKER_REGISTRY.get(ext, [])
-            tools = (
-                [spec.name for spec in checker_specs] if checker_specs else ["ffmpeg (fallback)"]
-            )
+            checker_specs = get_checkers_for_extension(ext)
+            tools = [spec.name for spec in checker_specs]
 
             console.print(f"  [bold]{ext}[/bold] ({len(files)} files) - tools: {', '.join(tools)}")
             if verbose:
@@ -672,9 +682,10 @@ def check(
                     console.print(f"    ... and {len(files) - 5} more")
 
         if not_present_files:
-            console.print(
-                f"\n  [dim]{len(not_present_files)} files not present (would be skipped)[/dim]"
-            )
+            console.print(f"\n  [dim]Not present ({len(not_present_files)} files):[/dim]")
+            for file_path in not_present_files:
+                rel_path = file_path.relative_to(repo_path)
+                console.print(f"    [path]{rel_path}[/path]")
 
         console.print()
         raise SystemExit(EXIT_SUCCESS)
@@ -694,21 +705,39 @@ def check(
             )
         )
 
+    # Add checker-missing results upfront (T016)
+    for file_path in missing_files:
+        rel_path = str(file_path.relative_to(repo_path))
+        ext = file_path.suffix.lower() or ".unknown"
+        tools = sorted(set(missing_tools_by_ext.get(ext, [])))
+        results.append(
+            CheckResult(
+                file=rel_path,
+                status="checker_missing",
+                tools=tools,
+                errors=[],
+            )
+        )
+
     # Main check loop with progress (T018 + T019 with SIGINT safety)
     start_time = time.time()
     report = None
 
     try:
         if not ctx.quiet:
-            info(f"Checking {len(present_files)} files...")
+            info(f"Checking {len(to_check)} files...")
 
-        with MultilineFileProgress(total=len(present_files), operation="Checking") as progress:
-            for file_path in present_files:
+        with MultilineFileProgress(total=len(to_check), operation="Checking") as progress:
+            for file_path in to_check:
                 progress.start_file(file_path)
 
                 # Check the file
-                result = check_file(file_path, repo_path)
+                result = check_file(file_path, repo_path, verbose_output=verbose)
                 results.append(result)
+
+                if verbose:
+                    rel_path = file_path.relative_to(repo_path)
+                    output_verbose(f"Checked: {rel_path} -> {result.status}")
 
                 # Update progress
                 success = result.status == "ok"
@@ -772,6 +801,25 @@ def check(
 
             if not ctx.quiet:
                 info(f"Report written to: {output_path}")
+
+    if report is None:
+        duration = time.time() - start_time
+        summary = {
+            "total": len(results),
+            "ok": sum(1 for r in results if r.status == "ok"),
+            "error": sum(1 for r in results if r.status == "error"),
+            "not_present": sum(1 for r in results if r.status == "not_present"),
+            "checker_missing": sum(1 for r in results if r.status == "checker_missing"),
+        }
+        report = CheckReport(
+            version=1,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            duration_seconds=duration,
+            repository=str(repo_path),
+            arguments=list(args) if args else [],
+            summary=summary,
+            results=results,
+        )
 
     # Show summary (T020)
     _show_check_summary(repo_path, results, report)
@@ -846,3 +894,45 @@ def _show_check_summary(repo_path: Path, results: list[CheckResult], report: Che
         success(f"All {summary['ok']} files passed integrity checks")
     else:
         warning(f"{summary['error']} of {summary['total']} files failed integrity checks")
+
+
+def _resolve_args_to_files(
+    ctx: Context,
+    args: tuple[str, ...],
+    config,
+    *,
+    require_present: bool,
+    verbose: bool,
+    dry_run: bool,
+) -> list[Path] | None:
+    if not args:
+        if verbose or not ctx.quiet:
+            info("No args provided; checking all annexed files")
+        return _list_all_annexed_files(config.music_repo)
+
+    return execute_search_files(
+        ctx,
+        args,
+        config,
+        "Check",
+        verbose=verbose,
+        dry_run=dry_run,
+        require_present=require_present,
+    )
+
+
+def _list_all_annexed_files(repo_path: Path) -> list[Path] | None:
+    try:
+        result = subprocess.run(
+            ["git", "annex", "find"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        error(f"git-annex find failed: {exc.stderr.strip() or exc}")
+        return None
+
+    files = [line for line in result.stdout.splitlines() if line.strip()]
+    return [repo_path / file_path for file_path in files]
