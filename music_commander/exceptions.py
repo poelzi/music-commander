@@ -205,3 +205,31 @@ class AnnexMetadataError(SyncError):
     def __init__(self, file_path: Path, message: str) -> None:
         self.file_path = file_path
         super().__init__(f"Annex metadata error ({file_path}): {message}")
+
+
+# Bandcamp Errors
+class BandcampError(MusicCommanderError):
+    """Base exception for Bandcamp operations."""
+
+    pass
+
+
+class BandcampAuthError(BandcampError):
+    """Authentication with Bandcamp failed."""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)
+
+
+class BandcampParseError(BandcampError):
+    """Failed to parse Bandcamp page or API response."""
+
+    def __init__(self, url: str, message: str, response_snippet: str = "") -> None:
+        self.url = url
+        self.message = message
+        self.response_snippet = response_snippet
+        detail = f"Parse error at {url}: {message}"
+        if response_snippet:
+            detail += f"\nResponse snippet: {response_snippet[:500]}"
+        super().__init__(detail)
