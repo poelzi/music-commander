@@ -247,7 +247,7 @@ music-commander/
 │   ├── config.py           # Configuration loading
 │   ├── exceptions.py       # Exception hierarchy
 │   ├── commands/           # CLI commands (auto-discovered)
-│   │   └── get_commit_files.py
+│   │   └── files.py
 │   ├── db/                 # Mixxx database ORM
 │   │   ├── models.py       # SQLAlchemy models
 │   │   ├── session.py      # Session management
