@@ -47,6 +47,7 @@ class Config:
     mixxx_backup_path: Path | None = None
     colored_output: bool = True
     default_remote: str | None = None
+    flac_multichannel_check: bool = False
     config_path: Path | None = None
 
     def validate(self) -> list[str]:
@@ -171,6 +172,14 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
             )
         config.default_remote = value
 
+    # Parse [checks] section
+    checks = data.get("checks", {})
+    if "flac_multichannel" in checks:
+        value = checks["flac_multichannel"]
+        if not isinstance(value, bool):
+            raise ConfigValidationError("checks.flac_multichannel", value, "must be a boolean")
+        config.flac_multichannel_check = value
+
     return config
 
 
@@ -205,6 +214,9 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     if config.default_remote is not None:
         data["git_annex"] = {"default_remote": config.default_remote}
+
+    if config.flac_multichannel_check:
+        data["checks"] = {"flac_multichannel": True}
 
     with open(config_path, "wb") as f:
         tomli_w.dump(data, f)

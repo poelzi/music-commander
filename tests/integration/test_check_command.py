@@ -50,6 +50,25 @@ def _missing_result(file: str) -> CheckResult:
     return CheckResult(file=file, status="checker_missing", tools=["flac"], errors=[])
 
 
+def _warning_result(file: str) -> CheckResult:
+    """Create a warning CheckResult (multichannel bit)."""
+    return CheckResult(
+        file=file,
+        status="warning",
+        tools=["flac", "flac-multichannel"],
+        errors=[],
+        warnings=[
+            checkers_module.ToolResult(
+                tool="flac-multichannel",
+                success=True,
+                exit_code=0,
+                output="Stereo file has WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x0003. "
+                "This causes playback issues on Pioneer players.",
+            )
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # T027: CLI integration tests
 # ---------------------------------------------------------------------------
@@ -195,10 +214,10 @@ def test_missing_checker_tool(runner: CliRunner, git_annex_repo: Path, mock_conf
 # ---------------------------------------------------------------------------
 
 
-def test_unrecognized_extension_uses_ffmpeg(
+def test_unrecognized_extension_skipped(
     runner: CliRunner, temp_dir: Path, mock_config: Config
 ) -> None:
-    """Test ffmpeg fallback for unrecognized file extensions (T029)."""
+    """Test non-audio files with unrecognized extensions are skipped (T029)."""
     repo_path = temp_dir / "test_repo"
     repo_path.mkdir()
 
@@ -241,22 +260,14 @@ def test_unrecognized_extension_uses_ffmpeg(
         mock_config.music_repo = repo_path
         mock_load.return_value = (mock_config, [])
 
-        # Track tools used in check_file
-        tools_used = []
+        # check_file should NOT be called for skipped files — the command
+        # layer separates them before invoking check_file
+        check_calls = []
 
         def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
+            check_calls.append(file_path)
             rel = str(file_path.relative_to(repo_path))
-            # Verify the extension triggers ffmpeg fallback by checking the registry
-            ext = file_path.suffix.lower()
-            specs = checkers_module.CHECKER_REGISTRY.get(ext)
-            if specs is None:
-                # Would use FFMPEG_FALLBACK
-                tools_used.append("ffmpeg")
-                return _ok_result(rel, tools=["ffmpeg"])
-            else:
-                tool_names = [s.name for s in specs]
-                tools_used.extend(tool_names)
-                return _ok_result(rel, tools=tool_names)
+            return _ok_result(rel)
 
         with patch(
             "music_commander.commands.files.check_file",
@@ -266,30 +277,39 @@ def test_unrecognized_extension_uses_ffmpeg(
                 "music_commander.commands.files.check_tool_available",
                 return_value=True,
             ):
-                with runner.isolated_filesystem() as fs_path:
-                    output_file = Path(fs_path) / "report.json"
-                    result = runner.invoke(
-                        cli,
-                        ["files", "check", "--output", str(output_file)],
-                    )
+                # Mock MIME detection to return non-audio type
+                with patch(
+                    "music_commander.commands.files.get_checkers_for_file",
+                    return_value=(None, "skipped"),
+                ):
+                    with runner.isolated_filesystem() as fs_path:
+                        output_file = Path(fs_path) / "report.json"
+                        result = runner.invoke(
+                            cli,
+                            ["files", "check", "--output", str(output_file)],
+                        )
 
-                    assert result.exit_code == 0, f"Unexpected: {result.output}"
-                    assert "ffmpeg" in tools_used, (
-                        f"Expected ffmpeg fallback for .xyz, tools used: {tools_used}"
-                    )
+                        assert result.exit_code == 0, f"Unexpected: {result.output}"
 
-                    assert output_file.exists()
-                    with open(output_file) as f:
-                        report = json.load(f)
-                    assert len(report["results"]) == 1
-                    assert report["results"][0]["status"] == "ok"
-                    assert "ffmpeg" in report["results"][0]["tools"]
+                        # check_file should not be called for skipped files
+                        assert len(check_calls) == 0, (
+                            f"check_file should not be called for skipped files, "
+                            f"but was called for: {check_calls}"
+                        )
+
+                        assert output_file.exists()
+                        with open(output_file) as f:
+                            report = json.load(f)
+                        assert len(report["results"]) == 1
+                        assert report["results"][0]["status"] == "skipped"
+                        assert report["summary"]["skipped"] == 1
 
 
-def test_unrecognized_extension_checker_registry() -> None:
-    """Verify .xyz is not in CHECKER_REGISTRY and falls back to ffmpeg (T029)."""
+def test_unrecognized_extension_not_in_registry() -> None:
+    """Verify .xyz is not in CHECKER_REGISTRY and returns empty checkers (T029)."""
     assert ".xyz" not in checkers_module.CHECKER_REGISTRY
-    assert checkers_module.FFMPEG_FALLBACK.name == "ffmpeg"
+    specs = checkers_module.get_checkers_for_extension(".xyz")
+    assert specs == []
 
 
 # ---------------------------------------------------------------------------
@@ -435,7 +455,15 @@ def test_json_report_structure(
 
                     # Validate summary has all required count fields
                     summary = report["summary"]
-                    for field in ("total", "ok", "error", "not_present", "checker_missing"):
+                    for field in (
+                        "total",
+                        "ok",
+                        "warning",
+                        "error",
+                        "not_present",
+                        "checker_missing",
+                        "skipped",
+                    ):
                         assert field in summary, f"Missing summary field: {field}"
                         assert isinstance(summary[field], int), (
                             f"summary.{field} should be int, got {type(summary[field])}"
@@ -444,14 +472,23 @@ def test_json_report_structure(
                     # Counts must be consistent
                     assert summary["total"] == (
                         summary["ok"]
+                        + summary["warning"]
                         + summary["error"]
                         + summary["not_present"]
                         + summary["checker_missing"]
+                        + summary["skipped"]
                     )
                     assert summary["total"] > 0, "Expected at least one file checked"
 
                     # Validate each result entry
-                    valid_statuses = {"ok", "error", "not_present", "checker_missing"}
+                    valid_statuses = {
+                        "ok",
+                        "warning",
+                        "error",
+                        "not_present",
+                        "checker_missing",
+                        "skipped",
+                    }
                     for entry in report["results"]:
                         assert "file" in entry, f"Missing 'file' in result: {entry}"
                         assert "status" in entry, f"Missing 'status' in result: {entry}"
@@ -801,3 +838,301 @@ def test_checker_registry_coverage() -> None:
     mp3_tools = [s.name for s in registry[".mp3"]]
     assert "mp3val" in mp3_tools
     assert "ffmpeg" in mp3_tools
+
+
+# ---------------------------------------------------------------------------
+# Skipped non-audio files
+# ---------------------------------------------------------------------------
+
+
+def test_non_audio_file_skipped(runner: CliRunner, temp_dir: Path, mock_config: Config) -> None:
+    """Test that non-audio files (.py, .txt, etc.) are skipped, not checked."""
+    repo_path = temp_dir / "test_repo"
+    repo_path.mkdir()
+
+    subprocess.run(["git", "init"], cwd=repo_path, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "annex", "init", "test"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+
+    # Add a .py file and a .flac file
+    (repo_path / "script.py").write_bytes(b"print('hello')" + b"\x00" * 100)
+    (repo_path / "track.flac").write_bytes(b"fake flac" * 100)
+    subprocess.run(
+        ["git", "annex", "add", "."],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "Add files"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+
+    with patch("music_commander.cli.load_config") as mock_load:
+        mock_config.music_repo = repo_path
+        mock_load.return_value = (mock_config, [])
+
+        checked_files = []
+
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
+            rel = str(file_path.relative_to(repo_path))
+            checked_files.append(rel)
+            return _ok_result(rel)
+
+        with patch(
+            "music_commander.commands.files.check_file",
+            side_effect=mock_check_file,
+        ):
+            with patch(
+                "music_commander.commands.files.check_tool_available",
+                return_value=True,
+            ):
+                with runner.isolated_filesystem() as fs_path:
+                    output_file = Path(fs_path) / "report.json"
+                    result = runner.invoke(
+                        cli,
+                        ["files", "check", "--output", str(output_file)],
+                    )
+
+                    assert result.exit_code == 0, f"Unexpected: {result.output}"
+
+                    # script.py should NOT have been passed to check_file
+                    assert not any("script.py" in f for f in checked_files), (
+                        f"script.py should be skipped, but check_file was called: {checked_files}"
+                    )
+
+                    assert output_file.exists()
+                    with open(output_file) as f:
+                        report = json.load(f)
+
+                    statuses = {r["file"]: r["status"] for r in report["results"]}
+                    # .py file should be skipped
+                    py_files = {f: s for f, s in statuses.items() if f.endswith(".py")}
+                    assert all(s == "skipped" for s in py_files.values()), (
+                        f"Expected .py files to be skipped: {py_files}"
+                    )
+                    assert report["summary"]["skipped"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# CUE file validation
+# ---------------------------------------------------------------------------
+
+
+def test_cue_file_validation(runner: CliRunner, temp_dir: Path, mock_config: Config) -> None:
+    """Test that .cue files are validated using the internal cue validator."""
+    repo_path = temp_dir / "test_repo"
+    repo_path.mkdir()
+
+    subprocess.run(["git", "init"], cwd=repo_path, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "annex", "init", "test"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+
+    # Create a valid .cue file
+    cue_content = 'FILE "track.flac" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n'
+    cue_file = repo_path / "album.cue"
+    cue_file.write_text(cue_content, encoding="utf-8")
+
+    # Need enough bytes for git-annex
+    padding = repo_path / "padding.flac"
+    padding.write_bytes(b"fake flac" * 100)
+
+    subprocess.run(
+        ["git", "annex", "add", "."],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "Add cue"],
+        cwd=repo_path,
+        capture_output=True,
+        check=True,
+    )
+
+    with patch("music_commander.cli.load_config") as mock_load:
+        mock_config.music_repo = repo_path
+        mock_load.return_value = (mock_config, [])
+
+        # Let check_file run for real on .cue files, mock for others
+        original_check_file = checkers_module.check_file
+
+        def selective_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
+            if file_path.suffix == ".cue":
+                return original_check_file(file_path, repo_path, **kwargs)
+            rel = str(file_path.relative_to(repo_path))
+            return _ok_result(rel)
+
+        with patch(
+            "music_commander.commands.files.check_file",
+            side_effect=selective_check_file,
+        ):
+            with patch(
+                "music_commander.commands.files.check_tool_available",
+                return_value=True,
+            ):
+                with runner.isolated_filesystem() as fs_path:
+                    output_file = Path(fs_path) / "report.json"
+                    result = runner.invoke(
+                        cli,
+                        ["files", "check", "--output", str(output_file)],
+                    )
+
+                    assert result.exit_code == 0, f"Unexpected: {result.output}"
+
+                    assert output_file.exists()
+                    with open(output_file) as f:
+                        report = json.load(f)
+
+                    cue_results = [r for r in report["results"] if r["file"].endswith(".cue")]
+                    assert len(cue_results) == 1, f"Expected 1 cue result, got: {cue_results}"
+                    assert cue_results[0]["status"] == "ok"
+                    assert "cue-validator" in cue_results[0]["tools"]
+
+
+# ---------------------------------------------------------------------------
+# FLAC multichannel warning check
+# ---------------------------------------------------------------------------
+
+
+def test_flac_multichannel_check_flag(
+    runner: CliRunner, git_annex_repo: Path, mock_config: Config
+) -> None:
+    """Test --flac-multichannel-check flag enables the check."""
+    with patch("music_commander.cli.load_config") as mock_load:
+        mock_config.music_repo = git_annex_repo
+        mock_load.return_value = (mock_config, [])
+
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
+            rel = str(file_path.relative_to(repo_path))
+            if kwargs.get("flac_multichannel_check") and file_path.suffix == ".flac":
+                return _warning_result(rel)
+            return _ok_result(rel)
+
+        with patch(
+            "music_commander.commands.files.check_file",
+            side_effect=mock_check_file,
+        ):
+            with patch(
+                "music_commander.commands.files.check_tool_available",
+                return_value=True,
+            ):
+                result = runner.invoke(cli, ["files", "check", "--flac-multichannel-check"])
+
+                assert result.exit_code == 0, (
+                    f"Expected exit 0 (warnings are not errors), "
+                    f"got {result.exit_code}: {result.output}"
+                )
+                assert "Check Summary" in result.output
+
+
+def test_flac_multichannel_warning_exit_0(
+    runner: CliRunner, git_annex_repo: Path, mock_config: Config
+) -> None:
+    """Test that warnings do not cause exit code 1."""
+    with patch("music_commander.cli.load_config") as mock_load:
+        mock_config.music_repo = git_annex_repo
+        mock_load.return_value = (mock_config, [])
+
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
+            rel = str(file_path.relative_to(repo_path))
+            return _warning_result(rel)
+
+        with patch(
+            "music_commander.commands.files.check_file",
+            side_effect=mock_check_file,
+        ):
+            with patch(
+                "music_commander.commands.files.check_tool_available",
+                return_value=True,
+            ):
+                result = runner.invoke(cli, ["files", "check", "--flac-multichannel-check"])
+
+                # Warnings should NOT trigger exit code 1
+                assert result.exit_code == 0, (
+                    f"Expected exit 0, got {result.exit_code}: {result.output}"
+                )
+
+
+def test_warning_in_json_report(
+    runner: CliRunner, git_annex_repo: Path, mock_config: Config
+) -> None:
+    """Test JSON report includes warning status and warnings field."""
+    with patch("music_commander.cli.load_config") as mock_load:
+        mock_config.music_repo = git_annex_repo
+        mock_load.return_value = (mock_config, [])
+
+        def mock_check_file(file_path: Path, repo_path: Path, **kwargs) -> CheckResult:
+            rel = str(file_path.relative_to(repo_path))
+            return _warning_result(rel)
+
+        with patch(
+            "music_commander.commands.files.check_file",
+            side_effect=mock_check_file,
+        ):
+            with patch(
+                "music_commander.commands.files.check_tool_available",
+                return_value=True,
+            ):
+                with runner.isolated_filesystem() as fs_path:
+                    output_file = Path(fs_path) / "report.json"
+                    result = runner.invoke(
+                        cli,
+                        [
+                            "files",
+                            "check",
+                            "--flac-multichannel-check",
+                            "--output",
+                            str(output_file),
+                        ],
+                    )
+
+                    assert result.exit_code == 0, f"Unexpected: {result.output}"
+                    assert output_file.exists()
+
+                    with open(output_file) as f:
+                        report = json.load(f)
+
+                    assert report["summary"]["warning"] > 0
+                    warning_results = [r for r in report["results"] if r["status"] == "warning"]
+                    assert len(warning_results) > 0
+                    # Check warnings field is present in JSON
+                    for wr in warning_results:
+                        assert "warnings" in wr
+                        assert len(wr["warnings"]) > 0
+                        assert wr["warnings"][0]["tool"] == "flac-multichannel"
+                        assert "Pioneer" in wr["warnings"][0]["output"]

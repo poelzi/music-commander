@@ -293,6 +293,21 @@ class MultilineFileProgress:
         self._task_id: int | None = None
         self._live: Live | None = None
         self._in_flight: list[Path] = []
+        # Status counters for the progress bar
+        self._ok_count = 0
+        self._warning_count = 0
+        self._error_count = 0
+
+    def _build_status_line(self) -> str:
+        """Build a colored status counter string for the progress display."""
+        parts: list[str] = []
+        if self._ok_count > 0:
+            parts.append(f"[success]OK:{self._ok_count}[/success]")
+        if self._warning_count > 0:
+            parts.append(f"[yellow]Warn:{self._warning_count}[/yellow]")
+        if self._error_count > 0:
+            parts.append(f"[error]Err:{self._error_count}[/error]")
+        return " ".join(parts)
 
     def _build_renderable(self) -> Group:
         """Build the live-region renderable: in-flight lines + progress bar."""
@@ -301,6 +316,9 @@ class MultilineFileProgress:
             parts.append(console.render_str(f"  {self.operation}: [path]{fp}[/path]"))
         if self._progress:
             parts.append(self._progress)
+        status_line = self._build_status_line()
+        if status_line:
+            parts.append(console.render_str(f"  {status_line}"))
         return Group(*parts)
 
     def __enter__(self):
@@ -346,7 +364,13 @@ class MultilineFileProgress:
             self._in_flight.append(file_path)
         self._refresh()
 
-    def complete_file(self, file_path: Path, success: bool = True, message: str = "") -> None:
+    def complete_file(
+        self,
+        file_path: Path,
+        success: bool = True,
+        message: str = "",
+        status: str = "",
+    ) -> None:
         """Mark a file as completed.
 
         Removes it from the live in-flight list and prints a permanent
@@ -356,7 +380,17 @@ class MultilineFileProgress:
             file_path: Path to the completed file.
             success: Whether the operation succeeded.
             message: Optional status message (e.g., "already present").
+            status: Result status for counter tracking ("ok", "warning", "error").
+                If empty, inferred from *success*.
         """
+        # Update status counters
+        effective_status = status or ("ok" if success else "error")
+        if effective_status == "ok":
+            self._ok_count += 1
+        elif effective_status == "warning":
+            self._warning_count += 1
+        elif effective_status == "error":
+            self._error_count += 1
         self.current += 1
 
         # Remove from in-flight

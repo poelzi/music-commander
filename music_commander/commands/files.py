@@ -19,6 +19,7 @@ from music_commander.utils.checkers import (
     check_file,
     check_tool_available,
     get_checkers_for_extension,
+    get_checkers_for_file,
     write_report,
 )
 from music_commander.utils.git import (
@@ -534,6 +535,12 @@ def drop(
     default=None,
     help="Output JSON report path",
 )
+@click.option(
+    "--flac-multichannel-check",
+    is_flag=True,
+    default=False,
+    help="Warn on stereo FLAC files with multichannel bit (Pioneer compatibility)",
+)
 @pass_context
 def check(
     ctx: Context,
@@ -542,6 +549,7 @@ def check(
     jobs: int,
     verbose: bool,
     output: str | None,
+    flac_multichannel_check: bool,
 ) -> None:
     """Check integrity of audio files using format-specific tools.
 
@@ -581,6 +589,9 @@ def check(
     if config is None:
         error("Configuration not loaded")
         raise SystemExit(EXIT_NO_REPO)
+
+    # CLI flag overrides config (CLI is True only when explicitly passed)
+    flac_mc = flac_multichannel_check or config.flac_multichannel_check
 
     repo_path = config.music_repo
 
@@ -628,24 +639,29 @@ def check(
         else:
             not_present_files.append(file_path)
 
-    # Tool availability pre-check (T016)
-    ext_tools: dict[str, list[str]] = {}
-    for file_path in present_files:
-        ext = file_path.suffix.lower() or ".unknown"
-        if ext not in ext_tools:
-            checker_specs = get_checkers_for_extension(ext)
-            ext_tools[ext] = [spec.command[0] for spec in checker_specs]
-
+    # Separate files: checkable vs skipped (non-audio) vs missing tools
+    skipped_files: list[Path] = []
     missing_tools_by_ext: dict[str, list[str]] = {}
     missing_files: list[Path] = []
     to_check: list[Path] = []
 
     for file_path in present_files:
-        ext = file_path.suffix.lower() or ".unknown"
-        tools = ext_tools.get(ext, [])
-        if tools and all(not check_tool_available(tool_name) for tool_name in tools):
+        group, status_hint = get_checkers_for_file(file_path)
+        if status_hint == "skipped":
+            skipped_files.append(file_path)
+            continue
+
+        # Get tool names for availability check
+        checkers = group.checkers if group is not None else []
+        tool_names = [spec.command[0] for spec in checkers]
+
+        # Internal validators (e.g. .cue) don't need external tools
+        if group is not None and group.internal_validator:
+            to_check.append(file_path)
+        elif tool_names and all(not check_tool_available(t) for t in tool_names):
+            ext = file_path.suffix.lower() or ".unknown"
             missing_files.append(file_path)
-            missing_tools_by_ext.setdefault(ext, []).extend(tools)
+            missing_tools_by_ext.setdefault(ext, []).extend(tool_names)
         else:
             to_check.append(file_path)
 
@@ -661,11 +677,11 @@ def check(
 
     # Dry-run mode (T017)
     if dry_run:
-        console.print(f"\n[bold]Would check {len(present_files)} annexed files:[/bold]\n")
+        console.print(f"\n[bold]Would check {len(to_check)} annexed files:[/bold]\n")
 
-        # Show files grouped by extension with their checkers
+        # Show checkable files grouped by extension with their checkers
         by_ext: dict[str, list[Path]] = {}
-        for file_path in present_files:
+        for file_path in to_check:
             ext = file_path.suffix.lower() or ".unknown"
             if ext not in by_ext:
                 by_ext[ext] = []
@@ -674,27 +690,49 @@ def check(
         for ext in sorted(by_ext.keys()):
             files = by_ext[ext]
             checker_specs = get_checkers_for_extension(ext)
-            tools = [spec.name for spec in checker_specs]
+            tools = [spec.name for spec in checker_specs] or ["internal validator"]
 
             console.print(f"  [bold]{ext}[/bold] ({len(files)} files) - tools: {', '.join(tools)}")
             if verbose:
-                for file_path in files[:5]:  # Show first 5
+                for file_path in files[:5]:
                     rel_path = file_path.relative_to(repo_path)
                     console.print(f"    [path]{rel_path}[/path]")
                 if len(files) > 5:
                     console.print(f"    ... and {len(files) - 5} more")
 
+        if skipped_files:
+            console.print(f"\n  [dim]Skipped ({len(skipped_files)} non-audio files)[/dim]")
+            if verbose:
+                for file_path in skipped_files[:5]:
+                    rel_path = file_path.relative_to(repo_path)
+                    console.print(f"    [path]{rel_path}[/path]")
+                if len(skipped_files) > 5:
+                    console.print(f"    ... and {len(skipped_files) - 5} more")
+
         if not_present_files:
-            console.print(f"\n  [dim]Not present ({len(not_present_files)} files):[/dim]")
-            for file_path in not_present_files:
-                rel_path = file_path.relative_to(repo_path)
-                console.print(f"    [path]{rel_path}[/path]")
+            console.print(f"\n  [dim]Not present ({len(not_present_files)} files)[/dim]")
+            if verbose:
+                for file_path in not_present_files:
+                    rel_path = file_path.relative_to(repo_path)
+                    console.print(f"    [path]{rel_path}[/path]")
 
         console.print()
         raise SystemExit(EXIT_SUCCESS)
 
     # Initialize results list
     results: list[CheckResult] = []
+
+    # Add skipped (non-audio) results upfront
+    for file_path in skipped_files:
+        rel_path = str(file_path.relative_to(repo_path))
+        results.append(
+            CheckResult(
+                file=rel_path,
+                status="skipped",
+                tools=[],
+                errors=[],
+            )
+        )
 
     # Add not-present results upfront (T015)
     for file_path in not_present_files:
@@ -733,9 +771,24 @@ def check(
         with MultilineFileProgress(total=len(to_check), operation="Checking") as progress:
             # Choose sequential or parallel checking based on jobs parameter
             if jobs > 1:
-                _check_files_parallel(to_check, repo_path, results, progress, jobs, verbose=verbose)
+                _check_files_parallel(
+                    to_check,
+                    repo_path,
+                    results,
+                    progress,
+                    jobs,
+                    verbose=verbose,
+                    flac_multichannel_check=flac_mc,
+                )
             else:
-                _check_files_sequential(to_check, repo_path, results, progress, verbose=verbose)
+                _check_files_sequential(
+                    to_check,
+                    repo_path,
+                    results,
+                    progress,
+                    verbose=verbose,
+                    flac_multichannel_check=flac_mc,
+                )
 
         duration = time.time() - start_time
 
@@ -743,9 +796,11 @@ def check(
         summary = {
             "total": len(results),
             "ok": sum(1 for r in results if r.status == "ok"),
+            "warning": sum(1 for r in results if r.status == "warning"),
             "error": sum(1 for r in results if r.status == "error"),
             "not_present": sum(1 for r in results if r.status == "not_present"),
             "checker_missing": sum(1 for r in results if r.status == "checker_missing"),
+            "skipped": sum(1 for r in results if r.status == "skipped"),
         }
 
         report = CheckReport(
@@ -772,9 +827,11 @@ def check(
                 summary = {
                     "total": len(results),
                     "ok": sum(1 for r in results if r.status == "ok"),
+                    "warning": sum(1 for r in results if r.status == "warning"),
                     "error": sum(1 for r in results if r.status == "error"),
                     "not_present": sum(1 for r in results if r.status == "not_present"),
                     "checker_missing": sum(1 for r in results if r.status == "checker_missing"),
+                    "skipped": sum(1 for r in results if r.status == "skipped"),
                 }
                 report = CheckReport(
                     version=1,
@@ -808,13 +865,22 @@ def _check_files_sequential(
     progress: MultilineFileProgress,
     *,
     verbose: bool = False,
+    flac_multichannel_check: bool = False,
 ) -> None:
-    """Check files sequentially (jobs=1)."""
+    """Check files sequentially (jobs=1).
+
+    Raises KeyboardInterrupt cleanly so the caller can write a partial report.
+    """
     for file_path in files:
         progress.start_file(file_path)
 
-        # Check the file
-        result = check_file(file_path, repo_path, verbose_output=verbose)
+        # Check the file — KeyboardInterrupt propagates to caller
+        result = check_file(
+            file_path,
+            repo_path,
+            verbose_output=verbose,
+            flac_multichannel_check=flac_multichannel_check,
+        )
         results.append(result)
 
         if verbose:
@@ -822,13 +888,15 @@ def _check_files_sequential(
             output_verbose(f"Checked: {rel_path} -> {result.status}")
 
         # Update progress
-        success = result.status == "ok"
+        success = result.status in ("ok", "warning")
         message = ""
-        if not success and result.errors:
+        if result.status == "warning" and result.warnings:
+            message = result.warnings[0].output[:80].replace("\n", " ")
+        elif not success and result.errors:
             # Show first error message (truncated)
             message = result.errors[0].output[:80].replace("\n", " ")
 
-        progress.complete_file(file_path, success=success, message=message)
+        progress.complete_file(file_path, success=success, message=message, status=result.status)
 
 
 def _check_files_parallel(
@@ -839,16 +907,27 @@ def _check_files_parallel(
     jobs: int,
     *,
     verbose: bool = False,
+    flac_multichannel_check: bool = False,
 ) -> None:
     """Check files in parallel using ThreadPoolExecutor.
 
     Progress updates happen from the main thread as futures complete,
     ensuring thread-safe interaction with Rich.
+
+    On KeyboardInterrupt, cancels pending futures and shuts down the
+    executor so no new checker processes are spawned.
     """
-    with ThreadPoolExecutor(max_workers=jobs) as executor:
+    executor = ThreadPoolExecutor(max_workers=jobs)
+    try:
         # Submit all files for checking
         future_to_file = {
-            executor.submit(check_file, file_path, repo_path): file_path for file_path in files
+            executor.submit(
+                check_file,
+                file_path,
+                repo_path,
+                flac_multichannel_check=flac_multichannel_check,
+            ): file_path
+            for file_path in files
         }
 
         # Process results as they complete
@@ -864,13 +943,20 @@ def _check_files_parallel(
                     output_verbose(f"Checked: {rel_path} -> {result.status}")
 
                 # Update progress (called from main thread)
-                success = result.status == "ok"
+                success = result.status in ("ok", "warning")
                 message = ""
-                if not success and result.errors:
+                if result.status == "warning" and result.warnings:
+                    message = result.warnings[0].output[:80].replace("\n", " ")
+                elif not success and result.errors:
                     # Show first error message (truncated)
                     message = result.errors[0].output[:80].replace("\n", " ")
 
-                progress.complete_file(file_path, success=success, message=message)
+                progress.complete_file(
+                    file_path,
+                    success=success,
+                    message=message,
+                    status=result.status,
+                )
 
             except Exception as e:
                 # Handle unexpected errors in worker thread
@@ -883,7 +969,20 @@ def _check_files_parallel(
                         errors=[],
                     )
                 )
-                progress.complete_file(file_path, success=False, message=str(e)[:80])
+                progress.complete_file(
+                    file_path,
+                    success=False,
+                    message=str(e)[:80],
+                    status="error",
+                )
+    except KeyboardInterrupt:
+        # Cancel all pending futures so no new checker processes start
+        for future in future_to_file:
+            future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    finally:
+        executor.shutdown(wait=True)
 
 
 def _show_check_summary(repo_path: Path, results: list[CheckResult], report: CheckReport) -> None:
@@ -903,6 +1002,13 @@ def _show_check_summary(repo_path: Path, results: list[CheckResult], report: Che
             "[success]OK[/success]",
             str(summary["ok"]),
             "No errors detected",
+        )
+
+    if summary.get("warning", 0) > 0:
+        table.add_row(
+            "[yellow]Warning[/yellow]",
+            str(summary["warning"]),
+            "Passed with compatibility warnings",
         )
 
     if summary["error"] > 0:
@@ -926,6 +1032,13 @@ def _show_check_summary(repo_path: Path, results: list[CheckResult], report: Che
             "Required checker tools not found",
         )
 
+    if summary.get("skipped", 0) > 0:
+        table.add_row(
+            "[dim]Skipped[/dim]",
+            str(summary["skipped"]),
+            "Non-audio files",
+        )
+
     console.print(table)
 
     # Show first N failed files with error details
@@ -942,10 +1055,29 @@ def _show_check_summary(repo_path: Path, results: list[CheckResult], report: Che
         if len(failed_results) > 10:
             console.print(f"  [dim]... and {len(failed_results) - 10} more failures[/dim]")
 
+    # Show first N warned files with warning details
+    warned_results = [r for r in results if r.status == "warning"]
+    if warned_results:
+        console.print("\n[yellow]Files with warnings:[/yellow]")
+        for result in warned_results[:10]:
+            console.print(f"  [path]{result.file}[/path]")
+            for warn_result in result.warnings:
+                first_line = warn_result.output.split("\n")[0][:100]
+                console.print(f"    [{warn_result.tool}] {first_line}")
+
+        if len(warned_results) > 10:
+            console.print(f"  [dim]... and {len(warned_results) - 10} more warnings[/dim]")
+
     console.print()
 
     # Final status message
     if summary["error"] == 0:
-        success(f"All {summary['ok']} files passed integrity checks")
+        ok_count = summary["ok"] + summary.get("warning", 0)
+        if summary.get("warning", 0) > 0:
+            success(
+                f"All {ok_count} files passed integrity checks ({summary['warning']} with warnings)"
+            )
+        else:
+            success(f"All {ok_count} files passed integrity checks")
     else:
         warning(f"{summary['error']} of {summary['total']} files failed integrity checks")

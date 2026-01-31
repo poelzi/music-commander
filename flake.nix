@@ -27,6 +27,7 @@
             click
             jinja2
             lark
+            python-magic
             rich
             sqlalchemy
             tomli-w
@@ -78,6 +79,7 @@
           buildInputs = [
             pythonEnv
             python-music-cmd
+            pkgs.file # provides libmagic for python-magic
             pkgs.git-annex
             pkgs.ffmpeg
             pkgs.flac
