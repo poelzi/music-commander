@@ -107,12 +107,12 @@
 **Prompt**: `tasks/WP04-export-cli-core.md`
 
 ### Included Subtasks
-- [ ] T009 Register `files export` Click command with all options: `--format/-f`, `--pattern/-p`, `--output/-o`, `--force`, `--jobs`, `--verbose`, `--dry-run`
-- [ ] T010 Implement preset resolution: explicit `--format`, auto-detect from template extension via `EXTENSION_TO_PRESET`, extension conflict warning
-- [ ] T011 [P] Integrate template path rendering using `render_path()` and `sanitize_rendered_path()` from view module; duplicate resolution with `_make_unique_path()`
-- [ ] T012 [P] Implement incremental mode: skip existing files, mtime comparison for re-export, `--force` override
-- [ ] T013 Implement `_export_files_sequential()` with `MultilineFileProgress`
-- [ ] T015 Implement summary display with OK/Copied/Skipped/Error counts in respective colors, exit code logic (only errors cause exit 1)
+- [x] T009 Register `files export` Click command with all options: `--format/-f`, `--pattern/-p`, `--output/-o`, `--force`, `--jobs`, `--verbose`, `--dry-run`
+- [x] T010 Implement preset resolution: explicit `--format`, auto-detect from template extension via `EXTENSION_TO_PRESET`, extension conflict warning
+- [x] T011 [P] Integrate template path rendering using `render_path()` and `sanitize_rendered_path()` from view module; duplicate resolution with `_make_unique_path()`
+- [x] T012 [P] Implement incremental mode: skip existing files, mtime comparison for re-export, `--force` override
+- [x] T013 Implement `_export_files_sequential()` with `MultilineFileProgress`
+- [x] T015 Implement summary display with OK/Copied/Skipped/Error counts in respective colors, exit code logic (only errors cause exit 1)
 
 ### Implementation Notes
 - CLI options follow existing `check` command patterns. `--format` is optional (auto-detected from template). `--pattern` and `--output` are required.
