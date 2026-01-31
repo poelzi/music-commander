@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from music_commander.utils.output import verbose as output_verbose
+
 
 @dataclass(frozen=True)
 class FormatPreset:
@@ -460,8 +462,9 @@ def export_file(
         # Create output directory
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Use temporary file for atomic write
-        temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+        # Use temporary file for atomic write (keep original extension so
+        # ffmpeg can auto-detect the output format)
+        temp_path = output_path.with_stem(output_path.stem + ".tmp")
 
         try:
             # Build and run ffmpeg command
@@ -475,7 +478,7 @@ def export_file(
             )
 
             if verbose:
-                print(f"Running: {' '.join(cmd)}")
+                output_verbose(f"Running: {' '.join(cmd)}")
 
             proc = subprocess.run(
                 cmd,
@@ -507,7 +510,7 @@ def export_file(
                     full_cmd = list(post_cmd) + [str(temp_path)]
 
                     if verbose:
-                        print(f"Running: {' '.join(full_cmd)}")
+                        output_verbose(f"Running: {' '.join(full_cmd)}")
 
                     post_proc = subprocess.run(
                         full_cmd,

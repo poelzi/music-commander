@@ -117,12 +117,17 @@ from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
     Progress,
+    ProgressColumn,
     SpinnerColumn,
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
+from rich.progress import (
+    Task as ProgressTask,
+)
 from rich.table import Table
+from rich.text import Text
 from rich.theme import Theme
 
 # Custom theme for music-commander
@@ -254,6 +259,70 @@ def print_path(path: str, prefix: str = "") -> None:
         console.print(f"[path]{path}[/path]")
 
 
+class SmoothTimeRemainingColumn(ProgressColumn):
+    """Time remaining estimate using exponential moving average for stability.
+
+    Rich's built-in TimeRemainingColumn uses a simple sliding window which
+    produces jumpy estimates when file processing times vary. This uses EMA
+    smoothing for a more stable display.
+    """
+
+    max_refresh = 0.5  # Limit refresh to 2x/sec like Rich's built-in
+
+    def __init__(self, alpha: float = 0.3, **kwargs):
+        super().__init__(**kwargs)
+        self._ema_speed: float | None = None
+        self._alpha = alpha  # Lower = smoother, higher = more responsive
+        self._last_completed: float = 0
+        self._last_elapsed: float | None = None
+
+    def render(self, task: ProgressTask) -> Text:
+        remaining = task.remaining
+        if remaining is None:
+            return Text("-:--:--", style="progress.remaining")
+        if task.finished:
+            return Text("0:00:00", style="progress.remaining")
+
+        elapsed = task.elapsed
+        if elapsed is None:
+            return Text("-:--:--", style="progress.remaining")
+
+        completed = task.completed
+
+        # Update EMA speed estimate
+        if self._last_elapsed is not None:
+            dt = elapsed - self._last_elapsed
+            dc = completed - self._last_completed
+            if dt > 0.1 and dc > 0:
+                instant_speed = dc / dt
+                if self._ema_speed is None:
+                    self._ema_speed = instant_speed
+                else:
+                    self._ema_speed = (
+                        self._alpha * instant_speed + (1 - self._alpha) * self._ema_speed
+                    )
+
+        self._last_completed = completed
+        self._last_elapsed = elapsed
+
+        # Fall back to overall average if EMA not yet available
+        speed = self._ema_speed
+        if speed is None and elapsed > 0 and completed > 0:
+            speed = completed / elapsed
+
+        if speed and speed > 0:
+            eta_seconds = int(remaining / speed)
+            hours, remainder = divmod(eta_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours:
+                formatted = f"{hours}:{minutes:02d}:{seconds:02d}"
+            else:
+                formatted = f"{minutes}:{seconds:02d}"
+            return Text(formatted, style="progress.remaining")
+
+        return Text("-:--:--", style="progress.remaining")
+
+
 class MultilineFileProgress:
     """Multiline progress display for file operations.
 
@@ -297,6 +366,7 @@ class MultilineFileProgress:
         self._ok_count = 0
         self._warning_count = 0
         self._error_count = 0
+        self._skipped_count = 0
 
     def _build_status_line(self) -> str:
         """Build a colored status counter string for the progress display."""
@@ -307,6 +377,8 @@ class MultilineFileProgress:
             parts.append(f"[yellow]Warn:{self._warning_count}[/yellow]")
         if self._error_count > 0:
             parts.append(f"[error]Err:{self._error_count}[/error]")
+        if self._skipped_count > 0:
+            parts.append(f"[dim]Skip:{self._skipped_count}[/dim]")
         return " ".join(parts)
 
     def _build_renderable(self) -> Group:
@@ -325,11 +397,11 @@ class MultilineFileProgress:
         """Enter context - start Live display with progress bar."""
         self._progress = Progress(
             SpinnerColumn(),
-            BarColumn(bar_width=40),
+            BarColumn(bar_width=40, complete_style="green", finished_style="bold green"),
             MofNCompleteColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeElapsedColumn(),
-            TimeRemainingColumn(),
+            SmoothTimeRemainingColumn(),
         )
         self._task_id = self._progress.add_task(self.operation, total=self.total)
         self._live = Live(
@@ -370,6 +442,7 @@ class MultilineFileProgress:
         success: bool = True,
         message: str = "",
         status: str = "",
+        target: Path | str | None = None,
     ) -> None:
         """Mark a file as completed.
 
@@ -382,15 +455,18 @@ class MultilineFileProgress:
             message: Optional status message (e.g., "already present").
             status: Result status for counter tracking ("ok", "warning", "error").
                 If empty, inferred from *success*.
+            target: Optional target/output path to show on a second line.
         """
         # Update status counters
         effective_status = status or ("ok" if success else "error")
-        if effective_status == "ok":
+        if effective_status in ("ok", "copied"):
             self._ok_count += 1
         elif effective_status == "warning":
             self._warning_count += 1
         elif effective_status == "error":
             self._error_count += 1
+        elif effective_status == "skipped":
+            self._skipped_count += 1
         self.current += 1
 
         # Remove from in-flight
@@ -402,10 +478,14 @@ class MultilineFileProgress:
             if success:
                 self._live.console.print(f"  {self._completed_label}: [path]{file_path}[/path]")
             else:
-                msg = f"  Failed: [path]{file_path}[/path]"
+                self._live.console.print(f"  Failed: [path]{file_path}[/path]")
                 if message:
-                    msg += f" [dim]({message})[/dim]"
-                self._live.console.print(msg)
+                    # Show error as indented block, up to 4 lines
+                    lines = message.strip().splitlines()[:4]
+                    for line in lines:
+                        self._live.console.print(f"    [dim]{line.rstrip()[:120]}[/dim]")
+            if target is not None:
+                self._live.console.print(f"   -> [path]{target}[/path]")
 
         # Update progress bar
         if self._progress and self._task_id is not None:

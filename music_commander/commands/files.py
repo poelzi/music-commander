@@ -18,6 +18,7 @@ from music_commander.exceptions import (
 from music_commander.utils.checkers import (
     CheckReport,
     CheckResult,
+    ToolResult,
     check_file,
     check_tool_available,
     get_checkers_for_extension,
@@ -556,6 +557,14 @@ def drop(
     default=False,
     help="Warn on stereo FLAC files with multichannel bit (Pioneer compatibility)",
 )
+@click.option(
+    "--continue",
+    "-c",
+    "continue_check",
+    is_flag=True,
+    default=False,
+    help="Continue from last report, skipping already-checked files",
+)
 @pass_context
 def check(
     ctx: Context,
@@ -565,6 +574,7 @@ def check(
     verbose: bool,
     output: str | None,
     flac_multichannel_check: bool,
+    continue_check: bool,
 ) -> None:
     """Check integrity of audio files using format-specific tools.
 
@@ -596,7 +606,12 @@ def check(
     \b
       # Custom output path
       music-commander files check --output /tmp/check-report.json
+
+    \b
+      # Continue an interrupted check run
+      music-commander files check --continue
     """
+    import json
     import time
     from datetime import datetime, timezone
 
@@ -619,6 +634,27 @@ def check(
     except NotGitAnnexRepoError:
         error(f"Not a git-annex repository: {repo_path}")
         raise SystemExit(EXIT_NOT_ANNEX_REPO)
+
+    # Determine report path early (needed for --continue)
+    report_path = Path(output) if output else repo_path / ".music-commander-check-results.json"
+
+    # Load previous results for --continue
+    prev_results: list[dict] | None = None
+    previously_checked: set[str] = set()
+    if continue_check:
+        if report_path.exists():
+            try:
+                prev_data = json.loads(report_path.read_text())
+                prev_results = prev_data.get("results", [])
+                for r in prev_results:
+                    if r.get("status") in ("ok", "warning"):
+                        previously_checked.add(r["file"])
+                if not ctx.quiet:
+                    info(f"Continuing: {len(previously_checked)} files already checked")
+            except (json.JSONDecodeError, KeyError):
+                warning(f"Could not read previous report: {report_path}")
+        else:
+            warning(f"No previous report found at {report_path}, checking all files")
 
     # Resolve arguments to files (T014)
     file_paths = resolve_args_to_files(
@@ -689,6 +725,20 @@ def check(
             tools = ", ".join(sorted(set(missing_tools_by_ext[ext])))
             warning(f"  {ext}: {tools}")
         warning("Files requiring these tools will be marked as 'checker_missing'")
+
+    # Filter out already-checked files for --continue
+    if previously_checked:
+        filtered = []
+        carried = 0
+        for fp in to_check:
+            rel = str(fp.relative_to(repo_path))
+            if rel in previously_checked:
+                carried += 1
+            else:
+                filtered.append(fp)
+        to_check = filtered
+        if not ctx.quiet and carried:
+            info(f"Skipping {carried} already-checked files")
 
     # Dry-run mode (T017)
     if dry_run:
@@ -775,6 +825,29 @@ def check(
             )
         )
 
+    # Inject carried-forward results from previous report (--continue)
+    if prev_results:
+        for r in prev_results:
+            if r.get("status") in ("ok", "warning"):
+                warnings = [
+                    ToolResult(
+                        tool=w.get("tool", ""),
+                        success=w.get("success", True),
+                        exit_code=w.get("exit_code", 0),
+                        output=w.get("output", ""),
+                    )
+                    for w in r.get("warnings", [])
+                ]
+                results.append(
+                    CheckResult(
+                        file=r["file"],
+                        status=r["status"],
+                        tools=r.get("tools", []),
+                        errors=[],
+                        warnings=warnings,
+                    )
+                )
+
     # Main check loop with progress (T018 + T019 with SIGINT safety)
     start_time = time.time()
     report = None
@@ -831,11 +904,6 @@ def check(
     finally:
         # Write report even if interrupted (T019)
         if report or results:
-            # Use provided output path or default
-            output_path = (
-                Path(output) if output else repo_path / ".music-commander-check-results.json"
-            )
-
             # Build partial report if we don't have a complete one
             if report is None:
                 duration = time.time() - start_time
@@ -858,10 +926,10 @@ def check(
                     results=results,
                 )
 
-            write_report(report, output_path)
+            write_report(report, report_path)
 
             if not ctx.quiet:
-                info(f"Report written to: {output_path}")
+                info(f"Report written to: {report_path}")
 
     # Show summary (T020)
     _show_check_summary(repo_path, results, report)
@@ -906,10 +974,10 @@ def _check_files_sequential(
         success = result.status in ("ok", "warning")
         message = ""
         if result.status == "warning" and result.warnings:
-            message = result.warnings[0].output[:80].replace("\n", " ")
+            message = result.warnings[0].output[:500]
         elif not success and result.errors:
             # Show first error message (truncated)
-            message = result.errors[0].output[:80].replace("\n", " ")
+            message = result.errors[0].output[:500]
 
         progress.complete_file(file_path, success=success, message=message, status=result.status)
 
@@ -961,10 +1029,10 @@ def _check_files_parallel(
                 success = result.status in ("ok", "warning")
                 message = ""
                 if result.status == "warning" and result.warnings:
-                    message = result.warnings[0].output[:80].replace("\n", " ")
+                    message = result.warnings[0].output[:500]
                 elif not success and result.errors:
                     # Show first error message (truncated)
-                    message = result.errors[0].output[:80].replace("\n", " ")
+                    message = result.errors[0].output[:500]
 
                 progress.complete_file(
                     file_path,
@@ -987,7 +1055,7 @@ def _check_files_parallel(
                 progress.complete_file(
                     file_path,
                     success=False,
-                    message=str(e)[:80],
+                    message=str(e)[:500],
                     status="error",
                 )
     except KeyboardInterrupt:
@@ -1237,7 +1305,9 @@ def _export_files_sequential(
                 duration_seconds=0.0,
             )
             results.append(result)
-            progress.complete_file(source_path, success=True, message="skipped", status="skipped")
+            progress.complete_file(
+                source_path, success=True, message="skipped", status="skipped", target=output_path
+            )
             continue
 
         # Export the file
@@ -1245,12 +1315,18 @@ def _export_files_sequential(
         results.append(result)
 
         # Update progress
-        success = result.status in ("ok", "copied", "skipped")
+        is_success = result.status in ("ok", "copied", "skipped")
         message = ""
-        if not success and result.error_message:
-            message = result.error_message[:80].replace("\n", " ")
+        if not is_success and result.error_message:
+            message = result.error_message[:500]
 
-        progress.complete_file(source_path, success=success, message=message, status=result.status)
+        progress.complete_file(
+            source_path,
+            success=is_success,
+            message=message,
+            status=result.status,
+            target=output_path,
+        )
 
 
 def _export_files_parallel(
@@ -1321,16 +1397,17 @@ def _export_files_parallel(
                     output_verbose(f"Exported: {rel_path} -> {result.status}")
 
                 # Update progress (called from main thread)
-                success = result.status in ("ok", "copied", "skipped")
+                is_success = result.status in ("ok", "copied", "skipped")
                 message = ""
-                if not success and result.error_message:
-                    message = result.error_message[:80].replace("\n", " ")
+                if not is_success and result.error_message:
+                    message = result.error_message[:500]
 
                 progress.complete_file(
                     source_path,
-                    success=success,
+                    success=is_success,
                     message=message,
                     status=result.status,
+                    target=output_path,
                 )
 
             except Exception as e:
@@ -1350,8 +1427,9 @@ def _export_files_parallel(
                 progress.complete_file(
                     source_path,
                     success=False,
-                    message=str(e)[:80],
+                    message=str(e)[:500],
                     status="error",
+                    target=output_path,
                 )
     except KeyboardInterrupt:
         # Cancel all pending futures so no new ffmpeg processes start
