@@ -143,9 +143,9 @@
 **Prompt**: `tasks/WP05-parallel-dryrun-tests.md`
 
 ### Included Subtasks
-- [ ] T014 Implement `_export_files_parallel()` with `ThreadPoolExecutor`, `as_completed()`, and SIGINT handling (cancel futures, shutdown, clean up temp files)
-- [ ] T016 Implement `--dry-run` support: preview files, source format, target format, copy-vs-recode decision, without running ffmpeg
-- [ ] T017 Integration tests for export CLI: format selection, incremental skip, dry-run output, warning on extension conflict, parallel execution, JSON report structure
+- [x] T014 Implement `_export_files_parallel()` with `ThreadPoolExecutor`, `as_completed()`, and SIGINT handling (cancel futures, shutdown, clean up temp files)
+- [x] T016 Implement `--dry-run` support: preview files, source format, target format, copy-vs-recode decision, without running ffmpeg
+- [x] T017 Integration tests for export CLI: format selection, incremental skip, dry-run output, warning on extension conflict, parallel execution, JSON report structure
 
 ### Implementation Notes
 - `_export_files_parallel()` follows `_check_files_parallel()` exactly: `ThreadPoolExecutor(max_workers=jobs)`, submit all, `as_completed()` loop, `KeyboardInterrupt` handler cancels + `shutdown(wait=False, cancel_futures=True)`.
