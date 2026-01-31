@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -21,6 +23,14 @@ from music_commander.utils.checkers import (
     get_checkers_for_extension,
     get_checkers_for_file,
     write_report,
+)
+from music_commander.utils.encoder import (
+    EXTENSION_TO_PRESET,
+    PRESETS,
+    ExportReport,
+    ExportResult,
+    export_file,
+    write_export_report,
 )
 from music_commander.utils.git import (
     FetchResult,
@@ -49,6 +59,8 @@ from music_commander.utils.search_ops import (
     resolve_args_to_files,
     show_operation_summary,
 )
+from music_commander.view.symlinks import _make_unique_path, sanitize_rendered_path
+from music_commander.view.template import TemplateRenderError, render_path
 
 # Exit codes per CLI contract
 EXIT_SUCCESS = 0
@@ -1081,3 +1093,437 @@ def _show_check_summary(repo_path: Path, results: list[CheckResult], report: Che
             success(f"All {ok_count} files passed integrity checks")
     else:
         warning(f"{summary['error']} of {summary['total']} files failed integrity checks")
+
+
+# Export command helpers
+
+
+def _resolve_preset(format_preset: str | None, pattern: str):
+    """Resolve format preset from explicit flag or template extension.
+
+    Args:
+        format_preset: Explicit preset name from --format flag (or None).
+        pattern: Jinja2 template pattern string.
+
+    Returns:
+        FormatPreset instance.
+
+    Raises:
+        click.ClickException: If preset is invalid or cannot be inferred.
+    """
+    if format_preset:
+        # Explicit format specified
+        if format_preset not in PRESETS:
+            valid = ", ".join(sorted(PRESETS.keys()))
+            raise click.ClickException(
+                f"Invalid format preset '{format_preset}'. Valid presets: {valid}"
+            )
+
+        preset = PRESETS[format_preset]
+
+        # Check for extension conflict
+        template_ext = _extract_template_extension(pattern)
+        if template_ext and template_ext != preset.container:
+            warning(
+                f"Template extension '{template_ext}' differs from preset container "
+                f"'{preset.container}'. Using template as-is."
+            )
+
+        return preset
+
+    # Auto-detect from template extension
+    template_ext = _extract_template_extension(pattern)
+    if not template_ext:
+        raise click.ClickException(
+            "Cannot infer format from template (no file extension found). "
+            "Use --format to specify a preset explicitly."
+        )
+
+    if template_ext not in EXTENSION_TO_PRESET:
+        valid = ", ".join(sorted(EXTENSION_TO_PRESET.keys()))
+        raise click.ClickException(
+            f"Unrecognized template extension '{template_ext}'. "
+            f"Valid extensions: {valid}, or use --format to specify explicitly."
+        )
+
+    preset_name = EXTENSION_TO_PRESET[template_ext]
+    return PRESETS[preset_name]
+
+
+def _extract_template_extension(pattern: str) -> str | None:
+    """Extract file extension from template pattern.
+
+    Args:
+        pattern: Jinja2 template string.
+
+    Returns:
+        Extension including dot (e.g., ".mp3") or None if no extension found.
+    """
+    # Find the last segment after any }} or /
+    segments = pattern.replace("}}", "|").replace("/", "|").split("|")
+    last_segment = segments[-1].strip()
+
+    # Check if it has an extension
+    if "." in last_segment:
+        return "." + last_segment.rsplit(".", 1)[-1].lower()
+
+    return None
+
+
+def _should_skip(source_path: Path, output_path: Path, force: bool) -> bool:
+    """Determine if a file should be skipped (incremental mode).
+
+    Args:
+        source_path: Source file path.
+        output_path: Output file path.
+        force: If True, never skip (force re-export).
+
+    Returns:
+        True if the file should be skipped, False otherwise.
+    """
+    if force:
+        return False
+
+    if not output_path.exists():
+        return False
+
+    # Compare modification times
+    try:
+        source_mtime = source_path.stat().st_mtime
+        output_mtime = output_path.stat().st_mtime
+        # Re-export if source is newer
+        return source_mtime <= output_mtime
+    except OSError:
+        # If we can't stat, assume we need to export
+        return False
+
+
+def _export_files_sequential(
+    file_pairs: list[tuple[Path, Path]],
+    preset,
+    repo_path: Path,
+    results: list[ExportResult],
+    progress: MultilineFileProgress,
+    *,
+    verbose: bool = False,
+    force: bool = False,
+) -> None:
+    """Export files sequentially with progress display.
+
+    Args:
+        file_pairs: List of (source_path, output_path) tuples.
+        preset: FormatPreset instance.
+        repo_path: Repository root path.
+        results: Mutable list to append results to.
+        progress: Progress display instance.
+        verbose: If True, show verbose output.
+        force: If True, re-export all files (ignore incremental).
+    """
+    for source_path, output_path in file_pairs:
+        progress.start_file(source_path)
+
+        # Check incremental skip
+        if _should_skip(source_path, output_path, force):
+            rel_source = str(source_path.relative_to(repo_path))
+            result = ExportResult(
+                source=rel_source,
+                output=output_path.name,
+                status="skipped",
+                preset=preset.name,
+                action="skipped",
+                duration_seconds=0.0,
+            )
+            results.append(result)
+            progress.complete_file(source_path, success=True, message="skipped", status="skipped")
+            continue
+
+        # Export the file
+        result = export_file(source_path, output_path, preset, repo_path, verbose=verbose)
+        results.append(result)
+
+        # Update progress
+        success = result.status in ("ok", "copied", "skipped")
+        message = ""
+        if not success and result.error_message:
+            message = result.error_message[:80].replace("\n", " ")
+
+        progress.complete_file(source_path, success=success, message=message, status=result.status)
+
+
+def _show_export_summary(summary: dict, results: list[ExportResult]) -> None:
+    """Display export summary with colored counts.
+
+    Args:
+        summary: Summary dict with counts.
+        results: List of ExportResult instances.
+    """
+    # Create summary table
+    table = create_table("Export Summary", ["Status", "Count", "Description"])
+
+    if summary["ok"] > 0:
+        table.add_row("[green]OK (Encoded)[/green]", str(summary["ok"]), "Successfully encoded")
+
+    if summary["copied"] > 0:
+        table.add_row("[cyan]Copied[/cyan]", str(summary["copied"]), "Copied without re-encoding")
+
+    if summary["skipped"] > 0:
+        table.add_row("[dim]Skipped[/dim]", str(summary["skipped"]), "Already exported")
+
+    if summary["error"] > 0:
+        table.add_row("[red]Error[/red]", str(summary["error"]), "Export failed")
+
+    if summary["not_present"] > 0:
+        table.add_row(
+            "[dim]Not Present[/dim]", str(summary["not_present"]), "Source not locally available"
+        )
+
+    console.print(table)
+    console.print()
+
+    # Show failed files
+    failed_results = [r for r in results if r.status == "error"]
+    if failed_results:
+        console.print("[red]Failed files:[/red]")
+        for result in failed_results[:10]:
+            console.print(f"  [path]{result.source}[/path]")
+            if result.error_message:
+                console.print(f"    [dim]{result.error_message[:100]}[/dim]")
+        if len(failed_results) > 10:
+            console.print(f"  [dim]... and {len(failed_results) - 10} more[/dim]")
+        console.print()
+
+
+@cli.command("export")
+@click.argument("args", nargs=-1)
+@click.option(
+    "--format",
+    "-f",
+    "format_preset",
+    default=None,
+    help="Format preset (mp3-320, mp3-v0, flac, flac-pioneer, aiff, aiff-pioneer, wav, wav-pioneer)",
+)
+@click.option(
+    "--pattern", "-p", required=True, help='Jinja2 path template, e.g. "{{ artist }}/{{ title }}"'
+)
+@click.option(
+    "--output",
+    "-o",
+    required=True,
+    type=click.Path(path_type=Path),
+    help="Base output directory",
+)
+@click.option("--force", is_flag=True, default=False, help="Re-export all files (ignore existing)")
+@click.option(
+    "--dry-run", "-n", is_flag=True, default=False, help="Preview export without encoding"
+)
+@click.option("--jobs", "-j", default=1, type=int, help="Number of parallel export jobs")
+@click.option(
+    "--verbose", "-v", is_flag=True, default=False, help="Show ffmpeg commands and output"
+)
+@pass_context
+def export(
+    ctx: Context,
+    args: tuple[str, ...],
+    format_preset: str | None,
+    pattern: str,
+    output: Path,
+    force: bool,
+    dry_run: bool,
+    jobs: int,
+    verbose: bool,
+) -> None:
+    """Export audio files in a specified format.
+
+    Export files matched by search query or paths, recoding them to the
+    specified format using ffmpeg. Metadata and cover art are preserved.
+
+    Examples:
+
+        Export FLAC collection to MP3-320:
+        $ music-cmd files export "genre:ambient" -p "{{ artist }}/{{ title }}.mp3" -o /mnt/usb
+
+        Export with explicit format:
+        $ music-cmd files export -p "{{ title }}" -o /tmp -f flac-pioneer "rating:>=4"
+    """
+    config = ctx.config
+    repo_path = config.music_repo
+
+    # Resolve preset
+    try:
+        preset = _resolve_preset(format_preset, pattern)
+    except click.ClickException:
+        raise
+
+    if not ctx.quiet:
+        info(f"Using preset: {preset.name}")
+
+    # Resolve files
+    file_paths = resolve_args_to_files(ctx, args, config, require_present=False, verbose=verbose)
+
+    if file_paths is None:
+        raise click.ClickException("Failed to resolve files")
+
+    if not file_paths:
+        info("No files to export")
+        return
+
+    # Load track metadata for template rendering
+    from music_commander.cache.query import get_cache
+
+    cache = get_cache(config)
+    tracks = cache.get_all_tracks()
+    track_by_file = {Path(t.file): t for t in tracks}
+
+    # Render output paths
+    file_pairs: list[tuple[Path, Path]] = []
+    used_paths: set[str] = set()
+
+    for file_path in file_paths:
+        # Get track metadata
+        track = track_by_file.get(file_path)
+        if not track:
+            if verbose:
+                warning(f"No metadata for {file_path}, skipping")
+            continue
+
+        # Convert track to dict for template rendering
+        metadata = {
+            "artist": track.artist,
+            "title": track.title,
+            "album": track.album,
+            "genre": track.genre,
+            "bpm": track.bpm,
+            "rating": track.rating,
+            "key": track.key,
+            "year": track.year,
+            "tracknumber": track.tracknumber,
+            "comment": track.comment,
+            "file": str(file_path),
+            "filename": file_path.stem,
+            "ext": file_path.suffix,
+        }
+
+        # Render template
+        try:
+            rendered = render_path(pattern, metadata)
+        except TemplateRenderError as e:
+            error(f"Template error: {e}")
+            raise click.ClickException(f"Template error: {e}")
+
+        # Sanitize path
+        rendered = sanitize_rendered_path(rendered)
+
+        # Append preset container if no extension
+        if not _extract_template_extension(pattern):
+            rendered += preset.container
+
+        # Deduplicate paths
+        rendered = _make_unique_path(rendered, used_paths)
+
+        # Compute full output path
+        output_path = output / rendered
+
+        file_pairs.append((file_path, output_path))
+
+    if not file_pairs:
+        info("No files matched with metadata")
+        return
+
+    if not ctx.quiet:
+        info(f"Matched {len(file_pairs)} files for export")
+
+    # Dry-run mode
+    if dry_run:
+        info("Dry-run mode: showing preview")
+        # TODO: implement dry-run preview (WP05)
+        info(f"Would export {len(file_pairs)} files to {output}")
+        return
+
+    # Export files
+    results: list[ExportResult] = []
+    start_time = time.time()
+
+    try:
+        with MultilineFileProgress(total=len(file_pairs), operation="Exporting") as progress:
+            # Sequential export (parallel is WP05)
+            _export_files_sequential(
+                file_pairs,
+                preset,
+                repo_path,
+                results,
+                progress,
+                verbose=verbose,
+                force=force,
+            )
+
+            duration = time.time() - start_time
+
+            # Build summary
+            summary = {
+                "total": len(results),
+                "ok": sum(1 for r in results if r.status == "ok"),
+                "copied": sum(1 for r in results if r.status == "copied"),
+                "skipped": sum(1 for r in results if r.status == "skipped"),
+                "error": sum(1 for r in results if r.status == "error"),
+                "not_present": sum(1 for r in results if r.status == "not_present"),
+            }
+
+            # Create export report
+            report = ExportReport(
+                version=1,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                duration_seconds=duration,
+                repository=str(repo_path),
+                output_dir=str(output),
+                preset=preset.name,
+                arguments=list(args) if args else [],
+                summary=summary,
+                results=results,
+            )
+
+    except KeyboardInterrupt:
+        # Build partial report
+        duration = time.time() - start_time
+        summary = {
+            "total": len(results),
+            "ok": sum(1 for r in results if r.status == "ok"),
+            "copied": sum(1 for r in results if r.status == "copied"),
+            "skipped": sum(1 for r in results if r.status == "skipped"),
+            "error": sum(1 for r in results if r.status == "error"),
+            "not_present": sum(1 for r in results if r.status == "not_present"),
+        }
+
+        report = ExportReport(
+            version=1,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            duration_seconds=duration,
+            repository=str(repo_path),
+            output_dir=str(output),
+            preset=preset.name,
+            arguments=list(args) if args else [],
+            summary=summary,
+            results=results,
+        )
+
+        # Write partial report
+        report_path = output / ".music-commander-export-report.json"
+        write_export_report(report, report_path)
+
+        if not ctx.quiet:
+            info(f"Interrupted. Partial report written to: {report_path}")
+
+        raise
+
+    finally:
+        # Always write report
+        if "report" in locals():
+            report_path = output / ".music-commander-export-report.json"
+            write_export_report(report, report_path)
+
+            if not ctx.quiet and "summary" in locals():
+                _show_export_summary(summary, results)
+                info(f"Report written to: {report_path}")
+
+    # Exit code
+    if summary["error"] > 0:
+        raise SystemExit(1)
