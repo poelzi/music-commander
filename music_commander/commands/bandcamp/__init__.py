@@ -25,3 +25,4 @@ def cli() -> None:
 
 # Import submodules to register their commands with the cli group
 from music_commander.commands.bandcamp import auth as _auth  # noqa: E402, F401
+from music_commander.commands.bandcamp import sync as _sync  # noqa: E402, F401
