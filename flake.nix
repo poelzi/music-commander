@@ -29,6 +29,7 @@
             jinja2
             lark
             python-magic
+            rapidfuzz
             requests
             rich
             sqlalchemy
