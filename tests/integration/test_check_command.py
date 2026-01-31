@@ -92,11 +92,11 @@ def test_basic_check_success(runner: CliRunner, git_annex_repo: Path, mock_confi
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 result = runner.invoke(cli, ["files", "check"])
@@ -123,11 +123,11 @@ def test_check_with_directory_arg(
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 result = runner.invoke(cli, ["files", "check", str(tracks_dir)])
@@ -149,11 +149,11 @@ def test_check_with_failures_exits_1(
             return _error_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 result = runner.invoke(cli, ["files", "check"])
@@ -180,11 +180,11 @@ def test_missing_checker_tool(runner: CliRunner, git_annex_repo: Path, mock_conf
             return _missing_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=False,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -270,16 +270,16 @@ def test_unrecognized_extension_skipped(
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 # Mock MIME detection to return non-audio type
                 with patch(
-                    "music_commander.commands.files.get_checkers_for_file",
+                    "music_commander.commands.files.check.get_checkers_for_file",
                     return_value=(None, "skipped"),
                 ):
                     with runner.isolated_filesystem() as fs_path:
@@ -379,7 +379,7 @@ def test_not_present_file(runner: CliRunner, temp_dir: Path, mock_config: Config
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with runner.isolated_filesystem() as fs_path:
@@ -426,11 +426,11 @@ def test_json_report_structure(
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -520,11 +520,11 @@ def test_dry_run_no_execution(runner: CliRunner, git_annex_repo: Path, mock_conf
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -611,11 +611,11 @@ def test_resolve_args_directory(runner: CliRunner, temp_dir: Path, mock_config: 
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -685,11 +685,11 @@ def test_parallel_checking(runner: CliRunner, git_annex_repo: Path, mock_config:
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 result = runner.invoke(cli, ["files", "check", "--jobs", "4"])
@@ -749,11 +749,11 @@ def test_zero_byte_file_reported_as_error(
             return _error_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -786,11 +786,11 @@ def test_sigint_writes_partial_report(
             raise KeyboardInterrupt()
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -898,11 +898,11 @@ def test_non_audio_file_skipped(runner: CliRunner, temp_dir: Path, mock_config: 
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -998,11 +998,11 @@ def test_cue_file_validation(runner: CliRunner, temp_dir: Path, mock_config: Con
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=selective_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:
@@ -1044,11 +1044,11 @@ def test_flac_multichannel_check_flag(
             return _ok_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 result = runner.invoke(cli, ["files", "check", "--flac-multichannel-check"])
@@ -1073,11 +1073,11 @@ def test_flac_multichannel_warning_exit_0(
             return _warning_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 result = runner.invoke(cli, ["files", "check", "--flac-multichannel-check"])
@@ -1101,11 +1101,11 @@ def test_warning_in_json_report(
             return _warning_result(rel)
 
         with patch(
-            "music_commander.commands.files.check_file",
+            "music_commander.commands.files.check.check_file",
             side_effect=mock_check_file,
         ):
             with patch(
-                "music_commander.commands.files.check_tool_available",
+                "music_commander.commands.files.check.check_tool_available",
                 return_value=True,
             ):
                 with runner.isolated_filesystem() as fs_path:

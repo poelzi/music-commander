@@ -3,7 +3,7 @@
 import json
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -68,43 +68,34 @@ def _copied_result(source: str, output: str, preset: str = "flac") -> ExportResu
     )
 
 
-def _make_mock_track(
-    file: str, artist: str = "Artist", title: str = "Title", album: str = "Album"
-) -> MagicMock:
-    """Create a mock CacheTrack with standard fields."""
-    track = MagicMock()
-    track.file = file
-    track.artist = artist
-    track.title = title
-    track.album = album
-    track.genre = None
-    track.bpm = None
-    track.rating = None
-    track.key_musical = None
-    track.year = None
-    track.tracknumber = None
-    track.comment = None
-    return track
+def _make_tags(
+    artist: str = "Artist", title: str = "Title", album: str = "Album"
+) -> dict[str, str]:
+    """Create a tags dict as returned by probe_tags."""
+    return {"artist": artist, "title": title, "album": album}
 
 
 @contextmanager
-def _mock_cache_session(tracks: list[MagicMock]):
-    """Context manager that mocks get_cache_session to return given tracks.
+def _mock_probe_tags(tags_by_file: dict[str, dict[str, str]] | dict[str, str] | None = None):
+    """Context manager that mocks probe_tags and is_annex_present.
 
-    Patches music_commander.cache.session.get_cache_session so that
-    session.query(CacheTrack).all() returns the given tracks.
+    If tags_by_file is a plain dict with string values, it's used for all files.
+    If it maps filenames to tag dicts, it returns per-file tags.
     """
-    mock_session = MagicMock()
-    mock_query = MagicMock()
-    mock_query.all.return_value = tracks
-    mock_session.query.return_value = mock_query
+    if tags_by_file is None:
+        tags_by_file = _make_tags()
 
-    @contextmanager
-    def fake_get_cache_session(repo_path):
-        yield mock_session
+    def fake_probe_tags(file_path):
+        if isinstance(tags_by_file, dict) and all(
+            isinstance(v, dict) for v in tags_by_file.values()
+        ):
+            # Map by filename
+            return tags_by_file.get(file_path.name, {})
+        return tags_by_file
 
-    with patch("music_commander.cache.session.get_cache_session", fake_get_cache_session):
-        yield mock_session
+    with patch("music_commander.commands.files.export.probe_tags", side_effect=fake_probe_tags):
+        with patch("music_commander.commands.files.export.is_annex_present", return_value=True):
+            yield
 
 
 # ---------------------------------------------------------------------------
@@ -123,12 +114,11 @@ def test_explicit_format_mp3_320(
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _ok_result("test.flac", "output.mp3")
 
                     result = runner.invoke(
@@ -163,12 +153,11 @@ def test_auto_detect_format_from_extension(
         test_file = git_annex_repo / "test.mp3"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.mp3")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _ok_result("test.mp3", "output.flac", "flac")
 
                     result = runner.invoke(
@@ -210,12 +199,11 @@ def test_extension_conflict_warning(
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _ok_result("test.flac", "output.mp3", "flac")
 
                     result = runner.invoke(
@@ -251,15 +239,14 @@ def test_skip_existing_file(runner: CliRunner, git_annex_repo: Path, mock_config
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files._should_skip") as mock_skip:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export._should_skip") as mock_skip:
                     mock_skip.return_value = True
 
-                    with patch("music_commander.commands.files.export_file") as mock_export:
+                    with patch("music_commander.commands.files.export.export_file") as mock_export:
                         result = runner.invoke(
                             cli,
                             [
@@ -288,12 +275,11 @@ def test_force_re_exports_all(runner: CliRunner, git_annex_repo: Path, mock_conf
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _ok_result("test.flac", "output.mp3")
 
                     result = runner.invoke(
@@ -331,13 +317,12 @@ def test_dry_run_no_files_written(
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
-                    with patch("music_commander.commands.files.probe_source") as mock_probe:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
+                    with patch("music_commander.commands.files.export.probe_source") as mock_probe:
                         mock_probe.return_value = SourceInfo(
                             codec_name="flac",
                             sample_rate=44100,
@@ -377,12 +362,11 @@ def test_dry_run_shows_preview(
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.probe_source") as mock_probe:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.probe_source") as mock_probe:
                     mock_probe.return_value = SourceInfo(
                         codec_name="flac",
                         sample_rate=44100,
@@ -430,12 +414,11 @@ def test_json_report_structure(
         output_dir = tmp_path / "export"
         output_dir.mkdir()
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _ok_result("test.flac", "output.mp3")
 
                     result = runner.invoke(
@@ -480,13 +463,16 @@ def test_json_report_summary_counts(
         output_dir = tmp_path / "export"
         output_dir.mkdir()
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file1, test_file2]
 
-            mock_track1 = _make_mock_track("test1.flac", artist="Artist1", title="Title1")
-            mock_track2 = _make_mock_track("test2.flac", artist="Artist2", title="Title2")
-            with _mock_cache_session([mock_track1, mock_track2]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags(
+                {
+                    "test1.flac": _make_tags(artist="Artist1", title="Title1"),
+                    "test2.flac": _make_tags(artist="Artist2", title="Title2"),
+                }
+            ):
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.side_effect = [
                         _ok_result("test1.flac", "output1.mp3"),
                         _error_result("test2.flac", "output2.mp3"),
@@ -531,12 +517,11 @@ def test_exit_0_on_success(runner: CliRunner, git_annex_repo: Path, mock_config:
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _ok_result("test.flac", "output.mp3")
 
                     result = runner.invoke(
@@ -568,12 +553,11 @@ def test_exit_0_on_copies_and_skips(
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _copied_result("test.flac", "output.flac")
 
                     result = runner.invoke(
@@ -603,12 +587,11 @@ def test_exit_1_on_errors(runner: CliRunner, git_annex_repo: Path, mock_config: 
         test_file = git_annex_repo / "test.flac"
         test_file.write_text("")
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _error_result("test.flac", "output.mp3")
 
                     result = runner.invoke(
@@ -647,12 +630,11 @@ def test_output_directory_created(
 
         output_dir = tmp_path / "new_dir" / "nested"
 
-        with patch("music_commander.commands.files.resolve_args_to_files") as mock_resolve:
+        with patch("music_commander.commands.files.export.resolve_args_to_files") as mock_resolve:
             mock_resolve.return_value = [test_file]
 
-            mock_track = _make_mock_track("test.flac")
-            with _mock_cache_session([mock_track]):
-                with patch("music_commander.commands.files.export_file") as mock_export:
+            with _mock_probe_tags():
+                with patch("music_commander.commands.files.export.export_file") as mock_export:
                     mock_export.return_value = _ok_result("test.flac", "output.mp3")
 
                     result = runner.invoke(

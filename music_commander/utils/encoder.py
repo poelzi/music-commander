@@ -264,6 +264,45 @@ def probe_source(file_path: Path) -> SourceInfo:
     )
 
 
+def probe_tags(file_path: Path) -> dict[str, str]:
+    """Read metadata tags from an audio file using ffprobe.
+
+    Args:
+        file_path: Path to the audio file.
+
+    Returns:
+        Dictionary of tag names (lowercased) to values.
+        Returns empty dict if ffprobe fails or no tags found.
+    """
+    proc = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-show_entries",
+            "format_tags",
+            "-print_format",
+            "json",
+            str(file_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    if proc.returncode != 0:
+        return {}
+
+    try:
+        data = json.loads(proc.stdout)
+        tags = data.get("format", {}).get("tags", {})
+    except (json.JSONDecodeError, KeyError):
+        return {}
+
+    # Normalize keys to lowercase
+    return {k.lower(): v for k, v in tags.items()}
+
+
 def find_cover_art(file_path: Path) -> Path | None:
     """Search for external cover art files in the source file's directory.
 

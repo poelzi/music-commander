@@ -475,7 +475,11 @@ class MultilineFileProgress:
 
         # Print permanent line above the live region
         if self._live:
-            if success:
+            if effective_status == "skipped" and message:
+                self._live.console.print(
+                    f"  [dim]Skipped({message}): [path]{file_path}[/path][/dim]"
+                )
+            elif success:
                 self._live.console.print(f"  {self._completed_label}: [path]{file_path}[/path]")
             else:
                 self._live.console.print(f"  Failed: [path]{file_path}[/path]")
