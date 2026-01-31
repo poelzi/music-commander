@@ -111,6 +111,8 @@ A user wants to speed up the export by running multiple ffmpeg processes in para
 - What happens when export is interrupted (Ctrl+C)? Running ffmpeg processes are killed, partially written output files are removed, and a summary of completed files is shown.
 - What happens when the source file is corrupt? The ffmpeg error is reported, the file is marked as "error", and the export continues with remaining files.
 - What happens when disk space runs out? The ffmpeg error is reported, and the export stops with an appropriate message.
+- What happens when the template extension doesn't match the format preset? A warning is printed but the user-defined template path is used as-is.
+- What happens when the template has no file extension? The preset's container extension is appended automatically.
 
 ## Requirements
 
@@ -122,11 +124,13 @@ A user wants to speed up the export by running multiple ffmpeg processes in para
 - **FR-004**: The command MUST require a `--output` / `-o` option specifying the base output directory.
 - **FR-005**: The command MUST support a `--format` / `-f` option to select a format preset.
 - **FR-006**: If `--format` is not specified, the command MUST infer the preset from the file extension in the template pattern. If no extension or an unrecognized extension is present, the command MUST exit with an error.
+- **FR-006a**: If `--format` is specified and the template pattern includes a file extension that differs from the preset's container format, the command MUST print a warning but proceed using the user-defined template pattern as-is.
+- **FR-006b**: If the template pattern has no file extension, the command MUST append the preset's container extension automatically.
 - **FR-007**: The command MUST use ffmpeg as the encoding backend for all format conversions.
 - **FR-008**: The command MUST transfer all metadata tags from the source to the output file.
 - **FR-009**: The command MUST preserve embedded cover art from source files in the output.
 - **FR-010**: If a source file has no embedded cover art, the command MUST search for external cover art files in the source file's directory (`cover.jpg`, `cover.png`, `folder.jpg`, `folder.png`, `front.jpg`, `front.png`) and embed the first one found.
-- **FR-011**: Files that are already in the correct format and match all target parameters (codec, bit depth, sample rate, channels) MUST be copied directly instead of re-encoded.
+- **FR-011**: Files that are already in the correct format and match all target parameters (codec, bit depth, sample rate, channels) MUST be copied directly instead of re-encoded. However, if the source file has no embedded cover art and an external cover file is found (per FR-010), the file MUST be processed through ffmpeg to embed the cover art rather than a plain copy.
 - **FR-012**: By default, the command MUST skip files whose output path already exists (incremental mode). A `--force` flag MUST override this to re-export all files.
 - **FR-013**: For incremental mode, the command SHOULD compare source and destination modification times to detect changed source files that need re-export.
 - **FR-014**: The command MUST support `--jobs N` for parallel encoding (default 1).
@@ -195,6 +199,8 @@ The following presets MUST be supported:
 - Q: What format should the output file extension be? → A: Determined by the format preset. The template should include the extension, or it will be appended based on the preset's container format.
 - Q: What happens when no `--format` is specified? → A: Infer the best preset from the file extension in the template pattern. Use the extension-to-preset mapping table.
 - Q: Should there be Pioneer-specific presets beyond `flac-pioneer`? → A: Yes, `aiff-pioneer` and `wav-pioneer` for downcoding to 16-bit 44.1kHz stereo.
+- Q: When the template extension conflicts with the selected format preset (e.g., template ends in `.mp3` but `--format flac`), what should happen? → A: Print a warning and use the user-defined template pattern as-is.
+- Q: When a file is copied (not re-encoded) but has no embedded cover art and an external cover file exists, should cover art still be embedded? → A: Yes, copy but still embed external cover art if missing.
 
 ## Assumptions
 
