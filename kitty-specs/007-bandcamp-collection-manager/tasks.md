@@ -79,10 +79,10 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP03-client-parser.md`
 
 ### Included Subtasks
-- [ ] T012 Create `music_commander/bandcamp/client.py` with collection fetching (`/api/fancollection/1/collection_items` endpoint, pagination)
-- [ ] T013 [P] Create `music_commander/bandcamp/parser.py` with HTML page data extraction (`#pagedata` div, `data-blob` attribute parsing)
-- [ ] T014 Add download URL resolution in `client.py`: fetch redownload page → parse digital_items → extract format-specific download URLs
-- [ ] T015 Add rate limiting awareness: detect HTTP 429 or throttle responses, implement backoff
+- [x] T012 Create `music_commander/bandcamp/client.py` with collection fetching (`/api/fancollection/1/collection_items` endpoint, pagination)
+- [x] T013 [P] Create `music_commander/bandcamp/parser.py` with HTML page data extraction (`#pagedata` div, `data-blob` attribute parsing)
+- [x] T014 Add download URL resolution in `client.py`: fetch redownload page → parse digital_items → extract format-specific download URLs
+- [x] T015 Add rate limiting awareness: detect HTTP 429 or throttle responses, implement backoff
 
 ### Implementation Notes
 - Collection API: POST with `{"fan_id": X, "count": 100, "older_than_token": "..."}`, paginate until empty `items`
