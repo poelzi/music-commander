@@ -177,7 +177,12 @@ class BandcampClient:
             if token is None:
                 break
 
-    def resolve_download_url(self, redownload_url: str, encoding: str) -> str:
+    def resolve_download_url(
+        self,
+        redownload_url: str,
+        encoding: str,
+        sale_item_id: int | None = None,
+    ) -> str:
         """Resolve a format-specific download URL for a purchased release.
 
         Fetches the redownload page, extracts digital items, and finds
@@ -186,6 +191,8 @@ class BandcampClient:
         Args:
             redownload_url: URL to the redownload page for this purchase.
             encoding: Bandcamp encoding key (e.g., "flac", "mp3-320").
+            sale_item_id: Optional sale item ID to match the correct digital
+                item on pages with multiple items (e.g., discography bundles).
 
         Returns:
             The direct download URL for the requested format.
@@ -200,8 +207,19 @@ class BandcampClient:
         if not digital_items:
             raise BandcampError(f"No downloadable items found at {redownload_url}")
 
-        # Use the first digital item (most redownload pages have one)
-        item = digital_items[0]
+        # Match by sale_item_id if provided
+        item = None
+        if sale_item_id is not None:
+            for di in digital_items:
+                di_id = di.get("id") or di.get("art_id") or di.get("sale_item_id")
+                if di_id is not None and int(di_id) == sale_item_id:
+                    item = di
+                    break
+
+        # Fall back to first item if no match or no sale_item_id
+        if item is None:
+            item = digital_items[0]
+
         formats = extract_download_formats(item)
 
         if not formats:
