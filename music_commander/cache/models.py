@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, Index, Integer, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -113,7 +113,9 @@ class BandcampTrack(CacheBase):
     __tablename__ = "bandcamp_tracks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    release_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    release_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("bandcamp_releases.sale_item_id"), nullable=False
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     track_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -133,7 +135,9 @@ class BandcampReleaseFormat(CacheBase):
     __tablename__ = "bandcamp_release_formats"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    release_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    release_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("bandcamp_releases.sale_item_id"), nullable=False
+    )
     encoding: Mapped[str] = mapped_column(String(32), nullable=False)
 
     __table_args__ = (
