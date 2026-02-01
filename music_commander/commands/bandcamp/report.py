@@ -32,7 +32,7 @@ from music_commander.cache.session import get_cache_session
 from music_commander.cli import pass_context
 from music_commander.commands.bandcamp import (
     EXIT_AUTH_ERROR,
-    EXIT_PARSE_ERROR,
+    EXIT_MATCH_ERROR,
     EXIT_SUCCESS,
     EXIT_SYNC_ERROR,
     cli,
@@ -172,13 +172,9 @@ function downloadRelease(saleItemId, encoding, link) {
   const oldText = link.textContent;
   link.innerHTML = '<span class="status resolving">Resolving...</span>';
   const url = SERVER_URL + '/download/' + saleItemId + '/' + encoding;
-  fetch(url, { redirect: 'manual' })
+  fetch(url)
     .then(resp => {
-      if (resp.type === 'opaqueredirect' || resp.status === 302) {
-        // Follow redirect in new tab
-        window.open(url, '_blank');
-        link.textContent = oldText;
-      } else if (resp.ok) {
+      if (resp.ok) {
         return resp.json().then(data => {
           if (data.url) {
             window.open(data.url, '_blank');
@@ -257,11 +253,13 @@ class _DownloadHandler(BaseHTTPRequestHandler):
             self._respond(502, str(e))
             return
 
-        # Redirect to the fresh download URL
-        self.send_response(HTTPStatus.FOUND)
-        self.send_header("Location", url)
+        # Return JSON with the resolved URL so JS can open it directly
+        payload = json.dumps({"url": url}).encode()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
+        self.wfile.write(payload)
 
     def _respond(self, code: int, message: str) -> None:
         self.send_response(code)
@@ -398,7 +396,7 @@ def report(
 
     if not repo_path.exists():
         error(f"Music repository not found: {repo_path}")
-        raise SystemExit(EXIT_PARSE_ERROR)
+        raise SystemExit(EXIT_MATCH_ERROR)
 
     if fmt is None:
         fmt = config.bandcamp_default_format
@@ -425,7 +423,7 @@ def report(
 
             if not releases_data:
                 error("No releases to report after filtering.")
-                raise SystemExit(EXIT_PARSE_ERROR)
+                raise SystemExit(EXIT_MATCH_ERROR)
 
             # Build release map for server
             release_map = {r.sale_item_id: r for r in session.query(BandcampRelease).all()}
@@ -477,7 +475,7 @@ def report(
         raise
     except BandcampError as e:
         error(str(e))
-        raise SystemExit(EXIT_PARSE_ERROR)
+        raise SystemExit(EXIT_MATCH_ERROR)
 
     raise SystemExit(EXIT_SUCCESS)
 
