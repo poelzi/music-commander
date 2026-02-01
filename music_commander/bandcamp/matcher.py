@@ -43,8 +43,9 @@ def strip_edition_suffixes(s: str) -> str:
 
 
 def normalize_for_matching(s: str) -> str:
-    """Full normalization pipeline for fuzzy comparison."""
-    return strip_punctuation(normalize(strip_edition_suffixes(s)))
+    """Full normalization pipeline: strip_edition_suffixes → normalize → strip_punctuation → re-collapse."""
+    result = strip_punctuation(normalize(strip_edition_suffixes(s)))
+    return _MULTI_SPACE.sub(" ", result).strip()
 
 
 # ---------------------------------------------------------------------------
