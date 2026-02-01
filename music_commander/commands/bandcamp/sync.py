@@ -115,6 +115,7 @@ def sync_collection(
     total = 0
     new_count = 0
     batch_count = 0
+    last_token: str | None = None
 
     with Progress(
         SpinnerColumn(),
@@ -122,43 +123,68 @@ def sync_collection(
         transient=True,
     ) as progress:
         task = progress.add_task("Syncing Bandcamp collection...", total=None)
+        token: str | None = None
+        stop = False
 
-        for item in client.iter_collection():
-            sale_item_id = item.get("sale_item_id")
-            if sale_item_id is None:
-                continue
-
-            total += 1
-            batch_count += 1
-
-            # Incremental: stop if we hit a known item
-            if not full and sale_item_id in existing_ids:
-                progress.update(
-                    task,
-                    description=f"Found existing item, stopping incremental sync... ({total} checked)",
-                )
+        while not stop:
+            data = client.fetch_collection_page(older_than_token=token)
+            items = data.get("items", [])
+            if not items:
                 break
 
-            band_name = item.get("band_name", "Unknown")
-            album_title = item.get("item_title", item.get("album_title", "Unknown"))
-            progress.update(
-                task,
-                description=f"Syncing: {band_name} - {album_title} ({total} items)",
-            )
+            redownload_urls = data.get("redownload_urls", {})
 
-            is_new = _upsert_release(session, item, now)
-            if is_new:
-                new_count += 1
+            for item in items:
+                sale_item_id = item.get("sale_item_id")
+                if sale_item_id is None:
+                    continue
 
-            # Handle discography bundles
-            is_discography = _is_discography_item(item)
-            if is_discography:
-                _expand_discography(client, session, item, now)
+                # Attach redownload URL
+                item_key = f"{item.get('sale_item_type', '')}{sale_item_id}"
+                if item_key in redownload_urls:
+                    item["redownload_url"] = redownload_urls[item_key]
 
-            # Commit in batches
-            if batch_count >= _COMMIT_BATCH_SIZE:
-                session.commit()
-                batch_count = 0
+                total += 1
+                batch_count += 1
+
+                # Incremental: stop if we hit a known item
+                if not full and sale_item_id in existing_ids:
+                    progress.update(
+                        task,
+                        description=f"Found existing item, stopping incremental sync... ({total} checked)",
+                    )
+                    stop = True
+                    break
+
+                band_name = item.get("band_name", "Unknown")
+                album_title = item.get("item_title", item.get("album_title", "Unknown"))
+                progress.update(
+                    task,
+                    description=f"Syncing: {band_name} - {album_title} ({total} items)",
+                )
+
+                is_new = _upsert_release(session, item, now)
+                if is_new:
+                    new_count += 1
+
+                # Store formats from item data if available
+                _store_item_formats(client, session, item)
+
+                # Handle discography bundles
+                if _is_discography_item(item):
+                    _expand_discography(client, session, item, now)
+
+                # Commit in batches
+                if batch_count >= _COMMIT_BATCH_SIZE:
+                    session.commit()
+                    batch_count = 0
+
+            # Track pagination token
+            token = data.get("last_token")
+            if token is not None:
+                last_token = token
+            else:
+                break
 
         # Final commit for remaining items
         session.commit()
@@ -172,6 +198,7 @@ def sync_collection(
     sync_state.username = username
     sync_state.last_synced = now
     sync_state.total_items = session.query(BandcampRelease).count()
+    sync_state.last_token = last_token
     session.commit()
 
     return total, new_count
@@ -248,6 +275,35 @@ def _store_formats(session: Session, release_id: int, formats: dict[str, str]) -
         if not exists:
             fmt = BandcampReleaseFormat(release_id=release_id, encoding=encoding)
             session.add(fmt)
+
+
+def _store_item_formats(client: BandcampClient, session: Session, item: dict[str, Any]) -> None:
+    """Store available download formats for a standard collection item.
+
+    Attempts to extract formats from item data first, then falls back
+    to fetching the redownload page if needed.
+    """
+    sale_item_id = item.get("sale_item_id")
+    if sale_item_id is None:
+        return
+
+    # Check if formats already stored
+    existing_count = session.query(BandcampReleaseFormat).filter_by(release_id=sale_item_id).count()
+    if existing_count > 0:
+        return
+
+    # Try to get formats from the redownload page
+    redownload_url = item.get("redownload_url")
+    if not redownload_url:
+        return
+
+    try:
+        formats = client.get_download_formats(redownload_url)
+        if formats:
+            _store_formats(session, sale_item_id, formats)
+    except Exception:
+        # Non-critical: format discovery failure shouldn't block sync
+        logger.debug("Could not fetch formats for sale_item_id=%s", sale_item_id)
 
 
 def _is_discography_item(item: dict[str, Any]) -> bool:
