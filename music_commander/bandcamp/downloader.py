@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import zipfile
 from pathlib import Path
 
 import requests
@@ -162,6 +163,21 @@ def download_release(
 
         # Rename to final path
         tmp_path.replace(final_path)
+
+        # Extract ZIP files into a subdirectory
+        if ext == "zip" and zipfile.is_zipfile(final_path):
+            extract_dir = output_dir / f"{artist} - {album}"
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(final_path, "r") as zf:
+                zf.extractall(extract_dir)
+            final_path.unlink()
+            logger.info("Extracted ZIP to %s", extract_dir)
+            if progress and task_id is not None:
+                progress.update(
+                    task_id, description=f"[green]Extracted: {extract_dir.name}[/green]"
+                )
+            return extract_dir
+
         return final_path
 
     except KeyboardInterrupt:

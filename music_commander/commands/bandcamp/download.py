@@ -122,11 +122,8 @@ def download(
             _display_releases(console, releases)
 
             if not yes:
-                if len(releases) == 1:
-                    prompt = "Download this release?"
-                else:
-                    prompt = f"Download all {len(releases)} releases?"
-                if not click.confirm(prompt, default=True):
+                releases = _select_releases(console, releases)
+                if not releases:
                     info("Download cancelled.")
                     raise SystemExit(EXIT_SUCCESS)
 
@@ -165,6 +162,51 @@ def _display_releases(console: Console, releases: list[BandcampRelease]) -> None
     for i, r in enumerate(releases, 1):
         console.print(f"  {i}. [cyan]{r.band_name}[/cyan] — {r.album_title}")
     console.print()
+
+
+def _select_releases(console: Console, releases: list[BandcampRelease]) -> list[BandcampRelease]:
+    """Prompt user to confirm all or select specific releases.
+
+    Returns:
+        Selected releases, or empty list if cancelled.
+    """
+    if len(releases) == 1:
+        if click.confirm("Download this release?", default=True):
+            return releases
+        return []
+
+    choice = (
+        click.prompt(
+            f"Download all {len(releases)}, select specific items, or cancel? [a]ll/[s]elect/[c]ancel",
+            type=str,
+            default="a",
+        )
+        .strip()
+        .lower()
+    )
+
+    if choice.startswith("c"):
+        return []
+
+    if choice.startswith("s"):
+        selection = click.prompt(
+            "Enter release numbers separated by commas (e.g. 1,3,5)",
+            type=str,
+        )
+        try:
+            indices = [int(s.strip()) for s in selection.split(",")]
+            selected = [releases[i - 1] for i in indices if 1 <= i <= len(releases)]
+        except (ValueError, IndexError):
+            console.print("[red]Invalid selection.[/red]")
+            return []
+        if not selected:
+            console.print("[red]No valid releases selected.[/red]")
+            return []
+        console.print(f"Selected {len(selected)} release(s).")
+        return selected
+
+    # Default: all
+    return releases
 
 
 def _download_releases(
