@@ -241,6 +241,28 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
             raise ConfigValidationError("bandcamp.match_threshold", value, "must be an integer")
         config.bandcamp_match_threshold = value
 
+    # Parse [bandcamp] section
+    bandcamp = data.get("bandcamp", {})
+    if "session_cookie" in bandcamp:
+        value = bandcamp["session_cookie"]
+        if value is not None and not isinstance(value, str):
+            raise ConfigValidationError(
+                "bandcamp.session_cookie", value, "must be a string or null"
+            )
+        config.bandcamp_session_cookie = value
+
+    if "default_format" in bandcamp:
+        value = bandcamp["default_format"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("bandcamp.default_format", value, "must be a string")
+        config.bandcamp_default_format = value
+
+    if "match_threshold" in bandcamp:
+        value = bandcamp["match_threshold"]
+        if not isinstance(value, int):
+            raise ConfigValidationError("bandcamp.match_threshold", value, "must be an integer")
+        config.bandcamp_match_threshold = value
+
     return config
 
 
@@ -281,6 +303,17 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     if config.meta_editor is not None:
         data["editors"] = {"meta_editor": config.meta_editor}
+    # Build [bandcamp] section (only if non-default values)
+    bandcamp_data: dict[str, Any] = {}
+    if config.bandcamp_session_cookie is not None:
+        bandcamp_data["session_cookie"] = config.bandcamp_session_cookie
+    if config.bandcamp_default_format != "flac":
+        bandcamp_data["default_format"] = config.bandcamp_default_format
+    if config.bandcamp_match_threshold != 60:
+        bandcamp_data["match_threshold"] = config.bandcamp_match_threshold
+    if bandcamp_data:
+        data["bandcamp"] = bandcamp_data
+
     # Build [bandcamp] section (only if non-default values)
     bandcamp_data: dict[str, Any] = {}
     if config.bandcamp_session_cookie is not None:
