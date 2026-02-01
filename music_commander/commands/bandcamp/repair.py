@@ -87,6 +87,7 @@ class RepairCandidate:
     tier: MatchTier
     match_type: str  # "release" or "track"
     encoding: str
+    format_warning: str = ""
     selected: bool = True
 
 
@@ -352,6 +353,23 @@ def _match_broken_files(
         if best_score < threshold:
             best_release = None
 
+        # T047 – Validate format availability against BandcampReleaseFormat
+        format_warning = ""
+        if best_release is not None:
+            available_fmts = (
+                session.query(BandcampReleaseFormat)
+                .filter_by(release_id=best_release.sale_item_id)
+                .all()
+            )
+            if available_fmts:
+                available_encodings = [f.encoding for f in available_fmts]
+                if encoding not in available_encodings:
+                    format_warning = (
+                        f"Format '{encoding}' not available; "
+                        f"have: {', '.join(sorted(available_encodings))}"
+                    )
+                    logger.warning("%s: %s", file_path, format_warning)
+
         candidates.append(
             RepairCandidate(
                 file_path=file_path,
@@ -364,6 +382,7 @@ def _match_broken_files(
                 tier=tier,
                 match_type=best_type,
                 encoding=encoding,
+                format_warning=format_warning,
             )
         )
 
@@ -472,17 +491,21 @@ def _display_dry_run(console: Console, candidates: list[RepairCandidate]) -> Non
         if c.bc_release is None:
             continue
         style = _TIER_STYLES.get(c.tier, "dim")
+        action = "download"
+        if c.format_warning:
+            action = f"[yellow]warn: {c.format_warning}[/yellow]"
         table.add_row(
             c.file_path,
             f"{c.bc_release.band_name} - {c.bc_release.album_title}",
             f"{c.score:.0f}",
             f"[{style}]{c.tier.value}[/{style}]",
             c.encoding,
-            "download",
+            action,
         )
 
     console.print(table)
-    console.print(f"\n[bold]Would download {len(candidates)} file(s).[/bold]")
+    actionable = sum(1 for c in candidates if c.bc_release is not None)
+    console.print(f"\n[bold]Would download {actionable} file(s).[/bold]")
 
 
 # ---------------------------------------------------------------------------
