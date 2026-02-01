@@ -87,6 +87,7 @@
             pkgs.shntool
             pkgs.vorbis-tools # provides ogginfo
             pkgs.sox
+            pkgs.puddletag
             spec-kitty.packages.${system}.default
           ];
 

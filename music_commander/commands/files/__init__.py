@@ -51,6 +51,7 @@ def cli() -> None:
 # Import submodules to register their commands with the cli group
 from music_commander.commands.files import check as _check  # noqa: E402, F401
 from music_commander.commands.files import drop as _drop  # noqa: E402, F401
+from music_commander.commands.files import edit_meta as _edit_meta  # noqa: E402, F401
 from music_commander.commands.files import export as _export  # noqa: E402, F401
 from music_commander.commands.files import get as _get  # noqa: E402, F401
 from music_commander.commands.files import get_commit as _get_commit  # noqa: E402, F401

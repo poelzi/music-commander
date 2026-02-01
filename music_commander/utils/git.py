@@ -538,6 +538,85 @@ def annex_add_file(repo_path: Path, file_path: Path) -> bool:
     return result.returncode == 0
 
 
+def annex_unlock_files(repo_path: Path, files: list[Path]) -> tuple[list[Path], list[Path]]:
+    """Unlock multiple git-annex files for editing.
+
+    Passes all files to a single ``git annex unlock`` invocation for efficiency.
+
+    Args:
+        repo_path: Git repository path.
+        files: List of file paths to unlock.
+
+    Returns:
+        Tuple of (successfully unlocked, failed) file lists.
+    """
+    if not files:
+        return [], []
+
+    rel_paths = [str(f.relative_to(repo_path)) if f.is_absolute() else str(f) for f in files]
+
+    result = subprocess.run(
+        ["git", "annex", "unlock"] + rel_paths,
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode == 0:
+        return list(files), []
+
+    # On partial failure, check which files were actually unlocked
+    unlocked = []
+    failed = []
+    for f in files:
+        # An unlocked file is a regular file (not a symlink)
+        if f.exists() and not f.is_symlink():
+            unlocked.append(f)
+        else:
+            failed.append(f)
+
+    return unlocked, failed
+
+
+def annex_add_files(repo_path: Path, files: list[Path]) -> tuple[list[Path], list[Path]]:
+    """Add multiple files back to git-annex.
+
+    Passes all files to a single ``git annex add`` invocation for efficiency.
+
+    Args:
+        repo_path: Git repository path.
+        files: List of file paths to add.
+
+    Returns:
+        Tuple of (successfully added, failed) file lists.
+    """
+    if not files:
+        return [], []
+
+    rel_paths = [str(f.relative_to(repo_path)) if f.is_absolute() else str(f) for f in files]
+
+    result = subprocess.run(
+        ["git", "annex", "add"] + rel_paths,
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode == 0:
+        return list(files), []
+
+    # On partial failure, check which files were re-annexed (became symlinks again)
+    added = []
+    failed = []
+    for f in files:
+        if f.is_symlink():
+            added.append(f)
+        else:
+            failed.append(f)
+
+    return added, failed
+
+
 def git_commit_file(repo_path: Path, file_path: Path, message: str) -> bool:
     """Commit a specific file to git with a message.
 

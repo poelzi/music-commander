@@ -48,6 +48,7 @@ class Config:
     colored_output: bool = True
     default_remote: str | None = None
     flac_multichannel_check: bool = False
+    meta_editor: str | None = None
     config_path: Path | None = None
 
     def validate(self) -> list[str]:
@@ -180,6 +181,14 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
             raise ConfigValidationError("checks.flac_multichannel", value, "must be a boolean")
         config.flac_multichannel_check = value
 
+    # Parse [editors] section
+    editors = data.get("editors", {})
+    if "meta_editor" in editors:
+        value = editors["meta_editor"]
+        if value is not None and not isinstance(value, str):
+            raise ConfigValidationError("editors.meta_editor", value, "must be a string or null")
+        config.meta_editor = value
+
     return config
 
 
@@ -217,6 +226,9 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     if config.flac_multichannel_check:
         data["checks"] = {"flac_multichannel": True}
+
+    if config.meta_editor is not None:
+        data["editors"] = {"meta_editor": config.meta_editor}
 
     with open(config_path, "wb") as f:
         tomli_w.dump(data, f)
