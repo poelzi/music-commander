@@ -261,13 +261,13 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP09-repair-workflow.md`
 
 ### Included Subtasks
-- [ ] T041 Create `music_commander/commands/bandcamp/repair.py` CLI subcommand with `--report`, `--format`, `--dry-run` options
-- [ ] T042 Parse CheckReport JSON: filter to `status == "error"` results, extract file paths
-- [ ] T043 For each broken file: look up metadata in local cache, run fuzzy match against Bandcamp collection
-- [ ] T044 Build Rich TUI with scrollable list: file path, match confidence, BC release, proposed format; allow select/deselect with keyboard
-- [ ] T045 Implement dry-run mode: display proposed actions without downloading
-- [ ] T046 Download confirmed replacements: use downloader from WP07, place alongside originals
-- [ ] T047 Handle format defaulting: use `--format` if provided, otherwise detect original file format from extension
+- [x] T041 Create `music_commander/commands/bandcamp/repair.py` CLI subcommand with `--report`, `--format`, `--dry-run` options
+- [x] T042 Parse CheckReport JSON: filter to `status == "error"` results, extract file paths
+- [x] T043 For each broken file: look up metadata in local cache, run fuzzy match against Bandcamp collection
+- [x] T044 Build Rich TUI with scrollable list: file path, match confidence, BC release, proposed format; allow select/deselect with keyboard
+- [x] T045 Implement dry-run mode: display proposed actions without downloading
+- [x] T046 Download confirmed replacements: use downloader from WP07, place alongside originals
+- [x] T047 Handle format defaulting: use `--format` if provided, otherwise detect original file format from extension
 
 ### Implementation Notes
 - CheckReport parsing: `json.loads()` → filter `results` where `status == "error"`
