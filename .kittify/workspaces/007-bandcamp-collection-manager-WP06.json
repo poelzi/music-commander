@@ -1,0 +1,14 @@
+{
+  "wp_id": "WP06",
+  "feature_slug": "007-bandcamp-collection-manager",
+  "worktree_path": ".worktrees/007-bandcamp-collection-manager-WP06",
+  "branch_name": "007-bandcamp-collection-manager-WP06",
+  "base_branch": "007-bandcamp-collection-manager-WP05",
+  "base_commit": "764c9eb4cf250902d338ee92421c9d8527df1c10",
+  "dependencies": [
+    "WP04"
+  ],
+  "created_at": "2026-01-31T23:53:21.783291+00:00",
+  "created_by": "implement-command",
+  "vcs_backend": "git"
+}
