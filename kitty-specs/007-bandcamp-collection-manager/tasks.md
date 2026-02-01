@@ -198,11 +198,11 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP07-download-command.md`
 
 ### Included Subtasks
-- [ ] T030 Create `music_commander/bandcamp/downloader.py` with download logic (URL resolution, chunked download, progress)
-- [ ] T031 Add format selection: resolve available formats from BandcampReleaseFormat, match user request or prompt for choice
-- [ ] T032 Create `music_commander/commands/bandcamp/download.py` CLI subcommand with `--format`, `--output` options
-- [ ] T033 Support multi-release download with confirmation prompt and aggregate progress
-- [ ] T034 Handle interrupted downloads: clean up partial files, restart cleanly on retry
+- [x] T030 Create `music_commander/bandcamp/downloader.py` with download logic (URL resolution, chunked download, progress)
+- [x] T031 Add format selection: resolve available formats from BandcampReleaseFormat, match user request or prompt for choice
+- [x] T032 Create `music_commander/commands/bandcamp/download.py` CLI subcommand with `--format`, `--output` options
+- [x] T033 Support multi-release download with confirmation prompt and aggregate progress
+- [x] T034 Handle interrupted downloads: clean up partial files, restart cleanly on retry
 
 ### Implementation Notes
 - Download flow: query BC collection → resolve redownload URL → fetch digital_items → get format URL → stream download
