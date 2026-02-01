@@ -31,7 +31,7 @@ from music_commander.utils.output import error, info
 _TIER_STYLES = {
     MatchTier.EXACT: "green",
     MatchTier.HIGH: "yellow",
-    MatchTier.LOW: "bright_red",
+    MatchTier.LOW: "orange3",
 }
 
 _TIER_LABELS = {
@@ -275,7 +275,7 @@ def _write_json(
         "unmatched_bc": unmatched_bc_json,
     }
 
-    content = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    content = json.dumps(data, indent=2, ensure_ascii=True) + "\n"
 
     # Atomic write
     output_path.parent.mkdir(parents=True, exist_ok=True)
