@@ -172,20 +172,20 @@ def validate_cookie(cookie: str) -> tuple[int, str | None]:
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # Try #pagedata div first (main page structure)
-    pagedata_div = soup.find("div", {"id": "pagedata"})
-    if pagedata_div is None:
-        # Try #HomepageApp as fallback
-        pagedata_div = soup.find("div", {"id": "HomepageApp"})
+    # Primary: #HomepageApp with pageContext.identity path per spec
+    app_div = soup.find("div", {"id": "HomepageApp"})
+    if app_div is None:
+        # Fallback: #pagedata
+        app_div = soup.find("div", {"id": "pagedata"})
 
-    if pagedata_div is None:
-        raise BandcampParseError(
-            _BANDCAMP_URL,
-            "Could not find pagedata or HomepageApp div",
-            resp.text[:500],
+    if app_div is None:
+        raise BandcampAuthError(
+            "Session cookie is invalid or expired. "
+            "Could not find identity data on Bandcamp homepage. "
+            "Re-authenticate with: bandcamp auth --browser firefox"
         )
 
-    data_blob = pagedata_div.get("data-blob")  # type: ignore[union-attr]
+    data_blob = app_div.get("data-blob")  # type: ignore[union-attr]
     if not data_blob:
         raise BandcampAuthError(
             "Session cookie is invalid or expired. Re-authenticate with: "
@@ -194,31 +194,41 @@ def validate_cookie(cookie: str) -> tuple[int, str | None]:
 
     try:
         blob = json.loads(data_blob)
-    except json.JSONDecodeError as e:
-        raise BandcampParseError(
-            _BANDCAMP_URL,
-            f"Failed to parse data-blob JSON: {e}",
-            str(data_blob)[:500],
-        ) from e
+    except json.JSONDecodeError:
+        raise BandcampAuthError(
+            "Session cookie is invalid or expired. "
+            "Failed to parse Bandcamp identity data. "
+            "Re-authenticate with: bandcamp auth --browser firefox"
+        )
 
-    # Navigate to identity info
-    identity = blob.get("identities", blob.get("identity", {}))
-    if isinstance(identity, dict):
-        fan = identity.get("fan", {})
-        fan_id = fan.get("id") or fan.get("fan_id")
-        username = fan.get("username") or fan.get("name")
-    else:
-        fan_id = None
-        username = None
+    # Navigate to identity info via pageContext.identity path (spec)
+    fan_id: int | None = None
+    username: str | None = None
+
+    page_context = blob.get("pageContext", {})
+    if isinstance(page_context, dict):
+        identity = page_context.get("identity", {})
+        if isinstance(identity, dict):
+            fan_id = identity.get("fanId") or identity.get("fan_id")
+            username = identity.get("username")
+
+    # Fallback: identities.fan path
+    if fan_id is None:
+        identity = blob.get("identities", blob.get("identity", {}))
+        if isinstance(identity, dict):
+            fan = identity.get("fan", {})
+            fan_id = fan.get("id") or fan.get("fan_id")
+            username = username or fan.get("username") or fan.get("name")
+
+    # Last resort: top-level fan_id
+    if fan_id is None:
+        fan_id = blob.get("fan_id")
 
     if fan_id is None:
-        # Try alternative path
-        fan_id = blob.get("fan_id")
-        if fan_id is None:
-            raise BandcampAuthError(
-                "Session cookie is invalid or expired. Could not find fan identity. "
-                "Re-authenticate with: bandcamp auth --browser firefox"
-            )
+        raise BandcampAuthError(
+            "Session cookie is invalid or expired. Could not find fan identity. "
+            "Re-authenticate with: bandcamp auth --browser firefox"
+        )
 
     return int(fan_id), username
 
