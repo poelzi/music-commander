@@ -20,3 +20,7 @@ def cli() -> None:
     files from your Bandcamp purchase collection.
     """
     pass
+
+
+# Import submodules to register their commands with the cli group
+from music_commander.commands.bandcamp import auth as _auth  # noqa: E402, F401
