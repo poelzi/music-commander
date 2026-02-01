@@ -229,12 +229,12 @@
 **Prompt**: `kitty-specs/007-bandcamp-collection-manager/tasks/WP08-html-report.md`
 
 ### Included Subtasks
-- [ ] T035 Create `music_commander/commands/bandcamp/report.py` CLI subcommand with `--format`, `--output`, `--unmatched` options
-- [ ] T036 Create HTML template (Jinja2) listing releases with artist, album, format, purchase date, match status
-- [ ] T037 Implement local HTTP server (http.server based) with endpoint to resolve fresh download URLs
-- [ ] T038 Add JavaScript in HTML template to call local server for link refresh on click
-- [ ] T039 Add server auto-shutdown on inactivity timeout and clean SIGINT handling
-- [ ] T040 Add filtering support: `--unmatched` flag, search query for subset
+- [x] T035 Create `music_commander/commands/bandcamp/report.py` CLI subcommand with `--format`, `--output`, `--unmatched` options
+- [x] T036 Create HTML template (Jinja2) listing releases with artist, album, format, purchase date, match status
+- [x] T037 Implement local HTTP server (http.server based) with endpoint to resolve fresh download URLs
+- [x] T038 Add JavaScript in HTML template to call local server for link refresh on click
+- [x] T039 Add server auto-shutdown on inactivity timeout and clean SIGINT handling
+- [x] T040 Add filtering support: `--unmatched` flag, search query for subset
 
 ### Implementation Notes
 - HTML template via Jinja2 (already a project dependency)
