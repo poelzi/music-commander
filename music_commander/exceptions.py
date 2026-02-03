@@ -233,3 +233,14 @@ class BandcampParseError(BandcampError):
         if response_snippet:
             detail += f"\nResponse snippet: {response_snippet[:500]}"
         super().__init__(detail)
+
+
+# --- Anomalistic portal errors ---
+
+
+class AnomaListicError(MusicCommanderError):
+    """Base error for Anomalistic portal operations."""
+
+
+class AnomaListicConnectionError(AnomaListicError):
+    """Failed to connect to the Dark Psy Portal."""
