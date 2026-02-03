@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: Conversion Pipeline and Comment Tagging
-lane: "doing"
+lane: "for_review"
 dependencies:
 - WP01
 base_branch: 009-anomalistic-portal-mirror-WP01
@@ -286,3 +286,4 @@ spec-kitty implement WP05 --base WP04
 ## Activity Log
 
 - 2026-02-03T14:54:20Z – system – lane=planned – Prompt created.
+- 2026-02-03T16:54:42Z – unknown – shell_pid=2968231 – lane=for_review – Moved to for_review
