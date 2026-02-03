@@ -1,7 +1,7 @@
 ---
 work_package_id: WP06
 title: Duplicate Detection
-lane: "for_review"
+lane: "doing"
 dependencies:
 - WP01
 - WP02
@@ -17,8 +17,8 @@ subtasks:
 - T038
 phase: Phase 2 - Enhancement
 assignee: ''
-agent: "OpenCode"
-shell_pid: "2983876"
+agent: "claude-code"
+shell_pid: "3078352"
 review_status: "has_feedback"
 reviewed_by: "Daniel Poelzleithner"
 history:
@@ -217,3 +217,4 @@ spec-kitty implement WP06 --base WP02
 - 2026-02-03T17:03:14Z – unknown – shell_pid=2973915 – lane=for_review – Moved to for_review
 - 2026-02-03T22:09:26Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
 - 2026-02-03T22:10:05Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned
+- 2026-02-03T22:54:23Z – claude-code – shell_pid=3078352 – lane=doing – Started review via workflow command
