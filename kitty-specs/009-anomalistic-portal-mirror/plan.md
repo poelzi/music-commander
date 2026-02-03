@@ -83,7 +83,7 @@ tests/
     ├── test_matching.py           # Tests for extracted shared matching
     └── test_anomalistic_command.py
 
-flake.nix                          # + pkgs.unrar in buildInputs
+flake.nix                          # + pkgs.unrar-free in buildInputs
 ```
 
 **Structure Decision**: Follows the existing pattern established by `music_commander/bandcamp/` — a dedicated package (`music_commander/anomalistic/`) for the domain logic, with the CLI command in `music_commander/commands/mirror/`. Shared matching logic extracted to `music_commander/utils/matching.py` for DRY reuse.
@@ -100,7 +100,7 @@ Use `wp-json/wp/v2/posts` (paginated, `per_page=100`) and `wp-json/wp/v2/categor
 
 ### 3. Title Parsing Strategy
 
-Post titles follow `"Artist – Album"` pattern. Split on em-dash (`–`), en-dash (`–`), or hyphen (`-`). Left side = artist, right side = album. Recognize `V/A` and `VA` prefixes as "Various Artists". No delimiter = artist defaults to "Various Artists", full title = album.
+Post titles follow `"Artist – Album"` pattern. Split on em-dash (`—` U+2014), en-dash (`–` U+2013), or hyphen (`-`). Left side = artist, right side = album. Recognize `V/A` and `VA` prefixes as "Various Artists". No delimiter = artist defaults to "Various Artists", full title = album.
 
 ### 4. Category Classification
 

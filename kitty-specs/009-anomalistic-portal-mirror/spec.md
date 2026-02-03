@@ -44,7 +44,7 @@ A user configures the `[anomalistic]` section in their config file to specify th
 1. **Given** config sets `format = "flac"` and `output_pattern = "{{genre}}/{{artist}} - {{album}}"`, **When** a DarkPsy release by "XianZai" titled "Irrational Conjunction" is downloaded, **Then** tracks are stored as FLAC files under `DarkPsy/XianZai - Irrational Conjunction/`.
 2. **Given** config sets `format = "opus"`, **When** a WAV release is downloaded, **Then** tracks are converted to Opus format using the existing encoder presets.
 3. **Given** no `[anomalistic]` section in config, **When** the user runs the mirror, **Then** default values are used: FLAC format, single flat folder per release.
-4. **Given** a pattern with `{{label}}` but the release has no label category, **When** the folder path is computed, **Then** the label portion and its surrounding brackets are omitted.
+4. **Given** a pattern with `{{label}}` but the release has no label category, **When** the folder path is computed, **Then** the label variable renders as empty. Users should use Jinja2 `{% if %}` syntax in their pattern to handle optional segments (e.g., `{% if label %}[{{label}}]{% endif %}`).
 
 ---
 
@@ -139,7 +139,7 @@ When converting downloaded WAV/MP3 files to the target format, the tool embeds t
 - What happens when a release has only MP3 downloads but the user wants FLAC?
   - The MP3 is downloaded and stored as-is (lossy-to-lossless conversion is not performed). A warning is displayed.
 - What happens when the archive contains non-audio files (artwork, NFO, etc.)?
-  - Non-audio files are ignored during conversion but artwork images are preserved in the release folder.
+  - NFO and text files are ignored. Artwork images from the archive are preserved in the release folder and embedded as cover art in the converted audio files.
 - What happens when the folder pattern produces a path that already exists?
   - The existing folder is reused; individual files are not overwritten unless `--force` is specified.
 - What happens when a release has no genre categories?
@@ -170,6 +170,8 @@ When converting downloaded WAV/MP3 files to the target format, the tool embeds t
 - **FR-019**: System MUST parse artist and album title from WordPress post titles by splitting on em-dash, en-dash, or hyphen delimiters. The left side is the artist, the right side is the album. Titles prefixed with `V/A` or `VA` MUST be recognized as "Various Artists" compilations. Titles with no delimiter MUST default to artist "Various Artists" with the full title as album.
 - **FR-020**: System MUST extract download URLs (ZIP/RAR archive links) from the rendered HTML content field of the WordPress REST API response, without fetching individual release pages.
 - **FR-021**: System MUST download archives sequentially (one at a time) without parallelism or artificial rate limiting.
+- **FR-022**: System MUST download cover art from the portal (via cover art URL from release page) and save it in the release output folder.
+- **FR-023**: System MUST embed cover art into converted audio files during encoding. If an archive contains artwork images, those MUST also be preserved in the release folder. Artwork from the archive takes priority; fall back to downloaded cover art URL if no artwork is in the archive.
 
 ### Key Entities
 

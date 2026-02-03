@@ -122,6 +122,7 @@
 - [ ] T022 Implement RAR extraction via `unrar` subprocess
 - [ ] T023 Implement archive format detection (ZIP vs RAR by file magic/extension)
 - [ ] T024 Implement audio file discovery in extracted directory (filter by extension: `.wav`, `.mp3`, `.flac`, `.aif`, `.aiff`)
+- [ ] T024a [P] Implement artwork file discovery in extracted directory (`.jpg`, `.png`) and copy to output folder
 - [ ] T025 Write unit tests for downloader (`tests/unit/test_anomalistic_downloader.py`)
 
 ### Implementation Notes
@@ -153,6 +154,8 @@
 
 ### Included Subtasks
 - [ ] T026 Extend `build_ffmpeg_command()` in `music_commander/utils/encoder.py` to accept optional `extra_metadata: dict[str, str] | None`
+- [ ] T026a [P] Download cover art image from portal URL and save to release output folder (fallback when archive has no artwork)
+- [ ] T026b Embed cover art into converted audio files during encoding (archive artwork takes priority, then downloaded cover art)
 - [ ] T027 Implement conversion orchestration in `music_commander/anomalistic/converter.py`
 - [ ] T028 Implement folder pattern rendering via Jinja2 in converter
 - [ ] T029 Implement `meta.json` generation per release
@@ -286,8 +289,11 @@
 | T022 | Implement RAR extraction via unrar | WP04 | P1 | Yes |
 | T023 | Implement archive format detection | WP04 | P1 | No |
 | T024 | Implement audio file discovery | WP04 | P1 | No |
+| T024a | Discover and preserve artwork files from archive | WP04 | P1 | Yes |
 | T025 | Unit tests for downloader | WP04 | P1 | No |
 | T026 | Extend build_ffmpeg_command() with extra_metadata | WP05 | P1 | No |
+| T026a | Download cover art from portal URL | WP05 | P1 | Yes |
+| T026b | Embed cover art into converted audio files | WP05 | P1 | No |
 | T027 | Implement conversion orchestration | WP05 | P1 | No |
 | T028 | Implement folder pattern rendering | WP05 | P1 | Yes |
 | T029 | Implement meta.json generation | WP05 | P1 | Yes |
