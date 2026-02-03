@@ -119,12 +119,12 @@
 **Prompt**: `kitty-specs/008-cue-sheet-splitter/tasks/WP04-multi-format-and-edge-cases.md`
 
 ### Included Subtasks
-- [ ] T018 Implement ffmpeg fallback splitting path in `music_commander/cue/splitter.py` — decode APE/WV via ffmpeg, split at cue timestamps
-- [ ] T019 Implement encoding fallback chain in parser — UTF-8 → Latin-1 → error with suggestion
-- [ ] T020 Implement `--encoding` flag handling — pass user-specified encoding to parser
-- [ ] T021 Handle multi-FILE cue sheets — iterate FILE blocks, split each referenced source
-- [ ] T022 Handle edge cases: pregap (INDEX 00), hidden tracks, short source files, missing source files
-- [ ] T023 [P] Write tests for multi-format splitting, encoding handling, and edge cases
+- [x] T018 Implement ffmpeg fallback splitting path in `music_commander/cue/splitter.py` — decode APE/WV via ffmpeg, split at cue timestamps
+- [x] T019 Implement encoding fallback chain in parser — UTF-8 → Latin-1 → error with suggestion
+- [x] T020 Implement `--encoding` flag handling — pass user-specified encoding to parser
+- [x] T021 Handle multi-FILE cue sheets — iterate FILE blocks, split each referenced source
+- [x] T022 Handle edge cases: pregap (INDEX 00), hidden tracks, short source files, missing source files
+- [x] T023 [P] Write tests for multi-format splitting, encoding handling, and edge cases
 
 ### Implementation Notes
 - ffmpeg fallback: use `ffmpeg -i <source> -ss <start> -to <end> -c:a flac <output>` for each track
