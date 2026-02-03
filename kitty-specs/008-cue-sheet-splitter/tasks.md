@@ -86,13 +86,13 @@
 **Prompt**: `kitty-specs/008-cue-sheet-splitter/tasks/WP03-cli-command-group.md`
 
 ### Included Subtasks
-- [ ] T011 Create `music_commander/commands/cue/__init__.py` — Click group with `cli` attribute
-- [ ] T012 Implement `music_commander/commands/cue/split.py` — split subcommand with options: `--recursive`, `--remove-originals`, `--force`, `--dry-run`, `--encoding`, `--verbose`
-- [ ] T013 Implement directory scanning logic — find cue+audio pairs in a directory (or tree with `--recursive`)
-- [ ] T014 Implement `--remove-originals` post-split cleanup
-- [ ] T015 Implement `--dry-run` preview mode
-- [ ] T016 Wire up Rich output — progress reporting using `info()`, `verbose()`, `error()`, `success()`
-- [ ] T017 [P] Write CLI integration tests — test command registration, option parsing, dry-run output, recursive walk
+- [x] T011 Create `music_commander/commands/cue/__init__.py` — Click group with `cli` attribute
+- [x] T012 Implement `music_commander/commands/cue/split.py` — split subcommand with options: `--recursive`, `--remove-originals`, `--force`, `--dry-run`, `--encoding`, `--verbose`
+- [x] T013 Implement directory scanning logic — find cue+audio pairs in a directory (or tree with `--recursive`)
+- [x] T014 Implement `--remove-originals` post-split cleanup
+- [x] T015 Implement `--dry-run` preview mode
+- [x] T016 Wire up Rich output — progress reporting using `info()`, `verbose()`, `error()`, `success()`
+- [x] T017 [P] Write CLI integration tests — test command registration, option parsing, dry-run output, recursive walk
 
 ### Implementation Notes
 - Follow the pattern from `music_commander/commands/files/__init__.py` for group setup
