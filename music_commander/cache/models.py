@@ -155,6 +155,65 @@ class BandcampReleaseFormat(CacheBase):
         return f"<BandcampReleaseFormat(release={self.release_id}, encoding='{self.encoding}')>"
 
 
+# Anomalistic portal models
+
+
+class AnomaListicRelease(CacheBase):
+    """A release from the Dark Psy Portal (anomalisticrecords.com)."""
+
+    __tablename__ = "anomalistic_releases"
+
+    post_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    artist: Mapped[str] = mapped_column(Text, nullable=False)
+    album_title: Mapped[str] = mapped_column(Text, nullable=False)
+    release_url: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    download_url_wav: Mapped[str | None] = mapped_column(Text, nullable=True)
+    download_url_mp3: Mapped[str | None] = mapped_column(Text, nullable=True)
+    genres: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    labels: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    release_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cover_art_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    credits: Mapped[str | None] = mapped_column(Text, nullable=True)
+    download_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="pending", server_default="pending"
+    )
+    output_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_synced: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    __table_args__ = (
+        Index("ix_al_release_artist", "artist"),
+        Index("ix_al_release_album_title", "album_title"),
+        Index("ix_al_release_url", "release_url", unique=True),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<AnomaListicRelease(post_id={self.post_id}, "
+            f"artist='{self.artist}', album='{self.album_title}')>"
+        )
+
+
+class AnomaListicTrack(CacheBase):
+    """An individual track within an Anomalistic portal release."""
+
+    __tablename__ = "anomalistic_tracks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("anomalistic_releases.post_id"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    track_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    artist: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    __table_args__ = (Index("ix_al_track_release_id", "release_id"),)
+
+    def __repr__(self) -> str:
+        return f"<AnomaListicTrack(id={self.id}, title='{self.title}')>"
+
+
 class BandcampSyncState(CacheBase):
     """Singleton tracking Bandcamp collection sync freshness."""
 
