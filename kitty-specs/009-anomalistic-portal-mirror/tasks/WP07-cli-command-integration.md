@@ -1,7 +1,7 @@
 ---
 work_package_id: WP07
 title: CLI Command and Integration
-lane: "for_review"
+lane: "doing"
 dependencies:
 - WP01
 - WP02
@@ -23,8 +23,8 @@ subtasks:
 - T046
 phase: Phase 2 - Integration
 assignee: ''
-agent: "OpenCode"
-shell_pid: "2983876"
+agent: "claude-code"
+shell_pid: "3079536"
 review_status: "has_feedback"
 reviewed_by: "Daniel Poelzleithner"
 history:
@@ -293,3 +293,4 @@ spec-kitty implement WP07 --base WP06
 - 2026-02-03T17:10:11Z – unknown – shell_pid=2977585 – lane=for_review – Moved to for_review
 - 2026-02-03T22:10:30Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
 - 2026-02-03T22:11:03Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned
+- 2026-02-03T22:56:20Z – claude-code – shell_pid=3079536 – lane=doing – Started review via workflow command
