@@ -4,5 +4,7 @@
   "friendly_name": "Anomalistic Portal Mirror",
   "mission": "software-dev",
   "source_description": "Create a download/mirror tool for darkpsyportal.anomalisticrecords.com",
-  "created_at": "2026-02-03T00:00:00Z"
+  "created_at": "2026-02-03T00:00:00Z",
+  "vcs": "git",
+  "vcs_locked_at": "2026-02-03T16:00:56.210386+00:00"
 }

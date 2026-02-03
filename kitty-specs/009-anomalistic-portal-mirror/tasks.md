@@ -54,12 +54,12 @@
 **Prompt**: `kitty-specs/009-anomalistic-portal-mirror/tasks/WP02-wordpress-api-client.md`
 
 ### Included Subtasks
-- [ ] T009 Create `music_commander/anomalistic/__init__.py` package
-- [ ] T010 Implement `music_commander/anomalistic/client.py` with `AnomaListicClient` class
-- [ ] T011 Implement category fetching and classification in `music_commander/anomalistic/category.py`
-- [ ] T012 Implement post pagination in `AnomaListicClient.iter_releases()`
-- [ ] T013 Write unit tests for client (`tests/unit/test_anomalistic_client.py`)
-- [ ] T014 Write unit tests for category classification (`tests/unit/test_anomalistic_category.py`)
+- [x] T009 Create `music_commander/anomalistic/__init__.py` package
+- [x] T010 Implement `music_commander/anomalistic/client.py` with `AnomaListicClient` class
+- [x] T011 Implement category fetching and classification in `music_commander/anomalistic/category.py`
+- [x] T012 Implement post pagination in `AnomaListicClient.iter_releases()`
+- [x] T013 Write unit tests for client (`tests/unit/test_anomalistic_client.py`)
+- [x] T014 Write unit tests for category classification (`tests/unit/test_anomalistic_category.py`)
 
 ### Implementation Notes
 - T010: Simple `requests.Session` wrapper. No auth needed. Endpoints: `wp-json/wp/v2/posts?per_page=100&page=N` and `wp-json/wp/v2/categories?per_page=100`. User-Agent: `music-commander/0.1`. No rate limiter needed but sequential requests.
