@@ -153,15 +153,15 @@
 **Prompt**: `kitty-specs/009-anomalistic-portal-mirror/tasks/WP05-conversion-and-tagging.md`
 
 ### Included Subtasks
-- [ ] T026 Extend `build_ffmpeg_command()` in `music_commander/utils/encoder.py` to accept optional `extra_metadata: dict[str, str] | None`
-- [ ] T026a [P] Download cover art image from portal URL and save to release output folder (fallback when archive has no artwork)
-- [ ] T026b Embed cover art into converted audio files during encoding (archive artwork takes priority, then downloaded cover art)
-- [ ] T027 Implement conversion orchestration in `music_commander/anomalistic/converter.py`
-- [ ] T028 Implement folder pattern rendering via Jinja2 in converter
-- [ ] T029 Implement `meta.json` generation per release
-- [ ] T030 Handle edge case: download format matches target format (still add comment tag)
-- [ ] T031 Handle edge case: MP3 download when FLAC requested (keep as MP3 with warning)
-- [ ] T032 Write unit tests for conversion orchestration (`tests/unit/test_anomalistic_converter.py`)
+- [x] T026 Extend `build_ffmpeg_command()` in `music_commander/utils/encoder.py` to accept optional `extra_metadata: dict[str, str] | None`
+- [x] T026a [P] Download cover art image from portal URL and save to release output folder (fallback when archive has no artwork)
+- [x] T026b Embed cover art into converted audio files during encoding (archive artwork takes priority, then downloaded cover art)
+- [x] T027 Implement conversion orchestration in `music_commander/anomalistic/converter.py`
+- [x] T028 Implement folder pattern rendering via Jinja2 in converter
+- [x] T029 Implement `meta.json` generation per release
+- [x] T030 Handle edge case: download format matches target format (still add comment tag)
+- [x] T031 Handle edge case: MP3 download when FLAC requested (keep as MP3 with warning)
+- [x] T032 Write unit tests for conversion orchestration (`tests/unit/test_anomalistic_converter.py`)
 
 ### Implementation Notes
 - T026: Add `extra_metadata` param to `build_ffmpeg_command()`. Insert `-metadata key=value` flags after `-map_metadata 0`. Ensure this doesn't break existing callers (default `None`).
