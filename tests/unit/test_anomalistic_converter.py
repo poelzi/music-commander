@@ -588,7 +588,7 @@ class TestConvertRelease:
         cover = tmp_path / "extract" / "cover.jpg"
         cover.parent.mkdir(parents=True)
         cover.write_bytes(b"jpeg")
-        mock_artwork.return_value = cover
+        mock_artwork.return_value = [cover]
         mock_convert.return_value = tmp_path / "output" / "track.flac"
 
         audio = [tmp_path / "extract" / "track.wav"]
@@ -612,7 +612,7 @@ class TestConvertRelease:
     @patch("music_commander.anomalistic.converter.download_cover_art")
     @patch("music_commander.anomalistic.converter.discover_artwork")
     def test_falls_back_to_download(self, mock_artwork, mock_download, mock_convert, tmp_path):
-        mock_artwork.return_value = None
+        mock_artwork.return_value = []
         downloaded_cover = tmp_path / "output" / "cover.jpg"
         mock_download.return_value = downloaded_cover
         mock_convert.return_value = tmp_path / "output" / "track.flac"
@@ -636,7 +636,7 @@ class TestConvertRelease:
     @patch("music_commander.anomalistic.converter.convert_file")
     @patch("music_commander.anomalistic.converter.discover_artwork")
     def test_no_cover_art_available(self, mock_artwork, mock_convert, tmp_path):
-        mock_artwork.return_value = None
+        mock_artwork.return_value = []
         mock_convert.return_value = tmp_path / "output" / "track.flac"
 
         audio = [tmp_path / "track.wav"]
@@ -657,7 +657,7 @@ class TestConvertRelease:
     @patch("music_commander.anomalistic.converter.convert_file")
     @patch("music_commander.anomalistic.converter.discover_artwork")
     def test_failed_conversions_excluded(self, mock_artwork, mock_convert, tmp_path):
-        mock_artwork.return_value = None
+        mock_artwork.return_value = []
         # First file succeeds, second fails
         mock_convert.side_effect = [
             tmp_path / "output" / "track1.flac",

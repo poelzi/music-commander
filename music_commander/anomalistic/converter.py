@@ -354,7 +354,9 @@ def convert_release(
     # Resolve cover art: archive > download > none
     cover_path: Path | None = None
     if extract_dir:
-        cover_path = discover_artwork(extract_dir)
+        artwork_files = discover_artwork(extract_dir)
+        if artwork_files:
+            cover_path = artwork_files[0]
 
     if cover_path is None:
         cover_path = download_cover_art(cover_art_url, output_dir)
