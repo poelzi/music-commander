@@ -101,11 +101,16 @@ class CueParser:
             else:
                 logger.warning("Unknown cue command `%s`. Skipping ...", command)
 
-        # Calculate end positions: each track ends where the next begins
+        # Calculate end positions: each track ends where the next begins,
+        # but only within the same FILE block. The last track of each file
+        # gets None as end position.
         for idx, track_data in enumerate(self._context_tracks):
             track_end_pos = None
             try:
-                track_end_pos = self._context_tracks[idx + 1]["POS_START_SAMPLES"]
+                next_track = self._context_tracks[idx + 1]
+                # Only use next track's start if it belongs to the same file
+                if next_track.get("FILE") == track_data.get("FILE"):
+                    track_end_pos = next_track["POS_START_SAMPLES"]
             except IndexError:
                 pass
             track_data["POS_END_SAMPLES"] = track_end_pos
@@ -119,15 +124,18 @@ class CueParser:
             except (UnicodeDecodeError, LookupError) as e:
                 raise CueParseError(f"Cannot read {path} with encoding '{encoding}': {e}") from e
 
-        # Fallback chain: UTF-8 → Latin-1
-        for enc in ("utf-8", "latin-1"):
+        # Fallback chain: UTF-8 → CP1252 → Latin-1
+        # CP1252 is tried before Latin-1 because it's a superset that handles
+        # Windows-generated cue files with smart quotes and other extended chars.
+        # Latin-1 is last resort as it accepts any byte sequence.
+        for enc in ("utf-8", "cp1252", "latin-1"):
             try:
                 return path.read_text(encoding=enc).splitlines()
             except UnicodeDecodeError:
                 continue
 
         raise CueParseError(
-            f"Cannot read {path}: failed with UTF-8 and Latin-1 encodings. "
+            f"Cannot read {path}: failed with UTF-8, CP1252, and Latin-1 encodings. "
             "Use --encoding to specify the correct encoding."
         )
 

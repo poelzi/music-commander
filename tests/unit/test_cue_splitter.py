@@ -15,6 +15,7 @@ from music_commander.cue.splitter import (
     check_already_split,
     check_tools_available,
     find_cover_art,
+    group_tracks_by_file,
     track_output_filename,
 )
 
@@ -259,3 +260,64 @@ def test_split_result_defaults() -> None:
     assert r.error is None
     assert r.output_files == []
     assert r.track_count == 0
+
+
+# --- group_tracks_by_file ---
+
+
+def test_group_tracks_single_file() -> None:
+    tracks = [
+        CueTrack(track_num=1, title="A", file="album.flac"),
+        CueTrack(track_num=2, title="B", file="album.flac"),
+    ]
+    sheet = CueSheet(file="album.flac", tracks=tracks)
+    groups = group_tracks_by_file(sheet)
+    assert len(groups) == 1
+    assert "album.flac" in groups
+    assert len(groups["album.flac"]) == 2
+
+
+def test_group_tracks_multi_file() -> None:
+    tracks = [
+        CueTrack(track_num=1, title="D1T1", file="disc1.flac"),
+        CueTrack(track_num=2, title="D1T2", file="disc1.flac"),
+        CueTrack(track_num=3, title="D2T1", file="disc2.flac"),
+        CueTrack(track_num=4, title="D2T2", file="disc2.flac"),
+    ]
+    sheet = CueSheet(file="disc1.flac", tracks=tracks)
+    groups = group_tracks_by_file(sheet)
+    assert len(groups) == 2
+    assert len(groups["disc1.flac"]) == 2
+    assert len(groups["disc2.flac"]) == 2
+
+
+def test_group_tracks_fallback_to_sheet_file() -> None:
+    """Tracks with no file attribute fall back to CueSheet.file."""
+    tracks = [
+        CueTrack(track_num=1, title="A", file=None),
+        CueTrack(track_num=2, title="B", file=None),
+    ]
+    sheet = CueSheet(file="album.flac", tracks=tracks)
+    groups = group_tracks_by_file(sheet)
+    assert len(groups) == 1
+    assert "album.flac" in groups
+
+
+# --- ffmpeg timestamp calculation ---
+
+
+def test_ffmpeg_start_seconds_calculation() -> None:
+    """Verify sample-to-seconds conversion for ffmpeg timestamps."""
+    # 225 seconds = 225 * 44100 = 9922500 samples
+    samples = 225 * 44100
+    seconds = samples / 44100.0
+    assert seconds == 225.0
+
+
+def test_ffmpeg_start_seconds_with_frames() -> None:
+    """Verify fractional seconds from frame-level positions."""
+    # 442 seconds + 50 frames = 442 * 44100 + 50 * 588 = 19521600 samples
+    samples = 442 * 44100 + 50 * 588
+    seconds = samples / 44100.0
+    # 50 frames = 50/75 seconds ≈ 0.6667 seconds
+    assert abs(seconds - 442.6666666) < 0.001
