@@ -20,14 +20,14 @@
 **Prompt**: `kitty-specs/009-anomalistic-portal-mirror/tasks/WP01-foundation-matching-config-models.md`
 
 ### Included Subtasks
-- [ ] T001 Extract shared matching functions from `music_commander/bandcamp/matcher.py` into `music_commander/utils/matching.py`
-- [ ] T002 Update `music_commander/bandcamp/matcher.py` to import from `music_commander/utils/matching.py`
-- [ ] T003 [P] Add `[anomalistic]` config fields to `music_commander/config.py` (`output_dir`, `format`, `output_pattern`, `download_source`)
-- [ ] T004 [P] Define `AnomaListicRelease` and `AnomaListicTrack` models in `music_commander/cache/models.py`
-- [ ] T005 Register new models in `_ALL_MODELS` in `music_commander/cache/session.py`
-- [ ] T006 [P] Add `pkgs.unrar-free` to `flake.nix` `buildInputs`
-- [ ] T007 Write unit tests for shared matching module (`tests/unit/test_matching.py`)
-- [ ] T008 Write unit tests for anomalistic config parsing (`tests/unit/test_anomalistic_config.py`)
+- [x] T001 Extract shared matching functions from `music_commander/bandcamp/matcher.py` into `music_commander/utils/matching.py`
+- [x] T002 Update `music_commander/bandcamp/matcher.py` to import from `music_commander/utils/matching.py`
+- [x] T003 [P] Add `[anomalistic]` config fields to `music_commander/config.py` (`output_dir`, `format`, `output_pattern`, `download_source`)
+- [x] T004 [P] Define `AnomaListicRelease` and `AnomaListicTrack` models in `music_commander/cache/models.py`
+- [x] T005 Register new models in `_ALL_MODELS` in `music_commander/cache/session.py`
+- [x] T006 [P] Add `pkgs.unrar-free` to `flake.nix` `buildInputs`
+- [x] T007 Write unit tests for shared matching module (`tests/unit/test_matching.py`)
+- [x] T008 Write unit tests for anomalistic config parsing (`tests/unit/test_anomalistic_config.py`)
 
 ### Implementation Notes
 - T001/T002: Move all regex patterns, normalization functions (`normalize`, `strip_punctuation`, `strip_edition_suffixes`, `normalize_for_matching`), scoring functions (`match_release`, `match_track`), and their helpers (`extract_volume`, `_roman_to_int`). Bandcamp matcher keeps its multi-phase orchestration logic.
