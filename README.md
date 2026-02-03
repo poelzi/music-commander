@@ -8,10 +8,9 @@ A command-line tool for managing large music collections stored in git-annex, wi
 
 - **git-annex integration**: Fetch music files from commits, branches, ranges, or tags
 - **Mixxx database access**: Query and manage your Mixxx library programmatically (ORM layer)
-- **Reproducible builds**: Full Nix flake support for consistent environments
 - **Beautiful CLI**: Colored output with Rich, progress bars, helpful error messages
-- **Type-safe**: Fully type-hinted Python 3.13+ with strict mypy checking
 - **Well-tested**: 80%+ test coverage with pytest
+- **Reproducible builds**: Full Nix flake support for consistent environments
 
 ## Installation
 

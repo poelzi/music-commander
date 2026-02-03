@@ -7,7 +7,15 @@ from datetime import datetime, timezone
 from typing import Any
 
 import click
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.console import Group
+from rich.live import Live
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
+from rich.text import Text
 from sqlalchemy.orm import Session
 
 from music_commander.bandcamp.client import BandcampClient
@@ -22,7 +30,7 @@ from music_commander.cache.session import get_cache_session
 from music_commander.cli import pass_context
 from music_commander.commands.bandcamp import EXIT_AUTH_ERROR, EXIT_SUCCESS, EXIT_SYNC_ERROR, cli
 from music_commander.exceptions import BandcampAuthError, BandcampError
-from music_commander.utils.output import error, info, success
+from music_commander.utils.output import error, info, is_verbose, success, verbose
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +76,17 @@ def sync(ctx: object, full: bool) -> None:
         error(str(e))
         raise SystemExit(EXIT_AUTH_ERROR)
 
-    info(f"Authenticated as: {username or 'unknown'} (fan_id: {fan_id})")
-
     client = BandcampClient(cookie, fan_id)
+
+    # Fetch username from collection summary if not available from cookie
+    if not username:
+        try:
+            summary = client.fetch_collection_summary()
+            username = summary.get("username")
+        except Exception:
+            pass
+
+    info(f"Authenticated as: {username or 'unknown'} (fan_id: {fan_id})")
 
     try:
         with get_cache_session(repo_path) as session:
@@ -111,26 +127,42 @@ def sync_collection(
     existing_ids: set[int] = set()
     if not full and sync_state is not None:
         existing_ids = {r[0] for r in session.query(BandcampRelease.sale_item_id).all()}
+        if not existing_ids:
+            verbose("Previous sync has no items, performing full sync")
+            full = True
 
     total = 0
     new_count = 0
     batch_count = 0
+    page_num = 0
     last_token: str | None = None
 
-    with Progress(
+    current_item_text = Text("")
+    bar = Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
-        transient=True,
-    ) as progress:
-        task = progress.add_task("Syncing Bandcamp collection...", total=None)
+        TextColumn("{task.completed} items"),
+        TimeElapsedColumn(),
+    )
+    bar_task = bar.add_task("Syncing...", total=None)
+
+    with Live(Group(current_item_text, bar), transient=True) as live:
         token: str | None = None
         stop = False
 
         while not stop:
+            page_num += 1
             data = client.fetch_collection_page(older_than_token=token)
             items = data.get("items", [])
             if not items:
                 break
+
+            more_available = data.get("more_available", False)
+            if is_verbose():
+                live.console.print(
+                    f"[dim]Page {page_num}: {len(items)} items "
+                    f"(more_available={more_available})[/dim]"
+                )
 
             redownload_urls = data.get("redownload_urls", {})
 
@@ -149,19 +181,19 @@ def sync_collection(
 
                 # Incremental: stop if we hit a known item
                 if not full and sale_item_id in existing_ids:
-                    progress.update(
-                        task,
-                        description=f"Found existing item, stopping incremental sync... ({total} checked)",
-                    )
+                    if is_verbose():
+                        live.console.print(
+                            f"[dim]Found existing item (sale_item_id={sale_item_id}), "
+                            f"stopping incremental sync after {total} items[/dim]"
+                        )
                     stop = True
                     break
 
                 band_name = item.get("band_name", "Unknown")
                 album_title = item.get("item_title", item.get("album_title", "Unknown"))
-                progress.update(
-                    task,
-                    description=f"Syncing: {band_name} - {album_title} ({total} items)",
-                )
+                current_item_text = Text.from_markup(f"[bold]{band_name}[/bold] - {album_title}")
+                bar.update(bar_task, completed=total)
+                live.update(Group(current_item_text, bar))
 
                 is_new = _upsert_release(session, item, now)
                 if is_new:

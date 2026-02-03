@@ -8,9 +8,9 @@ import click
 
 from music_commander.cache.builder import build_cache
 from music_commander.cache.models import CacheTrack
-from music_commander.cache.session import delete_cache, get_cache_session
+from music_commander.cache.session import clear_cache_tables, get_cache_session
 from music_commander.cli import Context, pass_context
-from music_commander.utils.output import create_progress, error, info, success
+from music_commander.utils.output import create_progress, error, info, success, verbose
 
 EXIT_SUCCESS = 0
 EXIT_CACHE_ERROR = 2
@@ -22,8 +22,8 @@ EXIT_NO_REPO = 3
 def cli(ctx: Context) -> None:
     """Rebuild the local metadata cache from scratch.
 
-    Deletes the existing cache and performs a full rebuild by reading
-    all metadata from the git-annex branch.
+    Clears track cache data and rebuilds by reading all metadata from
+    the git-annex branch. Bandcamp sync data is preserved.
 
     \b
     Examples:
@@ -42,8 +42,9 @@ def cli(ctx: Context) -> None:
         raise SystemExit(EXIT_NO_REPO)
 
     try:
-        delete_cache(repo_path)
         with get_cache_session(repo_path) as session:
+            verbose("Clearing cache tables (preserving Bandcamp data)...")
+            clear_cache_tables(session)
             if not ctx.quiet:
                 info("Rebuilding cache...")
             with create_progress() as progress:

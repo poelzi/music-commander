@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from music_commander.bandcamp.client import BandcampClient
 from music_commander.bandcamp.cookies import get_session_cookie, validate_cookie
-from music_commander.bandcamp.matcher import MatchResult, MatchTier, batch_match
+from music_commander.bandcamp.matcher import ReleaseMatch, match_releases
 from music_commander.cache.models import (
     BandcampRelease,
     BandcampSyncState,
@@ -496,13 +496,8 @@ def _build_report_data(
     bc_tracks = session.query(BandcampTrack).all()
 
     # Run matching to get match status
-    match_results = batch_match(local_tracks, bc_releases, bc_tracks, threshold=60)
-    match_by_bc_id: dict[int, MatchResult] = {}
-    for mr in match_results:
-        # Keep best match per BC release
-        existing = match_by_bc_id.get(mr.bc_sale_item_id)
-        if existing is None or mr.score > existing.score:
-            match_by_bc_id[mr.bc_sale_item_id] = mr
+    report = match_releases(bc_releases, bc_tracks, local_tracks, threshold=60)
+    match_by_bc_id: dict[int, ReleaseMatch] = {rm.bc_sale_item_id: rm for rm in report.matched}
 
     query_str = " ".join(query).lower() if query else ""
 
@@ -513,12 +508,12 @@ def _build_report_data(
             if query_str not in r.band_name.lower() and query_str not in r.album_title.lower():
                 continue
 
-        mr = match_by_bc_id.get(r.sale_item_id)
-        tier = mr.tier.value if mr else "none"
-        score = f"{mr.score:.0f}" if mr else ""
+        rm = match_by_bc_id.get(r.sale_item_id)
+        tier = rm.tier.value if rm else "none"
+        score = f"{rm.score:.0f}" if rm else ""
 
         # Filter unmatched only
-        if unmatched_only and mr is not None:
+        if unmatched_only and rm is not None:
             continue
 
         result.append(

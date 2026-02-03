@@ -32,6 +32,11 @@ def is_verbose() -> bool:
     return _verbose_enabled
 
 
+def is_debug() -> bool:
+    """Return whether debug mode is enabled."""
+    return _debug_enabled
+
+
 def set_color(enabled: bool) -> None:
     """Enable or disable color on both console instances."""
     console.no_color = not enabled
@@ -63,7 +68,7 @@ def _find_pager() -> list[str]:
     return ["less", "-RFS"]
 
 
-def pager_print(content: str, *, header_lines: int = 0) -> None:
+def pager_print(content: str, *, header_lines: int = 0, header_start: int = 1) -> None:
     """Print content through a pager if appropriate.
 
     Uses auto-detection: pages only if stdout is a TTY and content
@@ -72,6 +77,7 @@ def pager_print(content: str, *, header_lines: int = 0) -> None:
     Args:
         content: ANSI-formatted string to display.
         header_lines: Number of header lines to keep sticky (for less --header).
+        header_start: 1-based line number where the header starts (less --header=L,,N).
     """
     lines = content.count("\n")
     term_height = shutil.get_terminal_size().lines
@@ -88,9 +94,12 @@ def pager_print(content: str, *, header_lines: int = 0) -> None:
 
     cmd = _find_pager()
 
-    # Add sticky header support for less
+    # Add sticky header support for less (--header=L,,N)
     if cmd[0] == "less" and header_lines > 0:
-        cmd.append(f"--header={header_lines}")
+        if header_start > 1:
+            cmd.append(f"--header={header_lines},,{header_start}")
+        else:
+            cmd.append(f"--header={header_lines}")
 
     try:
         env = os.environ.copy()

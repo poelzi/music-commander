@@ -335,6 +335,7 @@ def _metadata_to_track(
         tracknumber=first("tracknumber"),
         comment=first("comment"),
         color=first("color"),
+        bandcamp_url=first("bandcamp-url"),
     )
 
 

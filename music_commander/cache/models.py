@@ -31,11 +31,13 @@ class CacheTrack(CacheBase):
     comment: Mapped[str | None] = mapped_column(Text)
     color: Mapped[str | None] = mapped_column(String(32))
     present: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    bandcamp_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         Index("ix_tracks_bpm", "bpm"),
         Index("ix_tracks_rating", "rating"),
         Index("ix_tracks_year", "year"),
+        Index("ix_tracks_bandcamp_url", "bandcamp_url"),
     )
 
     def __repr__(self) -> str:

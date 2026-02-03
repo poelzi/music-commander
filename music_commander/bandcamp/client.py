@@ -29,10 +29,61 @@ logger = logging.getLogger(__name__)
 _USER_AGENT = "music-commander/0.1"
 _REQUEST_TIMEOUT = 30
 _COLLECTION_PAGE_SIZE = 100
-_MAX_RETRIES = 3
-_BACKOFF_BASE = 1.0  # seconds
+_MAX_RETRIES = 5
+_BACKOFF_BASE = 5.0  # seconds
 
 _COLLECTION_API_URL = "https://bandcamp.com/api/fancollection/1/collection_items"
+
+
+class _AdaptiveRateLimiter:
+    """AIMD (Additive Increase / Multiplicative Decrease) rate limiter.
+
+    Discovers the optimal request rate by:
+    - Linearly decreasing the inter-request interval on each success
+    - Multiplicatively increasing it on 429/503 responses
+
+    Converges to the server's actual rate limit and stays near it.
+    """
+
+    def __init__(
+        self,
+        min_interval: float = 0.2,
+        max_interval: float = 30.0,
+        initial_interval: float = 0.5,
+        increase_delta: float = 0.05,
+        decrease_factor: float = 1.5,
+    ) -> None:
+        self._interval = initial_interval
+        self._min = min_interval
+        self._max = max_interval
+        self._delta = increase_delta
+        self._factor = decrease_factor
+        self._last_request = 0.0
+
+    def wait(self) -> None:
+        """Sleep if needed to respect the current rate limit interval."""
+        now = time.monotonic()
+        elapsed = now - self._last_request
+        if self._last_request > 0 and elapsed < self._interval:
+            time.sleep(self._interval - elapsed)
+        self._last_request = time.monotonic()
+
+    def on_success(self) -> None:
+        """Additive increase: slowly ramp up request rate."""
+        self._interval = max(self._min, self._interval - self._delta)
+
+    def on_rate_limited(self) -> None:
+        """Multiplicative decrease: back off on 429/503."""
+        self._interval = min(self._max, self._interval * self._factor)
+        logger.info(
+            "Rate limiter: slowing to %.2fs between requests (%.1f req/s)",
+            self._interval,
+            1.0 / self._interval if self._interval > 0 else 0,
+        )
+
+    @property
+    def interval(self) -> float:
+        return self._interval
 
 
 class BandcampClient:
@@ -49,6 +100,7 @@ class BandcampClient:
         self._session = requests.Session()
         self._session.cookies.set("identity", session_cookie, domain=".bandcamp.com")
         self._session.headers.update({"User-Agent": _USER_AGENT})
+        self._limiter = _AdaptiveRateLimiter()
 
     def _request(
         self,
@@ -76,6 +128,8 @@ class BandcampClient:
         kwargs.setdefault("timeout", _REQUEST_TIMEOUT)
 
         for attempt in range(_MAX_RETRIES):
+            self._limiter.wait()
+
             try:
                 resp = self._session.request(method, url, **kwargs)
             except requests.RequestException as e:
@@ -95,11 +149,20 @@ class BandcampClient:
                 )
 
             if resp.status_code in (429, 503):
+                self._limiter.on_rate_limited()
                 if attempt == _MAX_RETRIES - 1:
                     raise BandcampError(
                         f"Rate limited by Bandcamp after {_MAX_RETRIES} retries. Try again later."
                     )
-                wait = _BACKOFF_BASE * (2**attempt)
+                # Respect Retry-After header if present
+                retry_after = resp.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        wait = max(float(retry_after), _BACKOFF_BASE)
+                    except ValueError:
+                        wait = _BACKOFF_BASE * (2**attempt)
+                else:
+                    wait = _BACKOFF_BASE * (2**attempt)
                 logger.warning(
                     "Bandcamp rate limit detected (HTTP %d), waiting %.1fs...",
                     resp.status_code,
@@ -109,10 +172,46 @@ class BandcampClient:
                 continue
 
             resp.raise_for_status()
+            self._limiter.on_success()
             return resp
 
         # Should not reach here, but satisfy type checker
         raise BandcampError(f"Request to {url} failed after {_MAX_RETRIES} attempts")
+
+    def fetch_collection_summary(self) -> dict[str, Any]:
+        """Fetch collection summary including username and item count.
+
+        Uses the fan/2/collection_summary API endpoint.
+
+        Returns:
+            Dict with 'username', 'url', and 'tralbum_lookup' (dict of all items).
+        """
+        resp = self._request(
+            "POST",
+            "https://bandcamp.com/api/fan/2/collection_summary",
+            json={"fan_id": self.fan_id},
+        )
+        try:
+            data = resp.json()
+        except ValueError:
+            return {}
+        return data.get("collection_summary", {})
+
+    def fetch_collection_count(self) -> int | None:
+        """Fetch the total number of items in the user's collection.
+
+        Returns:
+            Total item count, or None if it cannot be determined.
+        """
+        try:
+            summary = self.fetch_collection_summary()
+            lookup = summary.get("tralbum_lookup")
+            if lookup is not None:
+                return len(lookup)
+            return None
+        except Exception:
+            logger.debug("Could not fetch collection count")
+            return None
 
     def fetch_collection_page(self, older_than_token: str | None = None) -> dict[str, Any]:
         """Fetch a single page of the user's purchase collection.
@@ -127,9 +226,8 @@ class BandcampClient:
         payload: dict[str, Any] = {
             "fan_id": self.fan_id,
             "count": _COLLECTION_PAGE_SIZE,
+            "older_than_token": older_than_token or "9999999999::a::",
         }
-        if older_than_token is not None:
-            payload["older_than_token"] = older_than_token
 
         resp = self._request("POST", _COLLECTION_API_URL, json=payload)
 

@@ -21,9 +21,60 @@
         pkgs = nixpkgs.legacyPackages.${system};
         python = pkgs.python313;
 
+        rookiepy = python.pkgs.buildPythonPackage rec {
+          pname = "rookiepy";
+          version = "0.5.6";
+          format = "pyproject";
+
+          src = pkgs.fetchPypi {
+            inherit pname version;
+            hash = "sha256-76apOxGUeKlrPYxEVCFcTxrzFqJLOzswFbc8HB2IcHg=";
+          };
+
+          cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+            inherit src;
+            name = "${pname}-${version}";
+            hash = "sha256-E4Bpg8o2WHcgE5xDMApO5w9wUn8UL0WcWhyaWuKSQfg=";
+          };
+
+          nativeBuildInputs = with pkgs; [
+            rustPlatform.cargoSetupHook
+            rustPlatform.maturinBuildHook
+            cargo
+            rustc
+          ];
+
+          postUnpack = ''
+            # rookie-rs build.rs unconditionally calls git rev-parse --short HEAD
+            # Patch it to return a fallback instead of panicking
+            cat > $sourceRoot/rookie-rs/build.rs << 'EOF'
+            fn main() {
+                let hash = std::process::Command::new("git")
+                    .args(["rev-parse", "--short", "HEAD"])
+                    .output()
+                    .ok()
+                    .and_then(|o| String::from_utf8(o.stdout).ok())
+                    .unwrap_or_else(|| "unknown".to_string());
+                println!("cargo:rustc-env=COMMIT_HASH={}", hash.trim());
+            }
+            EOF
+          '';
+
+          buildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+          ];
+
+          env.PYO3_USE_ABI3_FORWARD_COMPATIBILITY = "1";
+
+          pythonImportsCheck = [ "rookiepy" ];
+        };
+
         # Runtime dependencies
         pythonDeps =
-          ps: with ps; [
+          ps:
+          with ps;
+          [
             beautifulsoup4
             click
             jinja2
@@ -33,7 +84,8 @@
             rich
             sqlalchemy
             tomli-w
-          ];
+          ]
+          ++ [ rookiepy ];
 
         # Development dependencies
         devDeps =
@@ -95,11 +147,6 @@
 
           shellHook = ''
             export PYTHONPATH="$PWD:$PYTHONPATH"
-            # rookiepy is not in nixpkgs; install via pip if missing
-            if ! python -c "import rookiepy" 2>/dev/null; then
-              echo "Installing rookiepy via pip..."
-              pip install --quiet rookiepy 2>/dev/null || true
-            fi
           '';
         };
 
