@@ -1,28 +1,31 @@
 ---
-work_package_id: "WP04"
+work_package_id: WP04
+title: Download and Archive Extraction
+lane: "doing"
+dependencies: [WP02]
+base_branch: 009-anomalistic-portal-mirror-WP02
+base_commit: 48d3788ac2efc595b9b9cb8ab55be71057daa4aa
+created_at: '2026-02-03T16:43:36.086580+00:00'
 subtasks:
-  - "T020"
-  - "T021"
-  - "T022"
-  - "T023"
-  - "T024"
-  - "T024a"
-  - "T025"
-title: "Download and Archive Extraction"
-phase: "Phase 1 - Core Features"
-lane: "planned"
-assignee: ""
-agent: ""
-shell_pid: ""
-review_status: ""
-reviewed_by: ""
-dependencies: ["WP02"]
+- T020
+- T021
+- T022
+- T023
+- T024
+- T024a
+- T025
+phase: Phase 1 - Core Features
+assignee: ''
+agent: ''
+shell_pid: "2966073"
+review_status: ''
+reviewed_by: ''
 history:
-  - timestamp: "2026-02-03T14:54:20Z"
-    lane: "planned"
-    agent: "system"
-    shell_pid: ""
-    action: "Prompt generated via /spec-kitty.tasks"
+- timestamp: '2026-02-03T14:54:20Z'
+  lane: planned
+  agent: system
+  shell_pid: ''
+  action: Prompt generated via /spec-kitty.tasks
 ---
 
 # Work Package Prompt: WP04 – Download and Archive Extraction
