@@ -5,6 +5,14 @@
 **Status**: Draft
 **Input**: User description: "Create a download/mirror tool for darkpsyportal.anomalisticrecords.com"
 
+## Clarifications
+
+### Session 2026-02-03
+
+- Q: How should the tool parse artist vs. album from the post title? → A: Split on em-dash/en-dash/hyphen; treat left side as artist, right side as album. Recognize `V/A` and `VA` prefixes as "Various Artists" indicator; when no dash is present, treat entire title as album with artist "Various Artists".
+- Q: How should download links be extracted from each release? → A: Parse download URLs from the HTML content field returned by the WordPress REST API. No separate page fetch needed per release.
+- Q: Should the tool apply rate limiting or concurrent download limits? → A: No rate limiting, but downloads are sequential (one at a time). No parallelism for archive downloads.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Mirror All Releases (Priority: P1)
@@ -159,6 +167,9 @@ When converting downloaded WAV/MP3 files to the target format, the tool embeds t
 - **FR-016**: System MUST display progress during download and conversion.
 - **FR-017**: System MUST add `unrar` as a system dependency.
 - **FR-018**: System MUST select the primary genre (first genre category in the API response) for folder placement when a release has multiple genres.
+- **FR-019**: System MUST parse artist and album title from WordPress post titles by splitting on em-dash, en-dash, or hyphen delimiters. The left side is the artist, the right side is the album. Titles prefixed with `V/A` or `VA` MUST be recognized as "Various Artists" compilations. Titles with no delimiter MUST default to artist "Various Artists" with the full title as album.
+- **FR-020**: System MUST extract download URLs (ZIP/RAR archive links) from the rendered HTML content field of the WordPress REST API response, without fetching individual release pages.
+- **FR-021**: System MUST download archives sequentially (one at a time) without parallelism or artificial rate limiting.
 
 ### Key Entities
 
