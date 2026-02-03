@@ -139,6 +139,7 @@
             pkgs.flac
             pkgs.mp3val
             pkgs.shntool
+            pkgs.unrar-free
             pkgs.vorbis-tools # provides ogginfo
             pkgs.sox
             pkgs.puddletag
