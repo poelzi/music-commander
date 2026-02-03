@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: Download and Archive Extraction
-lane: "for_review"
+lane: "doing"
 dependencies: [WP02]
 base_branch: 009-anomalistic-portal-mirror-WP02
 base_commit: 48d3788ac2efc595b9b9cb8ab55be71057daa4aa
@@ -16,8 +16,8 @@ subtasks:
 - T025
 phase: Phase 1 - Core Features
 assignee: ''
-agent: ''
-shell_pid: "2966073"
+agent: "OpenCode"
+shell_pid: "2983876"
 review_status: ''
 reviewed_by: ''
 history:
@@ -219,3 +219,4 @@ spec-kitty implement WP04 --base WP02
 
 - 2026-02-03T14:54:20Z – system – lane=planned – Prompt created.
 - 2026-02-03T16:46:28Z – unknown – shell_pid=2966073 – lane=for_review – Ready for review: download with temp file safety, ZIP/RAR extraction, audio+artwork discovery. 28 new tests, 486 total pass.
+- 2026-02-03T20:03:26Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
