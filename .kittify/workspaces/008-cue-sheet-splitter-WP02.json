@@ -1,0 +1,14 @@
+{
+  "wp_id": "WP02",
+  "feature_slug": "008-cue-sheet-splitter",
+  "worktree_path": ".worktrees/008-cue-sheet-splitter-WP02",
+  "branch_name": "008-cue-sheet-splitter-WP02",
+  "base_branch": "008-cue-sheet-splitter-WP01",
+  "base_commit": "2f4930343eee03fa88cda0c48f08790db299e148",
+  "dependencies": [
+    "WP01"
+  ],
+  "created_at": "2026-02-03T12:34:49.752782+00:00",
+  "created_by": "implement-command",
+  "vcs_backend": "git"
+}

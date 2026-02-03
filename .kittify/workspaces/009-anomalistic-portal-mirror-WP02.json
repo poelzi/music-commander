@@ -1,0 +1,14 @@
+{
+  "wp_id": "WP02",
+  "feature_slug": "009-anomalistic-portal-mirror",
+  "worktree_path": ".worktrees/009-anomalistic-portal-mirror-WP02",
+  "branch_name": "009-anomalistic-portal-mirror-WP02",
+  "base_branch": "009-anomalistic-portal-mirror-WP01",
+  "base_commit": "ca42f1c8b77039bc7bff2cf6e21c01703a4a9d2f",
+  "dependencies": [
+    "WP01"
+  ],
+  "created_at": "2026-02-03T16:00:57.722881+00:00",
+  "created_by": "implement-command",
+  "vcs_backend": "git"
+}
