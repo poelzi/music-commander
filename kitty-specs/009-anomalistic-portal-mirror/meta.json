@@ -1,0 +1,8 @@
+{
+  "feature_number": "009",
+  "slug": "009-anomalistic-portal-mirror",
+  "friendly_name": "Anomalistic Portal Mirror",
+  "mission": "software-dev",
+  "source_description": "Create a download/mirror tool for darkpsyportal.anomalisticrecords.com",
+  "created_at": "2026-02-03T00:00:00Z"
+}
