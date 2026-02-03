@@ -117,13 +117,13 @@
 **Prompt**: `kitty-specs/009-anomalistic-portal-mirror/tasks/WP04-download-and-extraction.md`
 
 ### Included Subtasks
-- [ ] T020 Implement archive download with temp file pattern in `music_commander/anomalistic/downloader.py`
-- [ ] T021 Implement ZIP extraction
-- [ ] T022 Implement RAR extraction via `unrar` subprocess
-- [ ] T023 Implement archive format detection (ZIP vs RAR by file magic/extension)
-- [ ] T024 Implement audio file discovery in extracted directory (filter by extension: `.wav`, `.mp3`, `.flac`, `.aif`, `.aiff`)
-- [ ] T024a [P] Implement artwork file discovery in extracted directory (`.jpg`, `.png`) and copy to output folder
-- [ ] T025 Write unit tests for downloader (`tests/unit/test_anomalistic_downloader.py`)
+- [x] T020 Implement archive download with temp file pattern in `music_commander/anomalistic/downloader.py`
+- [x] T021 Implement ZIP extraction
+- [x] T022 Implement RAR extraction via `unrar` subprocess
+- [x] T023 Implement archive format detection (ZIP vs RAR by file magic/extension)
+- [x] T024 Implement audio file discovery in extracted directory (filter by extension: `.wav`, `.mp3`, `.flac`, `.aif`, `.aiff`)
+- [x] T024a [P] Implement artwork file discovery in extracted directory (`.jpg`, `.png`) and copy to output folder
+- [x] T025 Write unit tests for downloader (`tests/unit/test_anomalistic_downloader.py`)
 
 ### Implementation Notes
 - T020: Follow bandcamp downloader temp file pattern (`.filename.tmp` → atomic rename). Stream with `chunk_size=8192`. Progress callback for Rich integration.
