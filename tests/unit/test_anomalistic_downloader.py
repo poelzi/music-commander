@@ -348,38 +348,38 @@ class TestDiscoverArtwork:
         (temp_dir / "random.png").write_bytes(b"x" * 1000)
 
         result = discover_artwork(temp_dir)
-        assert result is not None
-        assert result.name == "cover.jpg"
+        assert len(result) == 2
+        assert result[0].name == "cover.jpg"
 
     def test_prefers_front_name(self, temp_dir: Path):
         (temp_dir / "front.jpg").write_bytes(b"art")
         (temp_dir / "back.jpg").write_bytes(b"x" * 1000)
 
         result = discover_artwork(temp_dir)
-        assert result is not None
-        assert result.name == "front.jpg"
+        assert len(result) == 2
+        assert result[0].name == "front.jpg"
 
     def test_falls_back_to_largest(self, temp_dir: Path):
         (temp_dir / "small.jpg").write_bytes(b"x")
         (temp_dir / "large.png").write_bytes(b"x" * 1000)
 
         result = discover_artwork(temp_dir)
-        assert result is not None
-        assert result.name == "large.png"
+        assert len(result) == 2
+        assert result[0].name == "large.png"
 
     def test_no_artwork(self, temp_dir: Path):
         (temp_dir / "track.wav").write_bytes(b"audio")
 
         result = discover_artwork(temp_dir)
-        assert result is None
+        assert result == []
 
     def test_ignores_hidden_files(self, temp_dir: Path):
         (temp_dir / ".hidden.jpg").write_bytes(b"x")
         (temp_dir / "cover.jpg").write_bytes(b"y")
 
         result = discover_artwork(temp_dir)
-        assert result is not None
-        assert result.name == "cover.jpg"
+        assert len(result) == 1
+        assert result[0].name == "cover.jpg"
 
     def test_recursive_search(self, temp_dir: Path):
         subdir = temp_dir / "artwork"
@@ -387,5 +387,18 @@ class TestDiscoverArtwork:
         (subdir / "cover.jpg").write_bytes(b"art")
 
         result = discover_artwork(temp_dir)
-        assert result is not None
-        assert result.name == "cover.jpg"
+        assert len(result) == 1
+        assert result[0].name == "cover.jpg"
+
+    def test_returns_all_artwork(self, temp_dir: Path):
+        (temp_dir / "cover.jpg").write_bytes(b"small")
+        (temp_dir / "back.jpg").write_bytes(b"x" * 500)
+        (temp_dir / "inlay.png").write_bytes(b"x" * 1000)
+
+        result = discover_artwork(temp_dir)
+        assert len(result) == 3
+        # cover.jpg is preferred name, should be first
+        assert result[0].name == "cover.jpg"
+        # Others sorted by size descending
+        assert result[1].name == "inlay.png"
+        assert result[2].name == "back.jpg"

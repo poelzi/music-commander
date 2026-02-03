@@ -262,17 +262,18 @@ def discover_audio_files(directory: Path) -> list[Path]:
     return audio_files
 
 
-def discover_artwork(directory: Path) -> Path | None:
-    """Find the best artwork image in an extracted directory.
+def discover_artwork(directory: Path) -> list[Path]:
+    """Find artwork images in an extracted directory.
 
-    Prefers files matching common cover art names (``cover.*``, ``front.*``,
-    ``folder.*``, ``artwork.*``). Falls back to the largest image file.
+    Returns all artwork files, ordered with preferred names first
+    (``cover.*``, ``front.*``, ``folder.*``, ``artwork.*``), then
+    remaining files sorted by size (largest first).
 
     Args:
         directory: Path to search for artwork.
 
     Returns:
-        Path to the best artwork file, or None if no artwork found.
+        List of artwork file paths, ordered by preference. Empty if none found.
     """
     candidates: list[Path] = []
     for f in directory.rglob("*"):
@@ -280,16 +281,22 @@ def discover_artwork(directory: Path) -> Path | None:
             candidates.append(f)
 
     if not candidates:
-        return None
+        return []
 
-    # Check for preferred names
+    # Partition into preferred and other
+    preferred: list[Path] = []
+    other: list[Path] = []
     for candidate in candidates:
         stem = candidate.stem.lower()
         if stem in _ARTWORK_NAMES:
-            return candidate
+            preferred.append(candidate)
+        else:
+            other.append(candidate)
 
-    # Fall back to largest file
-    return max(candidates, key=lambda f: f.stat().st_size)
+    # Sort other by file size (largest first)
+    other.sort(key=lambda f: f.stat().st_size, reverse=True)
+
+    return preferred + other
 
 
 # ---------------------------------------------------------------------------
