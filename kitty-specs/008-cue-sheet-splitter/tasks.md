@@ -52,12 +52,12 @@
 **Prompt**: `kitty-specs/008-cue-sheet-splitter/tasks/WP02-split-engine.md`
 
 ### Included Subtasks
-- [ ] T005 Implement `music_commander/cue/splitter.py` — shntool-based splitting with ffmpeg fallback for APE/WV
-- [ ] T006 Implement filename sanitization helper in `music_commander/cue/splitter.py`
-- [ ] T007 Implement metaflac tagging logic — map CueTrack fields to FLAC tags, add ReplayGain
-- [ ] T008 Implement cover art discovery and embedding — single image as front cover, multi-image with front/back matching
-- [ ] T009 Implement skip-existing logic (check for output files) and `--force` override
-- [ ] T010 [P] Write unit tests in `tests/unit/test_cue_splitter.py` — test filename sanitization, tag mapping, cover art matching, skip logic
+- [x] T005 Implement `music_commander/cue/splitter.py` — shntool-based splitting with ffmpeg fallback for APE/WV
+- [x] T006 Implement filename sanitization helper in `music_commander/cue/splitter.py`
+- [x] T007 Implement metaflac tagging logic — map CueTrack fields to FLAC tags, add ReplayGain
+- [x] T008 Implement cover art discovery and embedding — single image as front cover, multi-image with front/back matching
+- [x] T009 Implement skip-existing logic (check for output files) and `--force` override
+- [x] T010 [P] Write unit tests in `tests/unit/test_cue_splitter.py` — test filename sanitization, tag mapping, cover art matching, skip logic
 
 ### Implementation Notes
 - shntool command: `shntool split -t '%n - %t' -o flac -f <cue> -O never <source>`
