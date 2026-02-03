@@ -86,11 +86,11 @@
 **Prompt**: `kitty-specs/009-anomalistic-portal-mirror/tasks/WP03-html-content-parser.md`
 
 ### Included Subtasks
-- [ ] T015 Implement `music_commander/anomalistic/parser.py` with `parse_release_content()` function
-- [ ] T016 Implement title parsing: `parse_title(title: str) -> tuple[str, str]` (artist, album)
-- [ ] T017 Implement download URL extraction from HTML content
-- [ ] T018 Implement tracklist/credits/cover art extraction from HTML content
-- [ ] T019 Write unit tests for parser (`tests/unit/test_anomalistic_parser.py`)
+- [x] T015 Implement `music_commander/anomalistic/parser.py` with `parse_release_content()` function
+- [x] T016 Implement title parsing: `parse_title(title: str) -> tuple[str, str]` (artist, album)
+- [x] T017 Implement download URL extraction from HTML content
+- [x] T018 Implement tracklist/credits/cover art extraction from HTML content
+- [x] T019 Write unit tests for parser (`tests/unit/test_anomalistic_parser.py`)
 
 ### Implementation Notes
 - T015: Main entry point takes `content.rendered` HTML string, returns a structured dataclass with download URLs, tracklist, credits, cover art URL.
