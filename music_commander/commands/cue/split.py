@@ -15,6 +15,7 @@ from music_commander.cue.splitter import (
     SplitResult,
     check_already_split,
     check_tools_available,
+    group_tracks_by_file,
     split_cue,
     track_output_filename,
 )
@@ -25,6 +26,8 @@ def _find_cue_pairs(directory: Path, encoding: str | None) -> list[tuple[Path, P
     """Find cue + audio file pairs in a single directory.
 
     Returns list of (cue_path, audio_path, cue_sheet) tuples.
+    For multi-FILE cue sheets, audio_path is the first referenced file;
+    the splitter handles additional files via group_tracks_by_file().
     """
     pairs: list[tuple[Path, Path, object]] = []
 
@@ -39,21 +42,35 @@ def _find_cue_pairs(directory: Path, encoding: str | None) -> list[tuple[Path, P
             warning(f"Cannot parse {cue_path}: {e}")
             continue
 
-        if not cue_sheet.file:
+        # Collect all referenced source files (multi-FILE support)
+        file_groups = group_tracks_by_file(cue_sheet)
+        if not file_groups:
             warning(f"No FILE reference in {cue_path}")
             continue
 
-        audio_path = directory / cue_sheet.file
-        if not audio_path.exists():
-            warning(f"Source file not found: {audio_path} (referenced by {cue_path.name})")
+        # Check that at least one referenced file exists with supported format
+        primary_audio = None
+        missing_files = []
+        for filename in file_groups:
+            audio_path = directory / filename
+            if not audio_path.exists():
+                missing_files.append(filename)
+                continue
+            ext = audio_path.suffix.lower()
+            if ext not in SUPPORTED_EXTENSIONS:
+                warning(f"Unsupported format {ext}: {audio_path.name}")
+                continue
+            if primary_audio is None:
+                primary_audio = audio_path
+
+        if missing_files:
+            for mf in missing_files:
+                warning(f"Source file not found: {directory / mf} (referenced by {cue_path.name})")
+
+        if primary_audio is None:
             continue
 
-        ext = audio_path.suffix.lower()
-        if ext not in SUPPORTED_EXTENSIONS:
-            warning(f"Unsupported format {ext}: {audio_path.name}")
-            continue
-
-        pairs.append((cue_path, audio_path, cue_sheet))
+        pairs.append((cue_path, primary_audio, cue_sheet))
 
     return pairs
 

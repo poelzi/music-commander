@@ -236,13 +236,16 @@ def test_multi_file_track_file_associations(tmp_path: Path) -> None:
 
 
 def test_multi_file_end_samples(tmp_path: Path) -> None:
-    """Track 2 (last of disc1) should have end_samples from track 3 (first of disc2),
-    but track 3 resets to 00:00:00. The parser calculates end based on next track's
-    start_samples regardless of file boundaries."""
+    """Last track of each FILE block should have None end_samples.
+    Tracks within a file use the next track's start."""
     cue = parse_cue(_write_cue(tmp_path, MULTI_FILE_CUE))
-    # Track 2 ends at track 3's start (which is 0 since it's a new file)
-    assert cue.tracks[1].end_samples == cue.tracks[2].start_samples
-    # Last track has no end
+    # Track 1 ends at track 2's start (same file)
+    assert cue.tracks[0].end_samples == cue.tracks[1].start_samples
+    # Track 2 is last of disc1 → None (different file boundary)
+    assert cue.tracks[1].end_samples is None
+    # Track 3 ends at track 4's start (same file)
+    assert cue.tracks[2].end_samples == cue.tracks[3].start_samples
+    # Track 4 is last of disc2 → None
     assert cue.tracks[3].end_samples is None
 
 

@@ -58,6 +58,22 @@ class SplitResult:
     error: str | None = None
 
 
+def group_tracks_by_file(cue_sheet: CueSheet) -> dict[str, list[CueTrack]]:
+    """Group tracks by their source file for multi-FILE cue sheets.
+
+    Returns:
+        Dict mapping source filename to list of tracks for that file.
+        For single-FILE sheets, returns one entry.
+    """
+    groups: dict[str, list[CueTrack]] = {}
+    for track in cue_sheet.tracks:
+        key = track.file or cue_sheet.file or ""
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(track)
+    return groups
+
+
 def check_tools_available() -> list[str]:
     """Check that required external tools are available.
 
@@ -279,6 +295,42 @@ def split_with_ffmpeg(
     return output_files
 
 
+def _split_single_file(
+    cue_sheet: CueSheet,
+    cue_path: Path,
+    source_path: Path,
+    output_dir: Path,
+    tracks: list[CueTrack] | None = None,
+) -> list[Path]:
+    """Split a single source file, trying shntool then ffmpeg fallback.
+
+    Args:
+        cue_sheet: Parsed CueSheet (used by ffmpeg fallback).
+        cue_path: Path to the .cue file (used by shntool).
+        source_path: Path to the source audio file.
+        output_dir: Directory for output files.
+        tracks: Specific tracks for ffmpeg fallback (multi-FILE support).
+
+    Returns:
+        List of output file paths.
+
+    Raises:
+        subprocess.CalledProcessError: If both backends fail.
+    """
+    ext = source_path.suffix.lower()
+    if ext in SHNTOOL_EXTENSIONS:
+        return split_with_shntool(cue_path, source_path, output_dir)
+    elif ext in SUPPORTED_EXTENSIONS:
+        # APE/WV: try shntool first, fall back to ffmpeg
+        try:
+            return split_with_shntool(cue_path, source_path, output_dir)
+        except subprocess.CalledProcessError:
+            logger.info("shntool failed for %s, falling back to ffmpeg", source_path.name)
+            return split_with_ffmpeg(cue_sheet, source_path, output_dir, tracks=tracks)
+    else:
+        raise ValueError(f"Unsupported format: {ext}")
+
+
 def split_cue(
     cue_sheet: CueSheet,
     cue_path: Path,
@@ -291,14 +343,15 @@ def split_cue(
     This is the main entry point for splitting. It:
     1. Checks if already split (skip unless force)
     2. Splits with shntool (or ffmpeg fallback for APE/WV)
-    3. Tags each output track
-    4. Adds ReplayGain
-    5. Embeds cover art
+    3. Handles multi-FILE cue sheets by splitting each source independently
+    4. Tags each output track
+    5. Adds ReplayGain
+    6. Embeds cover art
 
     Args:
         cue_sheet: Parsed CueSheet.
         cue_path: Path to the .cue file.
-        source_path: Path to the source audio file.
+        source_path: Path to the source audio file (primary file for single-FILE cues).
         output_dir: Directory for output files (usually same as source).
         force: If True, re-split even if output exists.
 
@@ -323,28 +376,31 @@ def split_cue(
             if existing.exists():
                 existing.unlink()
 
-    # Split
-    ext = source_path.suffix.lower()
+    # Handle multi-FILE cue sheets
+    file_groups = group_tracks_by_file(cue_sheet)
+    all_output_files: list[Path] = []
+
     try:
-        if ext in SHNTOOL_EXTENSIONS:
-            output_files = split_with_shntool(cue_path, source_path, output_dir)
-        elif ext in SUPPORTED_EXTENSIONS:
-            # APE/WV: try shntool first, fall back to ffmpeg
-            try:
-                output_files = split_with_shntool(cue_path, source_path, output_dir)
-            except subprocess.CalledProcessError:
-                logger.info("shntool failed for %s, falling back to ffmpeg", source_path.name)
-                output_files = split_with_ffmpeg(cue_sheet, source_path, output_dir)
+        if len(file_groups) <= 1:
+            # Single-FILE: use the provided source_path
+            all_output_files = _split_single_file(cue_sheet, cue_path, source_path, output_dir)
         else:
-            result.status = "error"
-            result.error = f"Unsupported format: {ext}"
-            return result
-    except subprocess.CalledProcessError as e:
+            # Multi-FILE: split each source independently using ffmpeg
+            # (shntool doesn't support multi-FILE splitting well)
+            for filename, tracks in file_groups.items():
+                file_source = output_dir / filename
+                if not file_source.exists():
+                    logger.warning("Source file not found: %s", file_source)
+                    continue
+                files = split_with_ffmpeg(cue_sheet, file_source, output_dir, tracks=tracks)
+                all_output_files.extend(files)
+    except (subprocess.CalledProcessError, ValueError) as e:
         result.status = "error"
-        result.error = f"Split failed: {e.stderr or str(e)}"
+        err_msg = getattr(e, "stderr", None) or str(e)
+        result.error = f"Split failed: {err_msg}"
         return result
 
-    result.output_files = output_files
+    result.output_files = all_output_files
 
     # Tag each output track
     try:
