@@ -12,6 +12,8 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from music_commander.cache.models import (
+    AnomaListicRelease,
+    AnomaListicTrack,
     BandcampRelease,
     BandcampReleaseFormat,
     BandcampSyncState,
@@ -35,6 +37,8 @@ _ALL_MODELS = [
     BandcampTrack,
     BandcampReleaseFormat,
     BandcampSyncState,
+    AnomaListicRelease,
+    AnomaListicTrack,
 ]
 
 
