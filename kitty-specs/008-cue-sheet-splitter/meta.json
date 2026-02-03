@@ -4,5 +4,7 @@
   "friendly_name": "CUE Sheet Splitter",
   "mission": "software-dev",
   "source_description": "create a new cli subsystem called cue. add the first command which is split that splits a full file rip of a cd with cue file. port and integrate /space/Music/bin/split-albums",
-  "created_at": "2026-02-03T00:00:00Z"
+  "created_at": "2026-02-03T00:00:00Z",
+  "vcs": "git",
+  "vcs_locked_at": "2026-02-03T12:34:48.124328+00:00"
 }
