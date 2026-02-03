@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: Conversion Pipeline and Comment Tagging
-lane: "for_review"
+lane: "doing"
 dependencies:
 - WP01
 base_branch: 009-anomalistic-portal-mirror-WP01
@@ -19,8 +19,8 @@ subtasks:
 - T032
 phase: Phase 1 - Core Features
 assignee: ''
-agent: "OpenCode"
-shell_pid: "2983876"
+agent: "claude-code"
+shell_pid: "3076891"
 review_status: "has_feedback"
 reviewed_by: "Daniel Poelzleithner"
 history:
@@ -294,3 +294,4 @@ spec-kitty implement WP05 --base WP04
 - 2026-02-03T16:54:42Z – unknown – shell_pid=2968231 – lane=for_review – Moved to for_review
 - 2026-02-03T22:07:07Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
 - 2026-02-03T22:08:01Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned
+- 2026-02-03T22:51:50Z – claude-code – shell_pid=3076891 – lane=doing – Started review via workflow command
