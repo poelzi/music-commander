@@ -190,12 +190,12 @@
 **Prompt**: `kitty-specs/009-anomalistic-portal-mirror/tasks/WP06-duplicate-detection.md`
 
 ### Included Subtasks
-- [ ] T033 Implement URL-based cache lookup (check `AnomaListicRelease` table for existing `release_url`)
-- [ ] T034 Implement comment-field scan (check `CacheTrack.comment` for release URL substring)
-- [ ] T035 Implement fuzzy artist+album matching against `CacheTrack` using shared `match_release()` from `utils/matching.py`
-- [ ] T036 Implement duplicate decision logic (combine all signals, decide skip/download)
-- [ ] T037 Implement `--force` flag to bypass all duplicate checks
-- [ ] T038 Write unit tests for duplicate detection (`tests/unit/test_anomalistic_dedup.py`)
+- [x] T033 Implement URL-based cache lookup (check `AnomaListicRelease` table for existing `release_url`)
+- [x] T034 Implement comment-field scan (check `CacheTrack.comment` for release URL substring)
+- [x] T035 Implement fuzzy artist+album matching against `CacheTrack` using shared `match_release()` from `utils/matching.py`
+- [x] T036 Implement duplicate decision logic (combine all signals, decide skip/download)
+- [x] T037 Implement `--force` flag to bypass all duplicate checks
+- [x] T038 Write unit tests for duplicate detection (`tests/unit/test_anomalistic_dedup.py`)
 
 ### Implementation Notes
 - T033: Simple SQLAlchemy query on `anomalistic_releases` where `release_url` matches and `download_status` = "downloaded".
