@@ -1,9 +1,12 @@
 ---
 work_package_id: WP05
 title: Conversion Pipeline and Comment Tagging
-lane: planned
+lane: "doing"
 dependencies:
 - WP01
+base_branch: 009-anomalistic-portal-mirror-WP01
+base_commit: ca42f1c8b77039bc7bff2cf6e21c01703a4a9d2f
+created_at: '2026-02-03T16:47:01.015231+00:00'
 subtasks:
 - T026
 - T026a
@@ -17,7 +20,7 @@ subtasks:
 phase: Phase 1 - Core Features
 assignee: ''
 agent: ''
-shell_pid: ''
+shell_pid: "2968231"
 review_status: ''
 reviewed_by: ''
 history:
