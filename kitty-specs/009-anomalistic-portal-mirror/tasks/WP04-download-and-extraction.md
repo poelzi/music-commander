@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: Download and Archive Extraction
-lane: "doing"
+lane: "for_review"
 dependencies: [WP02]
 base_branch: 009-anomalistic-portal-mirror-WP02
 base_commit: 48d3788ac2efc595b9b9cb8ab55be71057daa4aa
@@ -18,8 +18,8 @@ phase: Phase 1 - Core Features
 assignee: ''
 agent: "OpenCode"
 shell_pid: "2983876"
-review_status: ''
-reviewed_by: ''
+review_status: "has_feedback"
+reviewed_by: "Daniel Poelzleithner"
 history:
 - timestamp: '2026-02-03T14:54:20Z'
   lane: planned
@@ -38,9 +38,14 @@ history:
 
 ## Review Feedback
 
-*[This section is empty initially.]*
+**Reviewed by**: Daniel Poelzleithner
+**Status**: ❌ Changes Requested
+**Date**: 2026-02-03
 
----
+**Issue 1**: `discover_artwork()` returns a single `Path | None`, but subtask T024a specifies returning a list of artwork files (and passing that list to WP05). Please change it to return a list (ordered with preferred names first, then fallback by size), and update tests accordingly.
+
+**Issue 2**: T024a notes preserving artwork files for later embedding. The current implementation chooses a single file and discards the rest. Please keep all discovered artwork paths (even if you also compute a “best” one) so downstream steps can embed or choose among them.
+
 
 ## Objectives & Success Criteria
 
@@ -220,3 +225,4 @@ spec-kitty implement WP04 --base WP02
 - 2026-02-03T14:54:20Z – system – lane=planned – Prompt created.
 - 2026-02-03T16:46:28Z – unknown – shell_pid=2966073 – lane=for_review – Ready for review: download with temp file safety, ZIP/RAR extraction, audio+artwork discovery. 28 new tests, 486 total pass.
 - 2026-02-03T20:03:26Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
+- 2026-02-03T20:04:12Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned

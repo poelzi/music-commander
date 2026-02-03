@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: Conversion Pipeline and Comment Tagging
-lane: "doing"
+lane: "for_review"
 dependencies:
 - WP01
 base_branch: 009-anomalistic-portal-mirror-WP01
@@ -21,8 +21,8 @@ phase: Phase 1 - Core Features
 assignee: ''
 agent: "OpenCode"
 shell_pid: "2983876"
-review_status: ''
-reviewed_by: ''
+review_status: "has_feedback"
+reviewed_by: "Daniel Poelzleithner"
 history:
 - timestamp: '2026-02-03T14:54:20Z'
   lane: planned
@@ -41,9 +41,14 @@ history:
 
 ## Review Feedback
 
-*[This section is empty initially.]*
+**Reviewed by**: Daniel Poelzleithner
+**Status**: ❌ Changes Requested
+**Date**: 2026-02-03
 
----
+**Issue 1**: Dependency declaration mismatch. WP05 frontmatter lists only `WP01`, but the implementation imports and relies on WP04 (`music_commander.anomalistic.downloader.discover_artwork`) and the prompt says `spec-kitty implement WP05 --base WP04`. Please update dependencies to include WP04 (and WP02/WP03 if required by actual imports) and base on WP04.
+
+**Issue 2**: `discover_artwork()` is used as if it returns a single Path, but WP04 T024a requires returning a list of artwork files for embedding. Once WP04 is corrected, WP05 must be updated to handle a list (select best for embedding, but preserve the full list for future steps) so the integration aligns with the spec.
+
 
 ## Objectives & Success Criteria
 
@@ -288,3 +293,4 @@ spec-kitty implement WP05 --base WP04
 - 2026-02-03T14:54:20Z – system – lane=planned – Prompt created.
 - 2026-02-03T16:54:42Z – unknown – shell_pid=2968231 – lane=for_review – Moved to for_review
 - 2026-02-03T22:07:07Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
+- 2026-02-03T22:08:01Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned

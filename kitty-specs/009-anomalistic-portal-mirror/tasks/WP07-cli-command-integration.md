@@ -1,7 +1,7 @@
 ---
 work_package_id: WP07
 title: CLI Command and Integration
-lane: "doing"
+lane: "for_review"
 dependencies:
 - WP01
 base_branch: 009-anomalistic-portal-mirror-WP01
@@ -20,8 +20,8 @@ phase: Phase 2 - Integration
 assignee: ''
 agent: "OpenCode"
 shell_pid: "2983876"
-review_status: ''
-reviewed_by: ''
+review_status: "has_feedback"
+reviewed_by: "Daniel Poelzleithner"
 history:
 - timestamp: '2026-02-03T14:54:20Z'
   lane: planned
@@ -40,9 +40,12 @@ history:
 
 ## Review Feedback
 
-*[This section is empty initially.]*
+**Reviewed by**: Daniel Poelzleithner
+**Status**: ❌ Changes Requested
+**Date**: 2026-02-03
 
----
+**Issue 1**: Dependency declaration mismatch. WP07 frontmatter lists only `WP01`, but the implementation imports and relies on WP02–WP06 modules (client/category/parser/downloader/converter/dedup), and the prompt says base WP06. Please update dependencies to include WP02–WP06 and base on WP06.
+
 
 ## Objectives & Success Criteria
 
@@ -284,3 +287,4 @@ spec-kitty implement WP07 --base WP06
 - 2026-02-03T14:54:20Z – system – lane=planned – Prompt created.
 - 2026-02-03T17:10:11Z – unknown – shell_pid=2977585 – lane=for_review – Moved to for_review
 - 2026-02-03T22:10:30Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
+- 2026-02-03T22:11:03Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned
