@@ -1,9 +1,12 @@
 ---
 work_package_id: WP07
 title: CLI Command and Integration
-lane: planned
+lane: "doing"
 dependencies:
 - WP01
+base_branch: 009-anomalistic-portal-mirror-WP01
+base_commit: 020517a2213a4c278dfd373b525d79daddc5bbdf
+created_at: '2026-02-03T17:04:21.344567+00:00'
 subtasks:
 - T039
 - T040
@@ -16,7 +19,7 @@ subtasks:
 phase: Phase 2 - Integration
 assignee: ''
 agent: ''
-shell_pid: ''
+shell_pid: "2977585"
 review_status: ''
 reviewed_by: ''
 history:
