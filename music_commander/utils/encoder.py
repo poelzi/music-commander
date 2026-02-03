@@ -381,6 +381,7 @@ def build_ffmpeg_command(
     cover_path: Path | None = None,
     *,
     stream_copy: bool = False,
+    extra_metadata: dict[str, str] | None = None,
 ) -> list[str]:
     """Build complete ffmpeg command for encoding.
 
@@ -391,6 +392,7 @@ def build_ffmpeg_command(
         source_info: Probed source file parameters.
         cover_path: Optional external cover art path.
         stream_copy: If True, use stream copy instead of re-encoding.
+        extra_metadata: Optional dict of additional metadata tags to embed.
 
     Returns:
         Complete ffmpeg command as a list of strings.
@@ -425,6 +427,11 @@ def build_ffmpeg_command(
 
     # Metadata copying
     cmd.extend(["-map_metadata", "0"])
+
+    # Extra metadata tags
+    if extra_metadata:
+        for key, value in extra_metadata.items():
+            cmd.extend(["-metadata", f"{key}={value}"])
 
     # Output file
     cmd.append(str(output_path))
