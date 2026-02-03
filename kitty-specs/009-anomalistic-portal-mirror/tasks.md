@@ -222,14 +222,14 @@
 **Prompt**: `kitty-specs/009-anomalistic-portal-mirror/tasks/WP07-cli-command-integration.md`
 
 ### Included Subtasks
-- [ ] T039 Create `music_commander/commands/mirror/__init__.py` with `mirror` Click group
-- [ ] T040 Implement `music_commander/commands/mirror/anomalistic.py` with `anomalistic` Click command
-- [ ] T041 Implement main orchestration flow: fetch catalog → dedup check → download → extract → convert → organize → meta.json
-- [ ] T042 Add Rich progress display for catalog fetch, download, and conversion phases
-- [ ] T043 Add summary output (downloaded/skipped/failed counts)
-- [ ] T044 Add `--force` CLI flag
-- [ ] T045 Add `-v`/`--verbose` integration for detailed output
-- [ ] T046 Write unit/integration tests for CLI command (`tests/unit/test_mirror_command.py`)
+- [x] T039 Create `music_commander/commands/mirror/__init__.py` with `mirror` Click group
+- [x] T040 Implement `music_commander/commands/mirror/anomalistic.py` with `anomalistic` Click command
+- [x] T041 Implement main orchestration flow: fetch catalog → dedup check → download → extract → convert → organize → meta.json
+- [x] T042 Add Rich progress display for catalog fetch, download, and conversion phases
+- [x] T043 Add summary output (downloaded/skipped/failed counts)
+- [x] T044 Add `--force` CLI flag
+- [x] T045 Add `-v`/`--verbose` integration for detailed output
+- [x] T046 Write unit/integration tests for CLI command (`tests/unit/test_mirror_command.py`)
 
 ### Implementation Notes
 - T039: Follow `commands/bandcamp/__init__.py` pattern. Define exit codes: `EXIT_SUCCESS`, `EXIT_MIRROR_ERROR`.
