@@ -22,10 +22,10 @@
 **Prompt**: `kitty-specs/008-cue-sheet-splitter/tasks/WP01-nix-deps-and-cue-parser.md`
 
 ### Included Subtasks
-- [ ] T001 Add shntool to nix flake dependencies in `flake.nix`
-- [ ] T002 Create `music_commander/cue/__init__.py` package
-- [ ] T003 Implement `music_commander/cue/parser.py` — port CueParser from `/space/Music/bin/split-albums` with bug fixes: TRACKNUMBER tag, encoding fallback (UTF-8 → Latin-1), proper error handling, multi-FILE support
-- [ ] T004 [P] Write unit tests in `tests/unit/test_cue_parser.py` — test global metadata, per-track metadata, track-level overrides, encoding fallback, multi-FILE cue sheets, edge cases (pregap, missing files)
+- [x] T001 Add shntool to nix flake dependencies in `flake.nix`
+- [x] T002 Create `music_commander/cue/__init__.py` package
+- [x] T003 Implement `music_commander/cue/parser.py` — port CueParser from `/space/Music/bin/split-albums` with bug fixes: TRACKNUMBER tag, encoding fallback (UTF-8 → Latin-1), proper error handling, multi-FILE support
+- [x] T004 [P] Write unit tests in `tests/unit/test_cue_parser.py` — test global metadata, per-track metadata, track-level overrides, encoding fallback, multi-FILE cue sheets, edge cases (pregap, missing files)
 
 ### Implementation Notes
 - The CueParser class is ported from the existing script at `/space/Music/bin/split-albums`
