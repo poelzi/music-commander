@@ -4,7 +4,12 @@ title: CLI Command and Integration
 lane: "for_review"
 dependencies:
 - WP01
-base_branch: 009-anomalistic-portal-mirror-WP01
+- WP02
+- WP03
+- WP04
+- WP05
+- WP06
+base_branch: 009-anomalistic-portal-mirror-WP06
 base_commit: 020517a2213a4c278dfd373b525d79daddc5bbdf
 created_at: '2026-02-03T17:04:21.344567+00:00'
 subtasks:
