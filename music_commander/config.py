@@ -362,6 +362,32 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
             raise ConfigValidationError("anomalistic.download_source", value, "must be a string")
         config.anomalistic_download_source = value
 
+    # Parse [anomalistic] section
+    anomalistic = data.get("anomalistic", {})
+    if "output_dir" in anomalistic:
+        value = anomalistic["output_dir"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("anomalistic.output_dir", value, "must be a string path")
+        config.anomalistic_output_dir = Path(value)
+
+    if "format" in anomalistic:
+        value = anomalistic["format"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("anomalistic.format", value, "must be a string")
+        config.anomalistic_format = value
+
+    if "output_pattern" in anomalistic:
+        value = anomalistic["output_pattern"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("anomalistic.output_pattern", value, "must be a string")
+        config.anomalistic_output_pattern = value
+
+    if "download_source" in anomalistic:
+        value = anomalistic["download_source"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("anomalistic.download_source", value, "must be a string")
+        config.anomalistic_download_source = value
+
     return config
 
 
@@ -412,6 +438,19 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
         bandcamp_data["match_threshold"] = config.bandcamp_match_threshold
     if bandcamp_data:
         data["bandcamp"] = bandcamp_data
+
+    # Build [anomalistic] section (only if non-default values)
+    anomalistic_data: dict[str, Any] = {}
+    if config.anomalistic_output_dir is not None:
+        anomalistic_data["output_dir"] = str(config.anomalistic_output_dir)
+    if config.anomalistic_format != "flac":
+        anomalistic_data["format"] = config.anomalistic_format
+    if config.anomalistic_output_pattern != "{{artist}} - {{album}}":
+        anomalistic_data["output_pattern"] = config.anomalistic_output_pattern
+    if config.anomalistic_download_source != "wav":
+        anomalistic_data["download_source"] = config.anomalistic_download_source
+    if anomalistic_data:
+        data["anomalistic"] = anomalistic_data
 
     # Build [anomalistic] section (only if non-default values)
     anomalistic_data: dict[str, Any] = {}
