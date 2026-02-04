@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: Conversion Pipeline and Comment Tagging
-lane: "doing"
+lane: "done"
 dependencies:
 - WP01
 base_branch: 009-anomalistic-portal-mirror-WP01
@@ -295,3 +295,4 @@ spec-kitty implement WP05 --base WP04
 - 2026-02-03T22:07:07Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
 - 2026-02-03T22:08:01Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned
 - 2026-02-03T22:51:50Z – claude-code – shell_pid=3076891 – lane=doing – Started review via workflow command
+- 2026-02-03T22:54:19Z – claude-code – shell_pid=3076891 – lane=done – Review passed: All subtasks verified. extra_metadata backward compatible, converter orchestration correct, Jinja2 sanitization thorough, meta.json structure correct, lossy→lossless and format-match edge cases handled, artwork list handling aligned with WP04. 44 tests pass.

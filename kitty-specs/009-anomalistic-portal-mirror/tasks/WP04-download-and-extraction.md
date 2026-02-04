@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: Download and Archive Extraction
-lane: "doing"
+lane: "done"
 dependencies: [WP02]
 base_branch: 009-anomalistic-portal-mirror-WP02
 base_commit: 48d3788ac2efc595b9b9cb8ab55be71057daa4aa
@@ -227,3 +227,4 @@ spec-kitty implement WP04 --base WP02
 - 2026-02-03T20:03:26Z – OpenCode – shell_pid=2983876 – lane=doing – Started review via workflow command
 - 2026-02-03T20:04:12Z – OpenCode – shell_pid=2983876 – lane=planned – Moved to planned
 - 2026-02-03T22:49:13Z – claude-code – shell_pid=3075146 – lane=doing – Started review via workflow command
+- 2026-02-03T22:51:43Z – claude-code – shell_pid=3075146 – lane=done – Review passed: All subtasks verified. download_archive with temp file safety, ZIP/RAR extraction, format detection, audio/artwork discovery all correct. discover_artwork returns list[Path] as required. 29 tests pass.
