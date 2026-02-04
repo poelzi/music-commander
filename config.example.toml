@@ -15,3 +15,18 @@ colored_output = true
 [git_annex]
 # Default remote for git-annex operations (optional)
 # default_remote = "nas"
+
+[anomalistic]
+# Output directory for mirrored releases (default: <music_repo>/Anomalistic)
+# output_dir = "~/Music/Anomalistic"
+
+# Target audio format (default: flac)
+# Supported: flac, mp3-320, mp3-v0, aiff, wav
+# format = "flac"
+
+# Jinja2 template for output folder structure
+# Available variables: artist, album, genre, label, year
+# output_pattern = "{{artist}} - {{album}}"
+
+# Preferred download source format: wav or mp3 (default: wav)
+# download_source = "wav"

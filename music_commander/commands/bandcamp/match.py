@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from music_commander.bandcamp.matcher import (
     MatchReport,
-    MatchTier,
     ReleaseMatch,
     match_releases,
 )
@@ -30,6 +29,7 @@ from music_commander.cache.models import (
 from music_commander.cache.session import get_cache_session
 from music_commander.cli import pass_context
 from music_commander.commands.bandcamp import EXIT_MATCH_ERROR, EXIT_SUCCESS, EXIT_SYNC_ERROR, cli
+from music_commander.utils.matching import MatchTier
 from music_commander.utils.output import THEME, error, info, is_debug, pager_print, success, verbose
 from music_commander.utils.output import console as global_console
 

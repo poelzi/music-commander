@@ -52,6 +52,10 @@ class Config:
     bandcamp_session_cookie: str | None = None
     bandcamp_default_format: str = "flac"
     bandcamp_match_threshold: int = 60
+    anomalistic_output_dir: Path | None = None
+    anomalistic_format: str = "flac"
+    anomalistic_output_pattern: str = "{{artist}} - {{album}}"
+    anomalistic_download_source: str = "wav"
     config_path: Path | None = None
 
     def validate(self) -> list[str]:
@@ -86,6 +90,15 @@ class Config:
             warnings.append(
                 f"bandcamp.match_threshold={self.bandcamp_match_threshold} "
                 f"is outside valid range 0-100"
+            )
+
+        if self.anomalistic_output_dir is not None:
+            self.anomalistic_output_dir = self.anomalistic_output_dir.expanduser().resolve()
+
+        if self.anomalistic_download_source not in ("wav", "mp3"):
+            warnings.append(
+                f"anomalistic.download_source='{self.anomalistic_download_source}' "
+                f"is not a valid source (must be 'wav' or 'mp3')"
             )
 
         return warnings
@@ -219,49 +232,31 @@ def _parse_config_dict(data: dict[str, Any], config_path: Path) -> Config:
             raise ConfigValidationError("bandcamp.match_threshold", value, "must be an integer")
         config.bandcamp_match_threshold = value
 
-    # Parse [bandcamp] section
-    bandcamp = data.get("bandcamp", {})
-    if "session_cookie" in bandcamp:
-        value = bandcamp["session_cookie"]
-        if value is not None and not isinstance(value, str):
-            raise ConfigValidationError(
-                "bandcamp.session_cookie", value, "must be a string or null"
-            )
-        config.bandcamp_session_cookie = value
-
-    if "default_format" in bandcamp:
-        value = bandcamp["default_format"]
+    # Parse [anomalistic] section
+    anomalistic = data.get("anomalistic", {})
+    if "output_dir" in anomalistic:
+        value = anomalistic["output_dir"]
         if not isinstance(value, str):
-            raise ConfigValidationError("bandcamp.default_format", value, "must be a string")
-        config.bandcamp_default_format = value
+            raise ConfigValidationError("anomalistic.output_dir", value, "must be a string path")
+        config.anomalistic_output_dir = Path(value)
 
-    if "match_threshold" in bandcamp:
-        value = bandcamp["match_threshold"]
-        if not isinstance(value, int):
-            raise ConfigValidationError("bandcamp.match_threshold", value, "must be an integer")
-        config.bandcamp_match_threshold = value
-
-    # Parse [bandcamp] section
-    bandcamp = data.get("bandcamp", {})
-    if "session_cookie" in bandcamp:
-        value = bandcamp["session_cookie"]
-        if value is not None and not isinstance(value, str):
-            raise ConfigValidationError(
-                "bandcamp.session_cookie", value, "must be a string or null"
-            )
-        config.bandcamp_session_cookie = value
-
-    if "default_format" in bandcamp:
-        value = bandcamp["default_format"]
+    if "format" in anomalistic:
+        value = anomalistic["format"]
         if not isinstance(value, str):
-            raise ConfigValidationError("bandcamp.default_format", value, "must be a string")
-        config.bandcamp_default_format = value
+            raise ConfigValidationError("anomalistic.format", value, "must be a string")
+        config.anomalistic_format = value
 
-    if "match_threshold" in bandcamp:
-        value = bandcamp["match_threshold"]
-        if not isinstance(value, int):
-            raise ConfigValidationError("bandcamp.match_threshold", value, "must be an integer")
-        config.bandcamp_match_threshold = value
+    if "output_pattern" in anomalistic:
+        value = anomalistic["output_pattern"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("anomalistic.output_pattern", value, "must be a string")
+        config.anomalistic_output_pattern = value
+
+    if "download_source" in anomalistic:
+        value = anomalistic["download_source"]
+        if not isinstance(value, str):
+            raise ConfigValidationError("anomalistic.download_source", value, "must be a string")
+        config.anomalistic_download_source = value
 
     return config
 
@@ -314,27 +309,18 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
     if bandcamp_data:
         data["bandcamp"] = bandcamp_data
 
-    # Build [bandcamp] section (only if non-default values)
-    bandcamp_data: dict[str, Any] = {}
-    if config.bandcamp_session_cookie is not None:
-        bandcamp_data["session_cookie"] = config.bandcamp_session_cookie
-    if config.bandcamp_default_format != "flac":
-        bandcamp_data["default_format"] = config.bandcamp_default_format
-    if config.bandcamp_match_threshold != 60:
-        bandcamp_data["match_threshold"] = config.bandcamp_match_threshold
-    if bandcamp_data:
-        data["bandcamp"] = bandcamp_data
-
-    # Build [bandcamp] section (only if non-default values)
-    bandcamp_data: dict[str, Any] = {}
-    if config.bandcamp_session_cookie is not None:
-        bandcamp_data["session_cookie"] = config.bandcamp_session_cookie
-    if config.bandcamp_default_format != "flac":
-        bandcamp_data["default_format"] = config.bandcamp_default_format
-    if config.bandcamp_match_threshold != 60:
-        bandcamp_data["match_threshold"] = config.bandcamp_match_threshold
-    if bandcamp_data:
-        data["bandcamp"] = bandcamp_data
+    # Build [anomalistic] section (only if non-default values)
+    anomalistic_data: dict[str, Any] = {}
+    if config.anomalistic_output_dir is not None:
+        anomalistic_data["output_dir"] = str(config.anomalistic_output_dir)
+    if config.anomalistic_format != "flac":
+        anomalistic_data["format"] = config.anomalistic_format
+    if config.anomalistic_output_pattern != "{{artist}} - {{album}}":
+        anomalistic_data["output_pattern"] = config.anomalistic_output_pattern
+    if config.anomalistic_download_source != "wav":
+        anomalistic_data["download_source"] = config.anomalistic_download_source
+    if anomalistic_data:
+        data["anomalistic"] = anomalistic_data
 
     with open(config_path, "wb") as f:
         tomli_w.dump(data, f)

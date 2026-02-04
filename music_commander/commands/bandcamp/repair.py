@@ -24,12 +24,6 @@ from rich.table import Table
 from music_commander.bandcamp.client import BandcampClient
 from music_commander.bandcamp.cookies import get_session_cookie, validate_cookie
 from music_commander.bandcamp.downloader import download_release, resolve_format
-from music_commander.bandcamp.matcher import (
-    MatchTier,
-    classify_match,
-    match_release,
-    match_track,
-)
 from music_commander.cache.models import (
     BandcampRelease,
     BandcampReleaseFormat,
@@ -48,6 +42,12 @@ from music_commander.commands.bandcamp import (
     cli,
 )
 from music_commander.exceptions import BandcampAuthError, BandcampError
+from music_commander.utils.matching import (
+    MatchTier,
+    classify_match,
+    match_release,
+    match_track,
+)
 from music_commander.utils.output import error, info, success, warning
 
 logger = logging.getLogger(__name__)
