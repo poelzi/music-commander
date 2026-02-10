@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from music_commander.bandcamp.client import BandcampClient
 from music_commander.bandcamp.cookies import get_session_cookie, validate_cookie
+from music_commander.bandcamp.parser import extract_download_formats
 from music_commander.cache.models import (
     BandcampRelease,
     BandcampReleaseFormat,
@@ -30,6 +31,7 @@ from music_commander.cache.session import get_cache_session
 from music_commander.cli import pass_context
 from music_commander.commands.bandcamp import EXIT_AUTH_ERROR, EXIT_SUCCESS, EXIT_SYNC_ERROR, cli
 from music_commander.exceptions import BandcampAuthError, BandcampError
+from music_commander.utils.output import debug as debug_msg
 from music_commander.utils.output import error, info, is_verbose, success, verbose
 
 logger = logging.getLogger(__name__)
@@ -199,8 +201,8 @@ def sync_collection(
                 if is_new:
                     new_count += 1
 
-                # Store formats from item data if available
-                _store_item_formats(client, session, item)
+                # Store formats and tracks from redownload page
+                _store_item_details(client, session, item)
 
                 # Handle discography bundles
                 if _is_discography_item(item):
@@ -309,41 +311,68 @@ def _store_formats(session: Session, release_id: int, formats: dict[str, str]) -
             session.add(fmt)
 
 
-def _store_item_formats(client: BandcampClient, session: Session, item: dict[str, Any]) -> None:
-    """Store available download formats for a standard collection item.
+def _store_item_details(client: BandcampClient, session: Session, item: dict[str, Any]) -> None:
+    """Store download formats and tracks for a collection item.
 
-    Attempts to extract formats from item data first, then falls back
-    to fetching the redownload page if needed.
+    Formats are fetched from the redownload page; tracks come from the
+    mobile album API (the redownload page does not include track data).
     """
     sale_item_id = item.get("sale_item_id")
     if sale_item_id is None:
         return
 
-    # Check if formats already stored
-    existing_count = session.query(BandcampReleaseFormat).filter_by(release_id=sale_item_id).count()
-    if existing_count > 0:
+    has_formats = (
+        session.query(BandcampReleaseFormat).filter_by(release_id=sale_item_id).count() > 0
+    )
+    has_tracks = session.query(BandcampTrack).filter_by(release_id=sale_item_id).count() > 0
+
+    if has_formats and has_tracks:
         return
 
-    # Try to get formats from the redownload page
-    redownload_url = item.get("redownload_url")
-    if not redownload_url:
-        return
+    debug_msg(
+        f"  details: fetching {sale_item_id}"
+        f" (need_formats={not has_formats}, need_tracks={not has_tracks})"
+    )
 
-    try:
-        formats = client.get_download_formats(redownload_url)
-        if formats:
-            _store_formats(session, sale_item_id, formats)
-    except Exception:
-        # Non-critical: format discovery failure shouldn't block sync
-        logger.debug("Could not fetch formats for sale_item_id=%s", sale_item_id)
+    # Fetch formats from redownload page
+    if not has_formats:
+        redownload_url = item.get("redownload_url")
+        if redownload_url:
+            try:
+                digital_items = client.fetch_redownload_page_items(redownload_url)
+                if digital_items:
+                    formats = extract_download_formats(digital_items[0])
+                    if formats:
+                        _store_formats(session, sale_item_id, formats)
+                        debug_msg(f"  details: stored {len(formats)} formats for {sale_item_id}")
+            except Exception as exc:
+                debug_msg(f"  details: error fetching formats for {sale_item_id}: {exc}")
+                logger.debug("Could not fetch formats for sale_item_id=%s", sale_item_id)
+
+    # Fetch tracks from tralbum API
+    if not has_tracks:
+        tralbum_type = item.get("tralbum_type") or item.get("url_hints", {}).get("item_type")
+        tralbum_id = item.get("tralbum_id") or item.get("item_id")
+        band_id = item.get("band_id")
+        if tralbum_type and tralbum_id and band_id:
+            try:
+                tracks = client.fetch_tralbum_tracks(tralbum_type, tralbum_id, band_id)
+                if tracks:
+                    _store_tracks(session, sale_item_id, tracks)
+                    debug_msg(f"  details: stored {len(tracks)} tracks for {sale_item_id}")
+                else:
+                    debug_msg(f"  details: no tracks from tralbum API for {sale_item_id}")
+            except Exception as exc:
+                debug_msg(f"  details: error fetching tracks for {sale_item_id}: {exc}")
+                logger.debug("Could not fetch tracks for sale_item_id=%s", sale_item_id)
+        else:
+            debug_msg(
+                f"  details: skip tracks for {sale_item_id} (missing tralbum_type/id/band_id)"
+            )
 
 
 def _is_discography_item(item: dict[str, Any]) -> bool:
     """Check if a collection item is a discography bundle."""
-    # Discography bundles typically have sale_item_type "b" (bundle)
-    # or explicit flags in the API response
-    if item.get("sale_item_type") == "b":
-        return True
     if item.get("is_discography"):
         return True
     return False
@@ -391,8 +420,6 @@ def _expand_discography(
         existing = session.query(BandcampRelease).filter_by(sale_item_id=di_id).first()
         if existing:
             continue
-
-        from music_commander.bandcamp.parser import extract_download_formats
 
         release = BandcampRelease(
             sale_item_id=di_id,

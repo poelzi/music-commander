@@ -336,7 +336,9 @@ def _display_results(
             else:
                 score_style = "red"
 
-            type_label = {"a": "", "t": "S", "b": "B"}.get(rm.sale_item_type, "")
+            type_label = {"p": "P", "r": "R", "c": "C", "i": "I", "s": "S"}.get(
+                rm.sale_item_type, "?"
+            )
             album_display = rm.album_title
             if len(rm.tracks) <= 2:
                 album_display = f"\\[t] {album_display}"
@@ -377,7 +379,9 @@ def _display_results(
         table.add_column("URL", style="dim")
 
         for r in display_unmatched:
-            type_label = {"a": "", "t": "S", "b": "B"}.get(r.sale_item_type, "")
+            type_label = {"p": "P", "r": "R", "c": "C", "i": "I", "s": "S"}.get(
+                r.sale_item_type, "?"
+            )
             url = r.bandcamp_url or ""
             table.add_row(
                 type_label,
