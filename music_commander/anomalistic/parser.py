@@ -36,6 +36,7 @@ class ParsedRelease:
     credits: str | None = None
     cover_art_url: str | None = None
     release_date: str | None = None
+    label: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +351,50 @@ def extract_credits(html_content: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# Label extraction
+# ---------------------------------------------------------------------------
+
+_RELEASED_BY_PATTERN = re.compile(
+    r"released\s+(?:by|on)[:\s]+(.+)",
+    re.IGNORECASE,
+)
+
+_LABEL_STRIP = re.compile(r"\s*(?:records?|recordings?|music|audio|label)\s*$", re.IGNORECASE)
+
+
+def extract_label(html_content: str) -> str | None:
+    """Extract the record label name from HTML content.
+
+    Looks for "Released by" or "Released on" patterns in the post text.
+    Strips common suffixes like "Records" for a cleaner label name.
+
+    Args:
+        html_content: The ``content.rendered`` field.
+
+    Returns:
+        Label name string, or None if not found.
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    text = soup.get_text("\n", strip=True)
+
+    for line in text.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        m = _RELEASED_BY_PATTERN.search(line)
+        if m:
+            label = m.group(1).strip().rstrip(".,;:")
+            # Take only the first label if multiple are joined with &/and
+            for sep in (" & ", " and ", ", "):
+                if sep in label.lower():
+                    label = label[: label.lower().index(sep)]
+                    break
+            return label if label else None
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -378,6 +423,7 @@ def parse_release_content(post: dict[str, Any]) -> ParsedRelease:
         credits=extract_credits(content_rendered),
         cover_art_url=extract_cover_art(content_rendered, post),
         release_date=date,
+        label=extract_label(content_rendered),
     )
 
     return release

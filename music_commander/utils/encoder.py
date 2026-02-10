@@ -529,7 +529,8 @@ def export_file(
             proc = subprocess.run(
                 cmd,
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=600,
             )
 
@@ -561,7 +562,8 @@ def export_file(
                     post_proc = subprocess.run(
                         full_cmd,
                         capture_output=True,
-                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
                         timeout=60,
                     )
 

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import pytest
+
 from music_commander.anomalistic.parser import (
     ParsedRelease,
     TrackInfo,
     extract_cover_art,
     extract_credits,
     extract_download_urls,
+    extract_label,
     extract_tracklist,
     parse_release_content,
     parse_title,
@@ -350,6 +352,46 @@ _FULL_POST = {
 }
 
 
+class TestExtractLabel:
+    """Tests for extract_label()."""
+
+    def test_released_by_colon(self):
+        html = "<p>Released by: Anomalistic Records</p>"
+        assert extract_label(html) == "Anomalistic Records"
+
+    def test_released_on(self):
+        html = "<p>Released on Anomalistic Records</p>"
+        assert extract_label(html) == "Anomalistic Records"
+
+    def test_released_by_no_colon(self):
+        html = "<p>Released by Anomalistic Records</p>"
+        assert extract_label(html) == "Anomalistic Records"
+
+    def test_multiple_labels_takes_first(self):
+        html = "<p>Released on Anomalistic & Xibalba Records</p>"
+        assert extract_label(html) == "Anomalistic"
+
+    def test_multiple_labels_and(self):
+        html = "<p>Released by Anomalistic and Xibalba Records</p>"
+        assert extract_label(html) == "Anomalistic"
+
+    def test_no_label(self):
+        html = "<p>Just some content with no label info.</p>"
+        assert extract_label(html) is None
+
+    def test_trailing_punctuation_stripped(self):
+        html = "<p>Released by: Anomalistic Records.</p>"
+        assert extract_label(html) == "Anomalistic Records"
+
+    def test_embedded_in_credits_block(self):
+        html = (
+            "<p>Written and Produced by: XianZai<br>"
+            "Mastering at: Optinervear Studio<br>"
+            "Released by: Anomalistic Records</p>"
+        )
+        assert extract_label(html) == "Anomalistic Records"
+
+
 class TestParseReleaseContent:
     """Tests for parse_release_content()."""
 
@@ -364,6 +406,7 @@ class TestParseReleaseContent:
         assert result.credits is not None
         assert "Optinervear" in result.credits
         assert result.release_date == "2023-05-09T15:27:09"
+        assert result.label == "Anomalistic Records"
 
     def test_va_post(self):
         post = {
@@ -395,3 +438,4 @@ class TestParseReleaseContent:
         assert result.tracklist == []
         assert result.credits is None
         assert result.cover_art_url is None
+        assert result.label is None

@@ -14,10 +14,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from music_commander.utils.matching import match_release
+from rapidfuzz import fuzz
 from sqlalchemy.orm import Session
 
 from music_commander.cache.models import AnomaListicRelease, CacheTrack
+from music_commander.utils.matching import match_release, normalize_for_matching
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +74,9 @@ def check_fuzzy_match(
     session: Session,
     artist: str,
     album: str,
-    threshold: int = 60,
+    threshold: int = 80,
     *,
+    min_album_score: int = 50,
     local_albums: list[tuple[str, str]] | None = None,
 ) -> tuple[bool, float, str | None]:
     """Fuzzy match a release against the existing collection.
@@ -82,11 +84,17 @@ def check_fuzzy_match(
     Uses ``match_release()`` from the shared matching module to compare
     artist+album against all distinct (artist, album) pairs in the cache.
 
+    A minimum album score gate prevents false positives where a high
+    artist score (e.g. same artist or "Various Artists") carries an
+    unrelated album over the combined threshold.
+
     Args:
         session: SQLAlchemy session.
         artist: Release artist name.
         album: Release album title.
-        threshold: Minimum score (0-100) to consider a match.
+        threshold: Minimum combined score (0-100) to consider a match.
+        min_album_score: Minimum album-only score (0-100). Rejects matches
+            where the album title is too different regardless of artist.
         local_albums: Pre-loaded list of (artist, album) pairs. If None,
             queries the database. Pass this when checking multiple releases
             to avoid repeated queries.
@@ -98,15 +106,22 @@ def check_fuzzy_match(
         local_albums = load_local_albums(session)
 
     best_score = 0.0
+    best_album_score = 0.0
     best_match: str | None = None
+
+    norm_album = normalize_for_matching(album)
 
     for local_artist, local_album in local_albums:
         score = match_release(local_artist, local_album, artist, album)
         if score > best_score:
             best_score = score
+            best_album_score = fuzz.token_sort_ratio(
+                normalize_for_matching(local_album), norm_album
+            )
             best_match = f"{local_artist} - {local_album}"
 
-    return (best_score >= threshold, best_score, best_match)
+    is_match = best_score >= threshold and best_album_score >= min_album_score
+    return (is_match, best_score, best_match)
 
 
 def load_local_albums(session: Session) -> list[tuple[str, str]]:
@@ -132,7 +147,7 @@ def check_duplicate(
     release_url: str,
     artist: str,
     album: str,
-    threshold: int = 60,
+    threshold: int = 80,
     *,
     local_albums: list[tuple[str, str]] | None = None,
 ) -> DedupResult:

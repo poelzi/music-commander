@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import shutil
 import subprocess
@@ -21,10 +22,17 @@ def set_verbosity(*, verbose: bool = False, debug: bool = False) -> None:
     """Configure module-level verbosity flags.
 
     Called from the CLI entry point after argument parsing.
+    Also configures Python's logging level so that ``logger.debug()``
+    calls in submodules produce output when ``--debug`` is active.
     """
     global _verbose_enabled, _debug_enabled
     _verbose_enabled = verbose or debug  # debug implies verbose
     _debug_enabled = debug
+
+    if debug:
+        logging.basicConfig(level=logging.DEBUG, format="%(name)s: %(message)s")
+    elif verbose:
+        logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
 
 
 def is_verbose() -> bool:

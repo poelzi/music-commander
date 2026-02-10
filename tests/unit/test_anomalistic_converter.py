@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from music_commander.anomalistic.converter import (
     _get_stream_copy_preset,
     _is_lossless_target,
@@ -17,7 +18,6 @@ from music_commander.anomalistic.converter import (
     render_output_path,
     write_meta_json,
 )
-
 from music_commander.utils.encoder import (
     FLAC,
     MP3_320,
@@ -544,6 +544,37 @@ class TestConvertFile:
         assert "-metadata" in cmd
         meta_idx = cmd.index("-metadata")
         assert "comment=" in cmd[meta_idx + 1]
+
+    @patch("music_commander.anomalistic.converter.subprocess.run")
+    @patch("music_commander.anomalistic.converter.probe_source")
+    def test_non_utf8_ffmpeg_output(self, mock_probe, mock_run, tmp_path):
+        """ffmpeg stderr with non-UTF-8 bytes (e.g. Latin-1 metadata) should not crash."""
+        mock_probe.return_value = self._source_info()
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_run.return_value = mock_proc
+
+        input_file = tmp_path / "input.wav"
+        input_file.write_bytes(b"fake audio")
+        output_dir = tmp_path / "output"
+
+        def side_effect(*args, **kwargs):
+            cmd = args[0]
+            out = Path(cmd[-1])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(b"converted")
+            return mock_proc
+
+        mock_run.side_effect = side_effect
+
+        result = convert_file(input_file, output_dir, FLAC, "https://example.com/release")
+        assert result is not None
+
+        # Verify encoding="utf-8" and errors="replace" are used instead of text=True
+        call_kwargs = mock_run.call_args.kwargs
+        assert call_kwargs.get("encoding") == "utf-8"
+        assert call_kwargs.get("errors") == "replace"
+        assert "text" not in call_kwargs
 
     @patch("music_commander.anomalistic.converter.subprocess.run")
     @patch("music_commander.anomalistic.converter.probe_source")

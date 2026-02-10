@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+
 from music_commander.anomalistic.downloader import (
     ARTWORK_EXTENSIONS,
     AUDIO_EXTENSIONS,
@@ -21,7 +22,6 @@ from music_commander.anomalistic.downloader import (
     extract_rar,
     extract_zip,
 )
-
 from music_commander.exceptions import AnomaListicError
 
 # ---------------------------------------------------------------------------
@@ -59,6 +59,7 @@ class TestDownloadArchive:
     def test_successful_download(self, mock_get, temp_dir: Path):
         content = b"fake zip content"
         resp = MagicMock()
+        resp.status_code = 200
         resp.headers = {"content-length": str(len(content))}
         resp.iter_content.return_value = [content]
         resp.raise_for_status = MagicMock()
@@ -99,6 +100,7 @@ class TestDownloadArchive:
         content = b"chunk1chunk2"
         resp = MagicMock()
         resp.headers = {"content-length": str(len(content))}
+        resp.status_code = 200
         resp.iter_content.return_value = [b"chunk1", b"chunk2"]
         resp.raise_for_status = MagicMock()
         mock_get.return_value = resp
@@ -113,6 +115,94 @@ class TestDownloadArchive:
         assert len(calls) == 2
         assert calls[0] == (6, 12)
         assert calls[1] == (12, 12)
+
+    @patch("music_commander.anomalistic.downloader.time.sleep")
+    @patch("music_commander.anomalistic.downloader.requests.get")
+    def test_retry_on_connection_error(self, mock_get, mock_sleep, temp_dir: Path):
+        """Retry succeeds on second attempt after connection error."""
+        content = b"full content"
+        good_resp = MagicMock()
+        good_resp.status_code = 200
+        good_resp.headers = {"content-length": str(len(content))}
+        good_resp.iter_content.return_value = [content]
+        good_resp.raise_for_status = MagicMock()
+
+        mock_get.side_effect = [
+            requests.ConnectionError("connection reset"),
+            good_resp,
+        ]
+
+        result = download_archive("https://example.com/test.zip", temp_dir)
+
+        assert result.exists()
+        assert result.read_bytes() == content
+        assert mock_get.call_count == 2
+        mock_sleep.assert_called_once()
+
+    @patch("music_commander.anomalistic.downloader.time.sleep")
+    @patch("music_commander.anomalistic.downloader.requests.get")
+    def test_retry_exhausted(self, mock_get, mock_sleep, temp_dir: Path):
+        """All retries fail — raises AnomaListicError and cleans up temp file."""
+        mock_get.side_effect = requests.ConnectionError("fail")
+
+        with pytest.raises(AnomaListicError, match="Download failed"):
+            download_archive("https://example.com/test.zip", temp_dir)
+
+        assert mock_get.call_count == 3
+        # No temp files left behind
+        assert list(temp_dir.glob(".*")) == []
+
+    @patch("music_commander.anomalistic.downloader.time.sleep")
+    @patch("music_commander.anomalistic.downloader.requests.get")
+    def test_resume_partial_download(self, mock_get, mock_sleep, temp_dir: Path):
+        """Resumes partial download using Range header on retry."""
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        # Simulate a partial temp file from a failed first attempt
+        tmp_file = temp_dir / ".test.zip.tmp"
+        partial = b"partial"
+        tmp_file.write_bytes(partial)
+
+        remaining = b" content"
+        resp = MagicMock()
+        resp.status_code = 206
+        resp.headers = {
+            "Content-Range": f"bytes {len(partial)}-{len(partial) + len(remaining) - 1}/{len(partial) + len(remaining)}",
+        }
+        resp.iter_content.return_value = [remaining]
+        resp.raise_for_status = MagicMock()
+        mock_get.return_value = resp
+
+        result = download_archive("https://example.com/test.zip", temp_dir)
+
+        assert result.exists()
+        assert result.read_bytes() == partial + remaining
+        # Verify Range header was sent
+        call_headers = mock_get.call_args[1].get("headers") or mock_get.call_args.kwargs.get(
+            "headers", {}
+        )
+        assert call_headers.get("Range") == f"bytes={len(partial)}-"
+
+    @patch("music_commander.anomalistic.downloader.time.sleep")
+    @patch("music_commander.anomalistic.downloader.requests.get")
+    def test_resume_fallback_to_full(self, mock_get, mock_sleep, temp_dir: Path):
+        """Server ignores Range header and returns 200 — restarts from scratch."""
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        tmp_file = temp_dir / ".test.zip.tmp"
+        tmp_file.write_bytes(b"stale partial data")
+
+        full_content = b"complete file"
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.headers = {"content-length": str(len(full_content))}
+        resp.iter_content.return_value = [full_content]
+        resp.raise_for_status = MagicMock()
+        mock_get.return_value = resp
+
+        result = download_archive("https://example.com/test.zip", temp_dir)
+
+        assert result.exists()
+        # Should contain only the full content, not stale partial + full
+        assert result.read_bytes() == full_content
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +278,20 @@ class TestExtractZip:
         # Files should be at top level, not in subdirectory
         assert (output / "track1.wav").exists()
         assert not (output / "Artist - Album").exists()
+
+    def test_flatten_nested_same_name_directory(self, temp_dir: Path):
+        """Nested dirs with same name: Album/Album/tracks should flatten."""
+        zip_path = temp_dir / "test.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("VA - Album - WAV/VA - Album - WAV/track1.wav", b"audio1")
+            zf.writestr("VA - Album - WAV/VA - Album - WAV/track2.wav", b"audio2")
+        output = temp_dir / "output"
+
+        extract_zip(zip_path, output)
+
+        assert (output / "track1.wav").exists()
+        assert (output / "track2.wav").exists()
+        assert not (output / "VA - Album - WAV").exists()
 
     def test_no_flatten_multiple_entries(self, temp_dir: Path):
         zip_path = _create_zip(

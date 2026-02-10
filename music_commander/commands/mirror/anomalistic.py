@@ -8,6 +8,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import click
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    MofNCompleteColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
+    TransferSpeedColumn,
+)
 
 from music_commander.anomalistic.category import (
     CategoryType,
@@ -33,7 +42,7 @@ from music_commander.cache.session import get_cache_session
 from music_commander.cli import pass_context
 from music_commander.commands.mirror import EXIT_MIRROR_ERROR, EXIT_SUCCESS, cli
 from music_commander.utils.encoder import PRESETS
-from music_commander.utils.output import error, info, success, verbose, warning
+from music_commander.utils.output import console, error, info, success, verbose, warning
 
 logger = logging.getLogger(__name__)
 
@@ -115,171 +124,221 @@ def anomalistic(ctx: object, force: bool) -> None:
             # Pre-load local albums for fuzzy matching
             local_albums = load_local_albums(session) if not force else []
 
-            for i, post in enumerate(releases, 1):
-                artist = "Unknown"
-                album = "Unknown"
-                try:
-                    parsed = parse_release_content(post)
-                    artist = parsed.artist
-                    album = parsed.album
-                    release_url = post.get("link", "")
+            progress = Progress(
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TimeElapsedColumn(),
+                console=console,
+            )
+            dl_progress = Progress(
+                TextColumn("  [dim]{task.description}[/dim]"),
+                BarColumn(),
+                DownloadColumn(),
+                TransferSpeedColumn(),
+                console=console,
+            )
 
-                    verbose(f"[{i}/{len(releases)}] {artist} - {album}")
+            with progress, dl_progress:
+                overall_task = progress.add_task("Downloading releases", total=len(releases))
 
-                    # Genre/label classification
-                    post_categories = post.get("categories", [])
-                    genre_names = get_release_genres(post_categories, categories)
-                    label_names = get_release_labels(post_categories, categories)
-                    primary_genre = genre_names[0] if genre_names else "Unknown"
-                    primary_label = label_names[0] if label_names else ""
+                for i, post in enumerate(releases, 1):
+                    artist = "Unknown"
+                    album = "Unknown"
+                    try:
+                        parsed = parse_release_content(post)
+                        artist = parsed.artist
+                        album = parsed.album
+                        release_url = post.get("link", "")
 
-                    # Dedup check (unless --force)
-                    if not force:
-                        dedup = check_duplicate(
-                            session,
-                            release_url,
-                            artist,
-                            album,
-                            local_albums=local_albums,
+                        progress.update(
+                            overall_task,
+                            description=f"[bold blue]\\[{i}/{len(releases)}] {artist} - {album}",
                         )
-                        if dedup.should_skip:
-                            verbose(
-                                f"  Skipping: {dedup.reason}"
-                                + (f" ({dedup.match_details})" if dedup.match_details else "")
+
+                        # Genre/label classification
+                        post_categories = post.get("categories", [])
+                        genre_names = get_release_genres(post_categories, categories)
+                        label_names = get_release_labels(post_categories, categories)
+                        primary_genre = genre_names[0] if genre_names else "Unknown"
+                        primary_label = (
+                            label_names[0]
+                            if label_names
+                            else (parsed.label or "Anomalistic Records")
+                        )
+
+                        # Dedup check (unless --force)
+                        if not force:
+                            dedup = check_duplicate(
+                                session,
+                                release_url,
+                                artist,
+                                album,
+                                local_albums=local_albums,
                             )
-                            stats["skipped"] += 1
-                            continue
+                            if dedup.should_skip:
+                                verbose(f"  {artist} - {album}")
+                                verbose(
+                                    f"    Skipping: {dedup.reason}"
+                                    + (f" ({dedup.match_details})" if dedup.match_details else "")
+                                )
+                                stats["skipped"] += 1
+                                progress.advance(overall_task)
+                                continue
 
-                    # Select download URL
-                    download_url = parsed.download_urls.get(source_pref)
-                    if download_url is None:
-                        download_url = next(iter(parsed.download_urls.values()), None)
-                    if not download_url:
-                        warning(f"  No download URL for {artist} - {album}")
-                        stats["failed"] += 1
-                        failures.append(f"{artist} - {album}: no download URL")
-                        continue
-
-                    # Use temp directory for download and extraction
-                    with tempfile.TemporaryDirectory() as tmp_dir:
-                        tmp_path = Path(tmp_dir)
-
-                        # Download archive
-                        verbose(f"  Downloading: {download_url}")
-                        archive_path = download_archive(download_url, tmp_path)
-
-                        # Extract
-                        extract_dir = tmp_path / "extracted"
-                        extract_archive(archive_path, extract_dir)
-
-                        # Discover audio files
-                        audio_files = discover_audio_files(extract_dir)
-                        if not audio_files:
-                            warning(f"  No audio files found in archive for {artist} - {album}")
+                        # Select download URL
+                        download_url = parsed.download_urls.get(source_pref)
+                        if download_url is None:
+                            download_url = next(iter(parsed.download_urls.values()), None)
+                        if not download_url:
+                            warning(f"  No download URL for {artist} - {album}")
                             stats["failed"] += 1
-                            failures.append(f"{artist} - {album}: no audio files in archive")
+                            failures.append(f"{artist} - {album}: no download URL")
+                            progress.advance(overall_task)
                             continue
 
-                        verbose(f"  Found {len(audio_files)} audio files")
+                        # Use temp directory for download and extraction
+                        with tempfile.TemporaryDirectory() as tmp_dir:
+                            tmp_path = Path(tmp_dir)
 
-                        # Render output path
-                        year = post.get("date", "")[:4]
-                        rel_path = render_output_path(
-                            output_pattern,
-                            genre=primary_genre,
-                            label=primary_label,
-                            artist=artist,
-                            album=album,
-                            year=year,
-                        )
-                        final_dir = output_dir / rel_path
-                        final_dir.mkdir(parents=True, exist_ok=True)
+                            # Download archive with progress
+                            dl_task = dl_progress.add_task("Downloading...", total=None)
 
-                        # Convert
-                        converted = convert_release(
-                            audio_files,
-                            final_dir,
-                            preset,
-                            release_url,
-                            cover_art_url=parsed.cover_art_url,
-                            extract_dir=extract_dir,
-                        )
+                            def _progress_cb(
+                                downloaded: int,
+                                total: int | None,
+                                _task: int = dl_task,
+                            ) -> None:
+                                if total:
+                                    dl_progress.update(_task, completed=downloaded, total=total)
+                                else:
+                                    dl_progress.update(_task, completed=downloaded)
 
-                        if not converted:
-                            warning(f"  All conversions failed for {artist} - {album}")
-                            stats["failed"] += 1
-                            failures.append(f"{artist} - {album}: conversion failed")
-                            continue
+                            archive_path = download_archive(
+                                download_url, tmp_path, progress_callback=_progress_cb
+                            )
+                            dl_progress.update(dl_task, visible=False)
 
-                        # Write meta.json
-                        tracks_meta = [
-                            {
-                                "number": t.number,
-                                "title": t.title,
-                                "artist": t.artist,
-                                "bpm": t.bpm,
-                            }
-                            for t in parsed.tracklist
-                        ]
-                        write_meta_json(
-                            final_dir,
-                            artist=artist,
-                            album=album,
-                            release_url=release_url,
-                            genres=genre_names,
-                            labels=label_names,
-                            release_date=parsed.release_date,
-                            cover_art_url=parsed.cover_art_url,
-                            credits=parsed.credits,
-                            download_source=source_pref,
-                            download_url=download_url,
-                            tracks=tracks_meta,
-                        )
+                            # Extract
+                            extract_dir = tmp_path / "extracted"
+                            extract_archive(archive_path, extract_dir)
 
-                    # Update cache
-                    now = datetime.now(timezone.utc).isoformat()
-                    existing = (
-                        session.query(AnomaListicRelease)
-                        .filter(AnomaListicRelease.post_id == post.get("id"))
-                        .first()
-                    )
-                    if existing:
-                        existing.download_status = "downloaded"
-                        existing.output_path = str(final_dir)
-                        existing.last_synced = now
-                    else:
-                        session.add(
-                            AnomaListicRelease(
-                                post_id=post.get("id", 0),
+                            # Discover audio files
+                            audio_files = discover_audio_files(extract_dir)
+                            if not audio_files:
+                                warning(f"  No audio files found in archive for {artist} - {album}")
+                                stats["failed"] += 1
+                                failures.append(f"{artist} - {album}: no audio files in archive")
+                                progress.advance(overall_task)
+                                continue
+
+                            verbose(f"  Found {len(audio_files)} audio files")
+
+                            # Render output path
+                            year = post.get("date", "")[:4]
+                            rel_path = render_output_path(
+                                output_pattern,
+                                genre=primary_genre,
+                                label=primary_label,
                                 artist=artist,
-                                album_title=album,
+                                album=album,
+                                year=year,
+                            )
+                            final_dir = output_dir / rel_path
+                            final_dir.mkdir(parents=True, exist_ok=True)
+
+                            # Convert
+                            converted = convert_release(
+                                audio_files,
+                                final_dir,
+                                preset,
+                                release_url,
+                                cover_art_url=parsed.cover_art_url,
+                                extract_dir=extract_dir,
+                            )
+
+                            if not converted:
+                                warning(f"  All conversions failed for {artist} - {album}")
+                                stats["failed"] += 1
+                                failures.append(f"{artist} - {album}: conversion failed")
+                                progress.advance(overall_task)
+                                continue
+
+                            # Write meta.json
+                            tracks_meta = [
+                                {
+                                    "number": t.number,
+                                    "title": t.title,
+                                    "artist": t.artist,
+                                    "bpm": t.bpm,
+                                }
+                                for t in parsed.tracklist
+                            ]
+                            write_meta_json(
+                                final_dir,
+                                artist=artist,
+                                album=album,
                                 release_url=release_url,
-                                download_url_wav=parsed.download_urls.get("wav"),
-                                download_url_mp3=parsed.download_urls.get("mp3"),
-                                genres=", ".join(genre_names),
-                                labels=", ".join(label_names),
+                                genres=genre_names,
+                                labels=label_names,
                                 release_date=parsed.release_date,
                                 cover_art_url=parsed.cover_art_url,
                                 credits=parsed.credits,
-                                download_status="downloaded",
-                                output_path=str(final_dir),
-                                last_synced=now,
+                                download_source=source_pref,
+                                download_url=download_url,
+                                tracks=tracks_meta,
                             )
+
+                        # Update cache
+                        now = datetime.now(timezone.utc).isoformat()
+                        existing = (
+                            session.query(AnomaListicRelease)
+                            .filter(AnomaListicRelease.post_id == post.get("id"))
+                            .first()
                         )
-                    session.commit()
+                        if existing:
+                            existing.download_status = "downloaded"
+                            existing.output_path = str(final_dir)
+                            existing.last_synced = now
+                        else:
+                            session.add(
+                                AnomaListicRelease(
+                                    post_id=post.get("id", 0),
+                                    artist=artist,
+                                    album_title=album,
+                                    release_url=release_url,
+                                    download_url_wav=parsed.download_urls.get("wav"),
+                                    download_url_mp3=parsed.download_urls.get("mp3"),
+                                    genres=", ".join(genre_names),
+                                    labels=", ".join(label_names),
+                                    release_date=parsed.release_date,
+                                    cover_art_url=parsed.cover_art_url,
+                                    credits=parsed.credits,
+                                    download_status="downloaded",
+                                    output_path=str(final_dir),
+                                    last_synced=now,
+                                )
+                            )
+                        session.commit()
 
-                    stats["downloaded"] += 1
-                    success(f"  Downloaded: {artist} - {album} ({len(converted)} tracks)")
+                        stats["downloaded"] += 1
+                        progress.console.print(
+                            f"  [green]Downloaded: {artist} - {album}"
+                            f" ({len(converted)} tracks)[/green]"
+                        )
 
-                except KeyboardInterrupt:
-                    warning(f"\nInterrupted during: {artist} - {album}")
-                    raise
-                except Exception as e:
-                    logger.exception("Failed to process release: %s - %s", artist, album)
-                    error(f"  Failed: {artist} - {album}: {e}")
-                    stats["failed"] += 1
-                    failures.append(f"{artist} - {album}: {e}")
-                    continue
+                    except KeyboardInterrupt:
+                        warning(f"\nInterrupted during: {artist} - {album}")
+                        raise
+                    except Exception as e:
+                        logger.exception("Failed to process release: %s - %s", artist, album)
+                        error(f"  Failed: {artist} - {album}: {e}")
+                        stats["failed"] += 1
+                        failures.append(f"{artist} - {album}: {e}")
+
+                    finally:
+                        progress.advance(overall_task)
 
     except KeyboardInterrupt:
         warning("\nMirror interrupted by user")

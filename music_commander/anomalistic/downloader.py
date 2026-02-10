@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import time
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
@@ -21,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 _DOWNLOAD_CHUNK_SIZE = 8192
 _USER_AGENT = "music-commander/0.1"
+_MAX_DOWNLOAD_RETRIES = 3
+_DOWNLOAD_BACKOFF_BASE = 2.0
 
 AUDIO_EXTENSIONS = frozenset({".wav", ".mp3", ".flac", ".aif", ".aiff", ".ogg", ".opus"})
 ARTWORK_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png"})
@@ -39,10 +42,11 @@ def download_archive(
     output_dir: Path,
     progress_callback: Callable[[int, int | None], None] | None = None,
 ) -> Path:
-    """Download an archive file with temp file safety.
+    """Download an archive file with temp file safety and retry/resume.
 
     Uses the ``.filename.tmp`` pattern during download, then atomically
-    renames on success. Cleans up temp file on failure.
+    renames on success. Retries with exponential backoff on network errors,
+    resuming partial downloads via HTTP Range when the server supports it.
 
     Args:
         url: Download URL for the archive.
@@ -53,7 +57,7 @@ def download_archive(
         Path to the downloaded archive file.
 
     Raises:
-        AnomaListicError: If download fails.
+        AnomaListicError: If download fails after all retries.
     """
     # Derive filename from URL
     parsed = urlparse(url)
@@ -71,43 +75,78 @@ def download_archive(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        resp = requests.get(
-            url,
-            stream=True,
-            timeout=60,
-            headers={"User-Agent": _USER_AGENT},
-        )
-        resp.raise_for_status()
+    for attempt in range(_MAX_DOWNLOAD_RETRIES):
+        try:
+            # Check for partial download from a previous attempt
+            downloaded = tmp_path.stat().st_size if tmp_path.exists() else 0
+            headers: dict[str, str] = {"User-Agent": _USER_AGENT}
+            if downloaded > 0:
+                headers["Range"] = f"bytes={downloaded}-"
+                logger.info("Resuming download from byte %d", downloaded)
 
-        total_size = int(resp.headers.get("content-length", 0)) or None
+            resp = requests.get(
+                url,
+                stream=True,
+                timeout=(60, 120),
+                headers=headers,
+            )
+            resp.raise_for_status()
 
-        downloaded = 0
-        with open(tmp_path, "wb") as f:
-            for chunk in resp.iter_content(chunk_size=_DOWNLOAD_CHUNK_SIZE):
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if progress_callback is not None:
-                        progress_callback(downloaded, total_size)
+            if resp.status_code == 206:
+                # Server supports resume — append to existing temp file
+                content_range = resp.headers.get("Content-Range", "")
+                # Content-Range: bytes <start>-<end>/<total>
+                total_size: int | None = None
+                if "/" in content_range:
+                    try:
+                        total_size = int(content_range.rsplit("/", 1)[1])
+                    except ValueError:
+                        total_size = None
+                mode = "ab"
+            else:
+                # Server returned full response — start from scratch
+                downloaded = 0
+                total_size = int(resp.headers.get("content-length", 0)) or None
+                mode = "wb"
 
-        # Atomic rename
-        tmp_path.replace(final_path)
-        logger.info("Downloaded: %s (%d bytes)", final_path, downloaded)
-        return final_path
+            with open(tmp_path, mode) as f:
+                for chunk in resp.iter_content(chunk_size=_DOWNLOAD_CHUNK_SIZE):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if progress_callback is not None:
+                            progress_callback(downloaded, total_size)
 
-    except KeyboardInterrupt:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
-    except requests.RequestException as e:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise AnomaListicError(f"Download failed for {url}: {e}") from e
-    except Exception:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
+            # Atomic rename
+            tmp_path.replace(final_path)
+            logger.info("Downloaded: %s (%d bytes)", final_path, downloaded)
+            return final_path
+
+        except KeyboardInterrupt:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise
+        except requests.RequestException as e:
+            if attempt == _MAX_DOWNLOAD_RETRIES - 1:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+                raise AnomaListicError(f"Download failed for {url}: {e}") from e
+            wait = _DOWNLOAD_BACKOFF_BASE * (2**attempt)
+            logger.warning(
+                "Download failed (attempt %d/%d), retrying in %.1fs: %s",
+                attempt + 1,
+                _MAX_DOWNLOAD_RETRIES,
+                wait,
+                e,
+            )
+            time.sleep(wait)
+        except Exception:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise
+
+    # Should not be reached, but satisfy type checker
+    raise AnomaListicError(f"Download failed for {url} after {_MAX_DOWNLOAD_RETRIES} attempts")
 
 
 # ---------------------------------------------------------------------------
@@ -308,11 +347,18 @@ def _flatten_single_dir(directory: Path) -> None:
     """If directory contains a single subdirectory (and nothing else), move its contents up.
 
     This handles the common case where a ZIP contains a wrapper directory
-    like ``Artist - Album/track1.wav``.
+    like ``Artist - Album/track1.wav``.  Applies recursively to handle
+    nested wrappers (e.g. ``Album/Album/tracks``).
     """
-    entries = list(directory.iterdir())
-    if len(entries) == 1 and entries[0].is_dir():
+    while True:
+        entries = list(directory.iterdir())
+        if len(entries) != 1 or not entries[0].is_dir():
+            break
         subdir = entries[0]
-        for item in subdir.iterdir():
+        # Rename subdir to a temp name first to avoid conflicts when
+        # a child item has the same name as the subdir itself
+        tmp_name = directory / (subdir.name + ".__flatten_tmp__")
+        subdir.rename(tmp_name)
+        for item in tmp_name.iterdir():
             item.rename(directory / item.name)
-        subdir.rmdir()
+        tmp_name.rmdir()

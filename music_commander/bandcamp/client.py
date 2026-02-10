@@ -30,7 +30,7 @@ _USER_AGENT = "music-commander/0.1"
 _REQUEST_TIMEOUT = 30
 _COLLECTION_PAGE_SIZE = 100
 _MAX_RETRIES = 5
-_BACKOFF_BASE = 5.0  # seconds
+_BACKOFF_BASE = 2.0  # seconds
 
 _COLLECTION_API_URL = "https://bandcamp.com/api/fancollection/1/collection_items"
 
@@ -47,11 +47,11 @@ class _AdaptiveRateLimiter:
 
     def __init__(
         self,
-        min_interval: float = 0.2,
+        min_interval: float = 0.05,
         max_interval: float = 30.0,
-        initial_interval: float = 0.5,
-        increase_delta: float = 0.05,
-        decrease_factor: float = 1.5,
+        initial_interval: float = 0.1,
+        increase_delta: float = 0.1,
+        decrease_factor: float = 1.2,
     ) -> None:
         self._interval = initial_interval
         self._min = min_interval
@@ -349,6 +349,34 @@ class BandcampClient:
             return {}
 
         return extract_download_formats(digital_items[0])
+
+    def fetch_tralbum_tracks(
+        self, tralbum_type: str, tralbum_id: int, band_id: int
+    ) -> list[dict[str, Any]]:
+        """Fetch track listing for a release via the mobile API.
+
+        Args:
+            tralbum_type: "a" for album, "t" for track.
+            tralbum_id: The tralbum ID.
+            band_id: The band/artist ID.
+
+        Returns:
+            List of track dicts with 'title', 'track_num', 'duration' keys.
+        """
+        resp = self._request(
+            "GET",
+            "https://bandcamp.com/api/mobile/25/tralbum_details",
+            params={
+                "tralbum_type": tralbum_type,
+                "tralbum_id": tralbum_id,
+                "band_id": band_id,
+            },
+        )
+        try:
+            data = resp.json()
+        except ValueError:
+            return []
+        return data.get("tracks") or []
 
     def fetch_redownload_page_items(self, redownload_url: str) -> list[dict[str, Any]]:
         """Fetch all digital items from a redownload page.

@@ -63,7 +63,9 @@ class ReleaseMatch:
     bandcamp_url: str | None
     band_name: str
     album_title: str
-    sale_item_type: str = "a"  # "a"=album, "t"=track/single, "b"=bundle
+    sale_item_type: str = (
+        "p"  # acquisition type: p=purchase, r=redeemed, c=code, i=bundle-item, s=sub-item
+    )
     tracks: list[TrackMatch] = field(default_factory=list)
     score: float = 0.0
     tier: MatchTier = MatchTier.NONE
@@ -171,6 +173,71 @@ def _phase_metadata(
 # ---------------------------------------------------------------------------
 
 
+def _match_single_file(
+    release: BandcampRelease,
+    candidate_tracks: list[CacheTrack],
+    claimed_files: set[str],
+    threshold: float,
+    phase: str,
+) -> ReleaseMatch | None:
+    """Try to match a release to a single unclaimed file by title similarity.
+
+    Used for single-file releases (singles) that share a folder with other releases.
+    Matches release.album_title against each file's title and filename.
+
+    Returns a ReleaseMatch if a file scores above threshold, else None.
+    """
+    norm_album = normalize_for_matching(release.album_title)
+    emb_artist, emb_album = extract_embedded_artist(release.album_title)
+    norm_emb_album = normalize_for_matching(emb_album) if emb_artist else None
+
+    best_score = 0.0
+    best_file: CacheTrack | None = None
+
+    for t in candidate_tracks:
+        if t.key in claimed_files:
+            continue
+        # Match against track title and filename stem
+        title = normalize_for_matching(t.title or "")
+        fname = normalize_for_matching(os.path.splitext(os.path.basename(t.file or ""))[0])
+
+        score = max(
+            fuzz.token_sort_ratio(norm_album, title) if title else 0.0,
+            fuzz.token_sort_ratio(norm_album, fname) if fname else 0.0,
+        )
+        if norm_emb_album:
+            score = max(
+                score,
+                fuzz.token_sort_ratio(norm_emb_album, title) if title else 0.0,
+                fuzz.token_sort_ratio(norm_emb_album, fname) if fname else 0.0,
+            )
+        if score > best_score:
+            best_score = score
+            best_file = t
+
+    if best_file and best_score >= threshold:
+        claimed_files.add(best_file.key)
+        track_match = TrackMatch(
+            local_key=best_file.key,
+            local_file=best_file.file,
+            bc_track_id=None,
+            score=best_score,
+            match_phase=phase,
+        )
+        return ReleaseMatch(
+            bc_sale_item_id=release.sale_item_id,
+            bandcamp_url=release.bandcamp_url,
+            band_name=release.band_name,
+            album_title=release.album_title,
+            sale_item_type=release.sale_item_type,
+            tracks=[track_match],
+            score=best_score,
+            tier=classify_match(best_score),
+            match_phase=phase,
+        )
+    return None
+
+
 def _phase_comment(
     remaining_releases: list[BandcampRelease],
     bc_tracks_by_release: dict[int, list[BandcampTrack]],
@@ -179,31 +246,35 @@ def _phase_comment(
     all_tracks_by_key: dict[str, CacheTrack],
     threshold: int,
     claimed_folders: set[str] | None = None,
+    claimed_files: set[str] | None = None,
     on_release: Callable[[], None] | None = None,
-) -> tuple[list[ReleaseMatch], set[int], set[str]]:
+) -> tuple[list[ReleaseMatch], set[int], set[str], set[str]]:
     """Match releases by checking if local files have the bandcamp URL in their comment tag.
 
     Bandcamp files embed the artist/label URL (e.g. https://artist.bandcamp.com)
     in the comment metadata. We extract the subdomain from the BC release URL and
     look for local tracks whose comments contain that subdomain.
 
-    Returns matched ReleaseMatch list, set of matched sale_item_ids, and claimed folders.
+    When a folder is already claimed, falls back to file-level matching for
+    single-file releases (singles that share a folder with other releases).
+
+    Returns matched ReleaseMatch list, set of matched sale_item_ids,
+    claimed folders, and claimed files.
     """
     matched: list[ReleaseMatch] = []
     matched_ids: set[int] = set()
     if claimed_folders is None:
         claimed_folders = set()
+    if claimed_files is None:
+        claimed_files = set()
     _v = is_verbose()
     _d = is_debug()
-    comment_threshold = max(threshold, 65)
+    comment_threshold = max(threshold, 75)
 
     for release in remaining_releases:
         if on_release is not None:
             on_release()
         if not release.bandcamp_url:
-            continue
-        # Skip singles — they don't have their own folder
-        if release.sale_item_type == "t":
             continue
 
         m = _BC_DOMAIN.search(release.bandcamp_url)
@@ -215,18 +286,18 @@ def _phase_comment(
         if not candidate_tracks:
             continue
 
-        # Group candidate tracks by folder
+        # Group candidate tracks by folder, separating claimed vs unclaimed folders
         folder_groups: dict[str, list[CacheTrack]] = defaultdict(list)
+        claimed_folder_tracks: list[CacheTrack] = []
         for t in candidate_tracks:
             if t.file:
                 folder = extract_folder(t.file)
                 if folder and folder not in claimed_folders:
                     folder_groups[folder].append(t)
+                elif folder and folder in claimed_folders and t.key not in claimed_files:
+                    claimed_folder_tracks.append(t)
 
-        if not folder_groups:
-            continue
-
-        # Find the best folder by fuzzy-matching album title
+        # Find the best unclaimed folder by fuzzy-matching album title
         norm_album = normalize_for_matching(release.album_title)
         best_score = 0.0
         best_folder = ""
@@ -238,60 +309,119 @@ def _phase_comment(
                 best_score = album_score
                 best_folder = folder
 
-        if best_score < comment_threshold:
-            if _v and best_score >= comment_threshold * 0.8:
+        # Volume mismatch guard: reject if both have volumes and they differ
+        if best_score > 0 and best_folder:
+            bc_vol = extract_volume(release.album_title)
+            if bc_vol is not None:
+                local_vol = extract_volume(best_folder)
+                if local_vol is not None and local_vol != bc_vol:
+                    if _d:
+                        debug(
+                            f"comment: volume mismatch {release.album_title} (vol={bc_vol}) "
+                            f"vs {best_folder} (vol={local_vol}) -> rejected"
+                        )
+                    best_score = 0.0
+
+        if best_score >= comment_threshold:
+            folder_tracks = folder_groups.get(best_folder, [])
+            bc_tracks = bc_tracks_by_release.get(release.sale_item_id, [])
+
+            # A release with exactly 1 BC track is a single.
+            # Requires multi-file folder (single file in own folder just claims it).
+            # 0 BC tracks = missing data, fall through to folder-level matching.
+            is_likely_single = len(bc_tracks) == 1 and len(folder_tracks) > 1
+
+            if is_likely_single:
+                file_rm = _match_single_file(
+                    release, folder_tracks, claimed_files, comment_threshold, "comment"
+                )
+                if file_rm:
+                    matched.append(file_rm)
+                    matched_ids.add(release.sale_item_id)
+                    if _v:
+                        local_path = file_rm.tracks[0].local_file or ""
+                        verbose(
+                            f"  [green]comment file match:[/green] {release.band_name} - {release.album_title} "
+                            f"[bold][magenta]->[/magenta][/bold] {local_path} (score={file_rm.score:.1f})"
+                        )
+                    continue
+
+            # Album release or single-file folder: claim the whole folder
+            claimed_folders.add(best_folder)
+
+            track_matches = _match_tracks_in_folder(
+                bc_tracks,
+                folder_tracks,
+                release.band_name,
+                all_tracks_by_key,
+                50,
+            )
+
+            if not track_matches:
+                track_matches = [
+                    TrackMatch(
+                        local_key=t.key,
+                        local_file=t.file,
+                        bc_track_id=None,
+                        score=best_score,
+                        match_phase="comment",
+                    )
+                    for t in folder_tracks
+                ]
+
+            # Mark all matched files as claimed
+            for tm in track_matches:
+                claimed_files.add(tm.local_key)
+
+            rm = ReleaseMatch(
+                bc_sale_item_id=release.sale_item_id,
+                bandcamp_url=release.bandcamp_url,
+                band_name=release.band_name,
+                album_title=release.album_title,
+                sale_item_type=release.sale_item_type,
+                tracks=track_matches,
+                score=best_score,
+                tier=classify_match(best_score),
+                match_phase="comment",
+            )
+            matched.append(rm)
+            matched_ids.add(release.sale_item_id)
+
+            if _v:
                 verbose(
-                    f"  [yellow]comment near-miss:[/yellow] {release.band_name} - {release.album_title} "
-                    f"[bold][magenta]->[/magenta][/bold] {best_folder} (score={best_score:.1f}, subdomain={subdomain})"
+                    f"  [green]comment match:[/green] {release.band_name} - {release.album_title} "
+                    f"[bold][magenta]->[/magenta][/bold] {best_folder} ({len(track_matches)} files, score={best_score:.1f})"
                 )
             continue
 
-        # Claim this folder so duplicate releases don't grab it
-        claimed_folders.add(best_folder)
+        # Folder-level match failed — try file-level match for singles
+        # in already-claimed folders (or unclaimed folders that didn't meet threshold)
+        all_candidate_files = claimed_folder_tracks
+        for tracks in folder_groups.values():
+            all_candidate_files.extend(tracks)
 
-        folder_tracks = folder_groups.get(best_folder, [])
-        bc_tracks = bc_tracks_by_release.get(release.sale_item_id, [])
-        track_matches = _match_tracks_in_folder(
-            bc_tracks,
-            folder_tracks,
-            release.band_name,
-            all_tracks_by_key,
-            50,
-        )
+        if all_candidate_files:
+            file_rm = _match_single_file(
+                release, all_candidate_files, claimed_files, comment_threshold, "comment"
+            )
+            if file_rm:
+                matched.append(file_rm)
+                matched_ids.add(release.sale_item_id)
+                if _v:
+                    local_path = file_rm.tracks[0].local_file or ""
+                    verbose(
+                        f"  [green]comment file match:[/green] {release.band_name} - {release.album_title} "
+                        f"[bold][magenta]->[/magenta][/bold] {local_path} (score={file_rm.score:.1f})"
+                    )
+                continue
 
-        if not track_matches:
-            track_matches = [
-                TrackMatch(
-                    local_key=t.key,
-                    local_file=t.file,
-                    bc_track_id=None,
-                    score=best_score,
-                    match_phase="comment",
-                )
-                for t in folder_tracks
-            ]
-
-        rm = ReleaseMatch(
-            bc_sale_item_id=release.sale_item_id,
-            bandcamp_url=release.bandcamp_url,
-            band_name=release.band_name,
-            album_title=release.album_title,
-            sale_item_type=release.sale_item_type,
-            tracks=track_matches,
-            score=best_score,
-            tier=classify_match(best_score),
-            match_phase="comment",
-        )
-        matched.append(rm)
-        matched_ids.add(release.sale_item_id)
-
-        if _v:
+        if _v and best_score >= comment_threshold * 0.8:
             verbose(
-                f"  [green]comment match:[/green] {release.band_name} - {release.album_title} "
-                f"[bold][magenta]->[/magenta][/bold] {best_folder} ({len(track_matches)} files, score={best_score:.1f})"
+                f"  [yellow]comment near-miss:[/yellow] {release.band_name} - {release.album_title} "
+                f"[bold][magenta]->[/magenta][/bold] {best_folder} (score={best_score:.1f}, subdomain={subdomain})"
             )
 
-    return matched, matched_ids, claimed_folders
+    return matched, matched_ids, claimed_folders, claimed_files
 
 
 # ---------------------------------------------------------------------------
@@ -325,15 +455,20 @@ def _phase_folder(
     all_tracks_by_key: dict[str, CacheTrack],
     threshold: int,
     claimed_folders: set[str] | None = None,
+    claimed_files: set[str] | None = None,
     on_release: Callable[[], None] | None = None,
-) -> tuple[list[ReleaseMatch], set[int], set[str]]:
+) -> tuple[list[ReleaseMatch], set[int], set[str], set[str]]:
     """Match releases by fuzzy-matching artist/album against folder paths.
 
     Uses a two-pass approach:
     1. Find best folder candidate for each release (no claiming).
     2. Greedily assign folders by score (highest first), preventing duplicates.
 
-    Returns matched ReleaseMatch list, set of matched sale_item_ids, and claimed folders.
+    When a folder is already claimed, falls back to file-level matching for
+    single-file releases.
+
+    Returns matched ReleaseMatch list, set of matched sale_item_ids,
+    claimed folders, and claimed files.
     """
     _v = is_verbose()
     _d = is_debug()
@@ -341,6 +476,10 @@ def _phase_folder(
         claimed_folders = set()
     else:
         claimed_folders = set(claimed_folders)  # Copy to avoid mutating caller's set
+    if claimed_files is None:
+        claimed_files = set()
+    else:
+        claimed_files = set(claimed_files)
 
     # --- Pass 1: Find best folder candidate for each release ---
     # Each entry: (release, best_folder, best_score, best_artist_score, best_album_score)
@@ -349,9 +488,6 @@ def _phase_folder(
     for release in remaining_releases:
         if on_release is not None:
             on_release()
-        # Skip single-track purchases — they don't have their own folder
-        if release.sale_item_type == "t":
-            continue
 
         # Get artist candidates from split_band_name
         artist_candidates = split_band_name(release.band_name)
@@ -409,7 +545,9 @@ def _phase_folder(
                     score = 0.0
 
             # Bonus for matching file count vs BC track count
-            if score > 0:
+            # Only added to already-qualifying matches (prevents bonus from
+            # pushing borderline scores above threshold)
+            if score >= threshold:
                 bc_track_count = len(bc_tracks_by_release.get(release.sale_item_id, []))
                 folder_file_count = len(folder_to_tracks.get(orig_folder, []))
                 if bc_track_count > 0 and folder_file_count > 0:
@@ -453,6 +591,22 @@ def _phase_folder(
 
     for release, best_folder, best_score, best_a_score, best_b_score in candidates:
         if best_folder in claimed_folders:
+            # Folder already claimed — try file-level match for singles
+            folder_tracks = folder_to_tracks.get(best_folder, [])
+            if folder_tracks:
+                file_rm = _match_single_file(
+                    release, folder_tracks, claimed_files, threshold, "folder"
+                )
+                if file_rm:
+                    matched.append(file_rm)
+                    matched_ids.add(release.sale_item_id)
+                    if _v:
+                        local_path = file_rm.tracks[0].local_file or ""
+                        verbose(
+                            f"  [green]folder file match:[/green] {release.band_name} - {release.album_title} "
+                            f"[bold][magenta]->[/magenta][/bold] {local_path} (score={file_rm.score:.1f})"
+                        )
+                    continue
             if _v:
                 verbose(
                     f"  [yellow]folder claimed:[/yellow] {release.band_name} - {release.album_title} "
@@ -490,6 +644,10 @@ def _phase_folder(
                 for t in folder_tracks
             ]
 
+        # Mark all matched files as claimed
+        for tm in track_matches:
+            claimed_files.add(tm.local_key)
+
         rm = ReleaseMatch(
             bc_sale_item_id=release.sale_item_id,
             bandcamp_url=release.bandcamp_url,
@@ -510,7 +668,7 @@ def _phase_folder(
                 f"[bold][magenta]->[/magenta][/bold] {best_folder} ({len(track_matches)} files, score={best_score:.1f})"
             )
 
-    return matched, matched_ids, claimed_folders
+    return matched, matched_ids, claimed_folders, claimed_files
 
 
 def _match_tracks_in_folder(
@@ -581,15 +739,17 @@ def _phase_global(
     all_tracks: list[CacheTrack],
     threshold: int,
     claimed_folders: set[str] | None = None,
+    claimed_files: set[str] | None = None,
     on_release: Callable[[], None] | None = None,
-) -> tuple[list[ReleaseMatch], set[int], set[str]]:
+) -> tuple[list[ReleaseMatch], set[int], set[str], set[str]]:
     """Global fuzzy match for releases that couldn't be folder-matched.
 
     Tries artist+album weighted match against all local tracks,
     grouping results by folder to find the best album match.
     Falls back to track-level matching if no album match found.
 
-    Returns matched ReleaseMatch list, set of matched sale_item_ids, and claimed folders.
+    Returns matched ReleaseMatch list, set of matched sale_item_ids,
+    claimed folders, and claimed files.
     """
     matched: list[ReleaseMatch] = []
     matched_ids: set[int] = set()
@@ -599,6 +759,10 @@ def _phase_global(
         claimed_folders = set()
     else:
         claimed_folders = set(claimed_folders)  # Copy to avoid mutating caller's set
+    if claimed_files is None:
+        claimed_files = set()
+    else:
+        claimed_files = set(claimed_files)
 
     # Pre-normalize local tracks
     norm_locals: list[tuple[CacheTrack, str, str, str]] = []
@@ -621,7 +785,6 @@ def _phase_global(
         artist_candidates = split_band_name(release.band_name)
         norm_bc_artists = [normalize_for_matching(a) for a in artist_candidates]
         norm_bc_album = normalize_for_matching(release.album_title)
-        is_single = release.sale_item_type == "t"
 
         # Extract embedded artist from album_title (e.g. "Artist - Album")
         emb_artist, emb_album = extract_embedded_artist(release.album_title)
@@ -641,70 +804,6 @@ def _phase_global(
             score = max(fuzz.token_sort_ratio(nba, norm_la) for nba in norm_bc_artists)
             _artist_score_cache[norm_la] = score
             return score
-
-        # Singles skip album-level matching — go straight to track-level
-        if is_single:
-            bc_tracks = bc_tracks_by_release.get(release.sale_item_id, [])
-            if not bc_tracks:
-                # No track data — try matching album_title as track title
-                bc_tracks_synthetic = [
-                    type("FakeTrack", (), {"id": None, "title": release.album_title})
-                ]
-            else:
-                bc_tracks_synthetic = bc_tracks
-
-            track_matches = []
-            for bc_track in bc_tracks_synthetic:
-                norm_bc_title = normalize_for_matching(bc_track.title)
-                best_score = 0.0
-                best_local: CacheTrack | None = None
-
-                for local_track, norm_la, _norm_ll, norm_lt in norm_locals:
-                    if not norm_lt:
-                        continue
-                    artist_score = _best_artist_score(norm_la)
-                    title_score = fuzz.token_sort_ratio(norm_bc_title, norm_lt)
-                    score = artist_score * 0.4 + title_score * 0.6
-                    if score > best_score:
-                        best_score = score
-                        best_local = local_track
-
-                if best_local and best_score >= threshold:
-                    track_matches.append(
-                        TrackMatch(
-                            local_key=best_local.key,
-                            local_file=best_local.file,
-                            bc_track_id=getattr(bc_track, "id", None),
-                            score=best_score,
-                            match_phase="global",
-                        )
-                    )
-
-            if track_matches:
-                avg_score = sum(tm.score for tm in track_matches) / len(track_matches)
-                rm = ReleaseMatch(
-                    bc_sale_item_id=release.sale_item_id,
-                    bandcamp_url=release.bandcamp_url,
-                    band_name=release.band_name,
-                    album_title=release.album_title,
-                    sale_item_type=release.sale_item_type,
-                    tracks=track_matches,
-                    score=avg_score,
-                    tier=classify_match(avg_score),
-                    match_phase="global",
-                )
-                matched.append(rm)
-                matched_ids.add(release.sale_item_id)
-
-                if _v:
-                    local_path = track_matches[0].local_file or extract_folder(
-                        track_matches[0].local_file or ""
-                    )
-                    verbose(
-                        f"  [green]global match [t]:[/green] {release.band_name} - {release.album_title} "
-                        f"[dim][white]->[/white][/dim] {local_path} (score={avg_score:.1f})"
-                    )
-            continue
 
         # Score all local tracks at release level (artist + album)
         candidates: list[tuple[CacheTrack, float]] = []
@@ -844,7 +943,7 @@ def _phase_global(
             matched.append(rm)
             matched_ids.add(release.sale_item_id)
 
-    return matched, matched_ids, claimed_folders
+    return matched, matched_ids, claimed_folders, claimed_files
 
 
 # ---------------------------------------------------------------------------
@@ -937,21 +1036,23 @@ def match_releases(
     if on_phase:
         on_phase("metadata", len(phase0_matches))
 
-    # Track claimed folders across phases to prevent duplicate assignments
+    # Track claimed folders and files across phases to prevent duplicate assignments
     claimed_folders: set[str] = set()
+    claimed_files: set[str] = set()
 
-    # Collect folders from Phase 0 matches
+    # Collect folders and files from Phase 0 matches
     for rm in phase0_matches:
         for tm in rm.tracks:
             if tm.local_file:
                 folder = extract_folder(tm.local_file)
                 if folder:
                     claimed_folders.add(folder)
+            claimed_files.add(tm.local_key)
 
     # --- Phase 0.5: Comment-based matching ---
     remaining = [r for r in bc_releases if r.sale_item_id not in matched_ids]
     verbose(f"Phase 0.5: Comment matching {len(remaining)} remaining releases...")
-    phase05_matches, phase05_ids, claimed_folders = _phase_comment(
+    phase05_matches, phase05_ids, claimed_folders, claimed_files = _phase_comment(
         remaining,
         bc_tracks_by_release,
         comment_index,
@@ -959,6 +1060,7 @@ def match_releases(
         all_tracks_by_key,
         threshold,
         claimed_folders=claimed_folders,
+        claimed_files=claimed_files,
     )
     report.matched.extend(phase05_matches)
     matched_ids.update(phase05_ids)
@@ -972,7 +1074,7 @@ def match_releases(
     verbose(
         f"Phase 1: Folder matching {len(remaining)} remaining releases (threshold={folder_threshold})..."
     )
-    phase1_matches, phase1_ids, claimed_folders = _phase_folder(
+    phase1_matches, phase1_ids, claimed_folders, claimed_files = _phase_folder(
         remaining,
         bc_tracks_by_release,
         folder_to_tracks,
@@ -980,6 +1082,7 @@ def match_releases(
         all_tracks_by_key,
         folder_threshold,
         claimed_folders=claimed_folders,
+        claimed_files=claimed_files,
     )
     report.matched.extend(phase1_matches)
     matched_ids.update(phase1_ids)
@@ -988,7 +1091,7 @@ def match_releases(
         on_phase("folder", len(phase1_matches))
 
     # --- Phase 2: Global fuzzy fallback ---
-    global_threshold = max(threshold, 65)
+    global_threshold = max(threshold, 75)
     remaining = [r for r in bc_releases if r.sale_item_id not in matched_ids]
     verbose(
         f"Phase 2: Global matching {len(remaining)} remaining releases (threshold={global_threshold})..."
@@ -996,12 +1099,13 @@ def match_releases(
 
     # For Phase 2 (slow), provide per-release progress callback
     phase2_on_release = (lambda: on_phase("tick", 1)) if on_phase else None
-    phase2_matches, phase2_ids, claimed_folders = _phase_global(
+    phase2_matches, phase2_ids, claimed_folders, claimed_files = _phase_global(
         remaining,
         bc_tracks_by_release,
         local_tracks,
         global_threshold,
         claimed_folders=claimed_folders,
+        claimed_files=claimed_files,
         on_release=phase2_on_release,
     )
     report.matched.extend(phase2_matches)

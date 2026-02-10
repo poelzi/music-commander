@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
 from music_commander.anomalistic.dedup import (
     DedupResult,
     check_cache_url,
@@ -11,9 +14,6 @@ from music_commander.anomalistic.dedup import (
     check_fuzzy_match,
     load_local_albums,
 )
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
 from music_commander.cache.models import AnomaListicRelease, CacheBase, CacheTrack
 
 
@@ -189,9 +189,36 @@ class TestCheckFuzzyMatch:
         )
         session.commit()
         is_match, score, details = check_fuzzy_match(
-            session, "XianZai", "Irrational Conjunction", threshold=60
+            session, "XianZai", "Irrational Conjunction", threshold=80
         )
         assert is_match is False
+
+    def test_same_artist_different_album_no_match(self, session):
+        """Same artist but completely different album should NOT match."""
+        local = [("Black Phillip", "Las Ruinas De Zion")]
+        is_match, score, details = check_fuzzy_match(
+            session, "Black Phillip", "VA Undead Xmas", local_albums=local
+        )
+        assert is_match is False
+
+    def test_various_artists_different_compilations_no_match(self, session):
+        """Various Artists compilations with different titles should NOT match."""
+        local = [("Various Artists", "V/A SURGICAL STRIKE - compiled by Psykoze")]
+        is_match, score, details = check_fuzzy_match(
+            session,
+            "Various Artists",
+            "Kreepsy Origins (compiled by Black Phillip)",
+            local_albums=local,
+        )
+        assert is_match is False
+
+    def test_same_artist_similar_album_still_matches(self, session):
+        """Genuine near-duplicate (same album, minor title variation) should match."""
+        local = [("XianZai", "Irrational Conjunction")]
+        is_match, score, details = check_fuzzy_match(
+            session, "XianZai", "Irrational Conjunction (Remastered)", local_albums=local
+        )
+        assert is_match is True
 
     def test_case_insensitive_match(self, session):
         session.add(
@@ -369,7 +396,26 @@ class TestCheckDuplicate:
             "https://portal.example.com/release",
             "XianZai",
             "Irrational Conjunction",
-            threshold=60,
+            threshold=80,
+        )
+        assert result.should_skip is False
+
+    def test_same_artist_different_album_not_duplicate(self, session):
+        """Same artist with a different album should not be flagged as duplicate."""
+        session.add(
+            CacheTrack(
+                key="t.flac",
+                artist="Audiosyntax",
+                title="T",
+                album="Unseen Fungi",
+            )
+        )
+        session.commit()
+        result = check_duplicate(
+            session,
+            "https://portal.example.com/new-release",
+            "Audiosyntax",
+            "Noiseborn",
         )
         assert result.should_skip is False
 
