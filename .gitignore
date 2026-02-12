@@ -12,6 +12,7 @@
 .amazonq/
 .github/copilot/
 tmp
+TODOs
 .worktrees/
 
 # Python

@@ -302,7 +302,7 @@ def backup(
 
     info(f"Committing backup: {message}")
     if not git_commit_file(config.music_repo, backup_path, message):
-        error(f"Failed to commit backup file")
+        error("Failed to commit backup file")
         raise SystemExit(EXIT_PARTIAL_FAILURE)
 
     success(f"Successfully backed up Mixxx database to {backup_path}")
@@ -459,15 +459,14 @@ def sync_tracks(
 
                 if success_flag:
                     result.synced.append(t.relative_path)
+                    # Intermediate commit when batch threshold reached
+                    if batch_size and len(result.synced) % batch_size == 0:
+                        batch.commit()
                 else:
                     result.failed.append((t.relative_path, "Git-annex error"))
             except Exception as e:
                 result.failed.append((t.relative_path, f"Write error: {e}"))
                 continue
-
-        # Intermediate commit if batch_size specified
-        if batch_size and len(result.synced) % batch_size == 0:
-            batch.commit()
 
     # Update sync state with new timestamp
     new_state = SyncState(

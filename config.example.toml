@@ -16,6 +16,25 @@ colored_output = true
 # Default remote for git-annex operations (optional)
 # default_remote = "nas"
 
+[checks]
+# Enable FLAC multichannel check (default: false)
+# flac_multichannel = false
+
+[editors]
+# External editor for metadata editing (optional)
+# meta_editor = "vim"
+
+[bandcamp]
+# Bandcamp session cookie for authenticated requests (optional, usually auto-detected)
+# session_cookie = ""
+
+# Default download format (default: flac)
+# Supported: flac, mp3-v0, mp3-320, aac-hi, vorbis, alac, wav, aiff-lossless
+# default_format = "flac"
+
+# Fuzzy match threshold 0-100 (default: 60)
+# match_threshold = 60
+
 [anomalistic]
 # Output directory for mirrored releases (default: <music_repo>/Anomalistic)
 # output_dir = "~/Music/Anomalistic"

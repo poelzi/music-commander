@@ -1,15 +1,23 @@
 # music-commander
 
-Manage git-annex based music collections with Mixxx DJ software integration.
+Manage git-annex based music collections with [Mixxx](https://mixxx.org/) DJ software integration.
 
-A command-line tool for managing large music collections stored in git-annex, with special integration for Mixxx DJ software. Fetch files from commits, query your Mixxx database, and keep your music organized across multiple storage locations.
+A command-line tool for managing large music collections stored in git-annex, with special integration for Mixxx DJ software, Bandcamp purchase management, and audio file processing. Fetch files from commits, query your Mixxx database, sync metadata, manage Bandcamp purchases, split cue sheets, and keep your music organized across multiple storage locations.
+
+If used correctly, you will never loose music or metadata again.
 
 ## Features
 
-- **git-annex integration**: Fetch music files from commits, branches, ranges, or tags
-- **Mixxx database access**: Query and manage your Mixxx library programmatically (ORM layer)
-- **Beautiful CLI**: Colored output with Rich, progress bars, helpful error messages
-- **Well-tested**: 80%+ test coverage with pytest
+- **git-annex integration**: Fetch, drop, and manage music files across remotes with commit-based workflows
+- **Mixxx database sync**: Synchronize ratings, BPM, keys, crates, and other metadata from Mixxx to git-annex
+- **Bandcamp collection management**: Sync purchases, match releases to local files, download in preferred formats
+- **Search DSL**: Query your music collection with a Mixxx-compatible search syntax (field filters, boolean operators, ranges)
+- **Cue sheet splitting**: Parse and split cue+audio into individual tracks with metadata
+- **Audio encoding/export**: Transcode between formats (FLAC, MP3, AIFF, WAV) with metadata preservation
+- **File integrity checking**: Validate audio files for corruption and format issues
+- **Anomalistic Records mirror**: Download and convert releases from the Anomalistic dark psy portal
+- **Beautiful CLI**: Rich terminal output with progress bars, tables, and auto-paging
+- **Comprehensive test suite**: Unit and integration tests with pytest
 - **Reproducible builds**: Full Nix flake support for consistent environments
 
 ## Installation
@@ -18,29 +26,61 @@ A command-line tool for managing large music collections stored in git-annex, wi
 
 ```bash
 # Run directly without installing
-nix run github:poelzi/musicCommander -- --help
+nix run github:poelzi/music-commander -- --help
 
 # Install to your profile
-nix profile install github:poelzi/musicCommander
+nix profile install github:poelzi/music-commander
 
-# Enter development environment
+# Enter development environment (includes all system deps)
 nix develop
 ```
 
-### From Source
+### Using pip
+
+Requires system dependencies to be installed first:
+
+**Debian/Ubuntu:**
+```bash
+sudo apt install git git-annex ffmpeg libmagic1 flac vorbis-tools shntool sox
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S git git-annex ffmpeg file flac vorbis-tools shntool sox
+```
+
+**macOS (Homebrew):**
+```bash
+brew install git git-annex ffmpeg libmagic flac vorbis-tools shntool sox
+```
+
+Then install music-commander:
 
 ```bash
-git clone https://github.com/poelzi/musicCommander
-cd musicCommander
+pip install .
+# or for an isolated install:
+pipx install .
+```
+
+### From Source (development)
+
+```bash
+git clone https://github.com/poelzi/music-commander
+cd music-commander
+
+# With Nix (recommended - includes all deps):
 nix develop
 pip install -e .
+
+# Without Nix (requires system deps above):
+pip install -e ".[dev]"
 ```
 
 ## Quick Start
 
 ### 1. Configure
 
-Create `~/.config/music-commander/config.toml`:
+Create `~/.config/music-commander/config.toml` (or run `music-commander init-config`):
 
 ```toml
 [paths]
@@ -72,7 +112,7 @@ music-commander files get-commit --remote nas HEAD~1
 
 ## Usage
 
-### mixxx sync Command
+### mixxx sync
 
 Sync track metadata from your Mixxx library to git-annex metadata.
 
@@ -108,7 +148,7 @@ music-commander mixxx sync --all --batch-size 1000
 
 ```bash
 # Find all 5-star tracks
-/
+git annex find --metadata rating=5
 
 # Find tracks in a specific crate
 git annex find --metadata crate="Festival Sets"
@@ -117,34 +157,70 @@ git annex find --metadata crate="Festival Sets"
 git annex find --metadata bpm=140.*
 ```
 
-### files get-commit Command
+### search
 
-Fetch git-annexed files from any git revision.
-
-**Revision Types:**
-
-- **Single commit**: `HEAD~1`, `abc123` (commit hash)
-- **Commit range**: `HEAD~5..HEAD`, `v1.0..v2.0`
-- **Branch**: `feature/new-tracks` (files unique to that branch)
-- **Tag**: `v2025-summer-set`
-
-**Options:**
-
-- `--dry-run`, `-n`: Show files without fetching
-- `--remote`, `-r`: Preferred git-annex remote
-- `--jobs`, `-j`: Parallel fetch jobs (not yet implemented)
-
-**Examples:**
+Query your music collection using a Mixxx-compatible search DSL:
 
 ```bash
-# Fetch files from a feature branch
-music-commander files get-commit feature/summer-playlist
+# Simple text search
+music-commander search "dark forest"
 
-# Fetch files from a tagged release
-music-commander files get-commit v2025-summer-set
+# Field-specific filters
+music-commander search "artist:Parasense bpm:>145"
 
-# Preview files in a commit range
-music-commander files get-commit --dry-run main..feature-branch
+# Boolean operators
+music-commander search "genre:darkpsy AND NOT artist:Kindzadza"
+```
+
+### bandcamp
+
+Manage your Bandcamp purchase collection:
+
+```bash
+# Authenticate (extracts cookies from your browser)
+music-commander bandcamp auth
+
+# Sync your purchase collection to the local cache
+music-commander bandcamp sync
+
+# Match Bandcamp purchases to local files
+music-commander bandcamp match
+
+# Download purchases in preferred format
+music-commander bandcamp download
+
+# Show collection report
+music-commander bandcamp report
+```
+
+### files
+
+File management commands:
+
+```bash
+# Fetch files from a commit/range/branch
+music-commander files get-commit HEAD~1
+
+# Drop local copies (keep on remotes)
+music-commander files drop ./old-sets/
+
+# Check file integrity
+music-commander files check
+
+# Export/transcode files
+music-commander files export --format mp3-320 -o /tmp/usb-stick ./set-playlist/
+
+# Edit metadata interactively
+music-commander files edit-meta ./track.flac
+```
+
+### cue
+
+Cue sheet operations:
+
+```bash
+# Split a cue+audio file into individual tracks
+music-commander cue split album.cue
 ```
 
 ### Global Options
@@ -152,10 +228,10 @@ music-commander files get-commit --dry-run main..feature-branch
 ```bash
 music-commander --help
 music-commander --version
-music-commander --config /path/to/config.toml get-commit-files HEAD~1
-music-commander --no-color get-commit-files HEAD~1  # Disable colors
-music-commander -v get-commit-files HEAD~1          # Verbose output
-music-commander -q get-commit-files HEAD~1          # Quiet mode
+music-commander --config /path/to/config.toml files get-commit HEAD~1
+music-commander --no-color files get-commit HEAD~1  # Disable colors
+music-commander -v files get-commit HEAD~1          # Verbose output
+music-commander -q files get-commit HEAD~1          # Quiet mode
 ```
 
 ## Configuration
@@ -166,23 +242,32 @@ Configuration is loaded from:
 - `~/.config/music-commander/config.toml` (default)
 - Custom path via `--config` flag
 
+See [config.example.toml](config.example.toml) for all available options.
+
 ### Configuration Options
 
 ```toml
 [paths]
-# Path to Mixxx database (required for DB commands)
-mixxx_db = "~/.mixxx/mixxxdb.sqlite"
-
-# Path to git-annex music repository (required for files get-commit)
-music_repo = "~/Music"
+mixxx_db = "~/.mixxx/mixxxdb.sqlite"    # Mixxx database path
+music_repo = "~/Music"                   # git-annex music repository
+# mixxx_music_root = "~/Music"           # Override Mixxx track path root
+# mixxx_backup_path = "~/mixxx-backup"   # Mixxx DB backup path
 
 [display]
-# Enable/disable colored terminal output
 colored_output = true
 
 [git_annex]
-# Default remote for git-annex get operations (optional)
-default_remote = "nas"
+# default_remote = "nas"                 # Preferred remote for fetching
+
+[bandcamp]
+# default_format = "flac"               # Preferred download format
+# match_threshold = 60                  # Fuzzy match threshold (0-100)
+
+[anomalistic]
+# output_dir = "~/Music/Anomalistic"    # Mirror output directory
+# format = "flac"                       # Target audio format
+# output_pattern = "{{artist}} - {{album}}"  # Folder structure template
+# download_source = "wav"               # Source format: wav or mp3
 ```
 
 ### Defaults
@@ -193,45 +278,57 @@ If no config file exists, music-commander uses sensible defaults:
 - `colored_output`: `true`
 - `default_remote`: `null` (use any available remote)
 
+## System Requirements
+
+- **Python**: 3.13 or later
+- **git**: Required
+- **git-annex**: Required for annex operations
+- **ffmpeg**: Required for audio encoding/transcoding
+- **libmagic**: Required by python-magic for file type detection
+- **Mixxx**: Optional (only needed for database sync commands)
+
+Optional audio tools (for specific features):
+- `flac`, `mp3val`, `vorbis-tools`, `shntool`, `sox`: Audio validation and processing
+
 ## Development
 
 ### Setup
 
 ```bash
-# Enter Nix development shell
+# Enter Nix development shell (includes all deps)
 nix develop
 
 # Install in editable mode
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### Testing
 
 ```bash
 # Run all tests
-pytest
+nix develop --command pytest
 
 # Run with coverage
-pytest --cov=music_commander --cov-report=html
+nix develop --command pytest --cov=music_commander --cov-report=html
 
 # Run specific test file
-pytest tests/unit/test_config.py -v
+nix develop --command pytest tests/unit/test_config.py -v
 
 # Run integration tests only
-pytest tests/integration/ -v
+nix develop --command pytest tests/integration/ -v
 ```
 
 ### Code Quality
 
 ```bash
 # Type checking
-mypy music_commander/
+nix develop --command mypy music_commander/
 
 # Linting
-ruff check .
+nix develop --command ruff check .
 
 # Formatting
-ruff format .
+nix develop --command ruff format .
 
 # Run all checks (what CI runs)
 nix flake check
@@ -241,47 +338,63 @@ nix flake check
 
 ```
 music-commander/
-├── music_commander/         # Main package
-│   ├── cli.py              # Click CLI framework
-│   ├── config.py           # Configuration loading
-│   ├── exceptions.py       # Exception hierarchy
-│   ├── commands/           # CLI commands (auto-discovered)
-│   │   └── files.py
-│   ├── db/                 # Mixxx database ORM
-│   │   ├── models.py       # SQLAlchemy models
-│   │   ├── session.py      # Session management
-│   │   └── queries.py      # Query functions
-│   └── utils/              # Utilities
-│       ├── git.py          # Git/git-annex operations
-│       └── output.py       # Rich console helpers
-├── tests/                  # Test suite
-│   ├── conftest.py         # Shared fixtures
-│   ├── unit/               # Unit tests
-│   └── integration/        # Integration tests
-├── flake.nix              # Nix flake definition
-├── pyproject.toml         # Python package metadata
-└── README.md              # This file
+├── music_commander/           # Main package
+│   ├── cli.py                # Click CLI framework & command discovery
+│   ├── config.py             # Configuration loading (TOML)
+│   ├── exceptions.py         # Exception hierarchy
+│   ├── commands/             # CLI commands (auto-discovered)
+│   │   ├── bandcamp/         # Bandcamp: auth, sync, match, download, repair, report
+│   │   ├── files/            # Files: get, drop, check, export, edit-meta, get-commit
+│   │   ├── cue/              # Cue: split
+│   │   ├── mirror/           # Mirror: anomalistic
+│   │   ├── dev/              # Dev: bandcamp-metrics
+│   │   ├── mixxx.py          # Mixxx metadata sync
+│   │   ├── search.py         # Search DSL queries
+│   │   ├── view.py           # Symlink view generation
+│   │   ├── rebuild_cache.py  # Cache rebuild
+│   │   └── init_config.py    # Config initialization
+│   ├── db/                   # Mixxx database ORM (read-only, WAL-safe)
+│   ├── cache/                # Local SQLite cache for fast queries
+│   ├── search/               # Lark-based search DSL parser
+│   ├── bandcamp/             # Bandcamp API client & fuzzy matcher
+│   ├── anomalistic/          # Anomalistic Records portal client
+│   ├── cue/                  # Cue sheet parser & splitter
+│   ├── view/                 # Template-based symlink views
+│   └── utils/                # Git ops, output, encoding, matching
+├── tests/                    # Test suite
+│   ├── conftest.py           # Shared fixtures
+│   ├── unit/                 # Unit tests
+│   └── integration/          # Integration tests
+├── flake.nix                 # Nix flake definition
+├── pyproject.toml            # Python package metadata
+├── config.example.toml       # Configuration template
+└── README.md                 # This file
 ```
 
 ## Architecture
 
 ### CLI Framework
 
-- **Click**: Command-line interface with auto-discovery
-- **Rich**: Beautiful terminal output with progress bars and tables
-- **Global context**: Shared config and state across commands
+- **Click**: Command-line interface with auto-discovery of command modules
+- **Rich**: Terminal output with progress bars, tables, and auto-paging
+- **Global context**: Shared config and state across commands via `@pass_context`
 
-### Database Layer
+### Database Layers
 
-- **SQLAlchemy 2.0**: ORM for Mixxx database
-- **Read-only by default**: Respects Mixxx's concurrent access patterns
-- **WAL mode aware**: Safe for use while Mixxx is running
+- **Mixxx DB**: Read-only SQLAlchemy ORM against Mixxx's SQLite (WAL-mode safe)
+- **Cache DB**: Local SQLite cache for fast metadata queries, incrementally refreshed
 
 ### Git Integration
 
 - **Revision parsing**: Supports commits, ranges, branches, tags
 - **Annexed file detection**: Identifies symlinks to `.git/annex/objects`
-- **Progress tracking**: Rich progress bars for long-running operations
+- **Batch metadata**: Efficient bulk operations via `git annex metadata --batch`
+
+### Bandcamp Integration
+
+- **Adaptive rate limiter**: AIMD-based HTTP client for Bandcamp APIs
+- **Fuzzy matching**: 4-phase matching (metadata URL, comment subdomain, folder path, global)
+- **Cookie extraction**: Browser cookie access via rookiepy
 
 ## Exit Codes
 
@@ -290,28 +403,13 @@ music-commander/
 - `2`: Invalid revision specification
 - `3`: Not a git-annex repository
 
-## Requirements
-
-- **Python**: 3.13 or later
-- **git-annex**: Required for annex operations
-- **Mixxx**: Optional (only needed for database commands)
-
-### Python Dependencies
-
-- `click >= 8.0`: CLI framework
-- `rich >= 13.0`: Terminal output
-- `sqlalchemy >= 2.0`: Database ORM
-- `tomli-w >= 1.0`: TOML writing
-
 ## Roadmap
 
-Future features (see `plan.md` for details):
+Future features:
 
 - **Playlist/crate commands**: Manage Mixxx playlists and crates from CLI
-- **Track queries**: Search and filter tracks by BPM, key, rating, etc.
 - **Batch operations**: Update metadata, rate tracks in bulk
 - **JSON output**: Machine-readable output with `--json` flag
-- **Config command**: Interactive config file creation
 
 ## Contributing
 
@@ -323,14 +421,14 @@ Future features (see `plan.md` for details):
 
 ## License
 
-[Add your license here]
+MIT License. See [LICENSE](LICENSE) for details.
 
 ## Author
 
-Daniel Poelzleithner (@poelzi)
+Daniel Poelzleithner ([@poelzi](https://github.com/poelzi))
 
 ## Acknowledgments
 
-- **Mixxx**: Amazing open-source DJ software
-- **git-annex**: Powerful distributed file management
-- **Nix**: Reproducible development environments
+- [Mixxx](https://mixxx.org/): Open-source DJ software
+- [git-annex](https://git-annex.branchable.com/): Distributed file management
+- [Nix](https://nixos.org/): Reproducible development environments
