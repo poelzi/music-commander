@@ -43,7 +43,7 @@ def _build_text_term_clause(term: TextTerm, session: Session):
     """Build a SQL clause for a TextTerm (bare-word or quoted full-text search).
 
     Uses FTS5 MATCH for full-text search across artist, title, album, genre, file.
-    Falls back to LIKE if FTS5 is not available.
+    The FTS5 virtual table is guaranteed to exist by the cache builder.
     """
     value = term.value
     # Use FTS5 MATCH — search for the term as a prefix match

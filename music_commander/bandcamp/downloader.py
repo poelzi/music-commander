@@ -11,7 +11,6 @@ import re
 import zipfile
 from pathlib import Path
 
-import requests
 from rich.progress import Progress
 
 from music_commander.bandcamp.client import BandcampClient
@@ -139,13 +138,7 @@ def download_release(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        resp = requests.get(
-            download_url,
-            stream=True,
-            timeout=60,
-            headers={"User-Agent": "music-commander/0.1"},
-        )
-        resp.raise_for_status()
+        resp = client.stream_get(download_url, timeout=60)
 
         total_size = int(resp.headers.get("content-length", 0)) or None
 

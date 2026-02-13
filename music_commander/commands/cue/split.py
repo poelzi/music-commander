@@ -163,11 +163,14 @@ def split(
     Supports FLAC, WAV, APE, and WavPack source formats.
     """
     # Check for required tools
-    missing = check_tools_available()
-    if missing:
-        error(f"Missing required tools: {', '.join(missing)}")
+    missing_required, missing_optional = check_tools_available()
+    if missing_required:
+        error(f"Missing required tools: {', '.join(missing_required)}")
         error("Install them via your package manager or nix develop shell.")
         sys.exit(EXIT_MISSING_DEPS)
+    if missing_optional:
+        warning(f"Optional tools not found: {', '.join(missing_optional)}")
+        warning("APE/WV fallback splitting will not be available.")
 
     # Scan for cue/audio pairs
     pairs = _scan_directories(directories, recursive, encoding)

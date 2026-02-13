@@ -74,17 +74,22 @@ def group_tracks_by_file(cue_sheet: CueSheet) -> dict[str, list[CueTrack]]:
     return groups
 
 
-def check_tools_available() -> list[str]:
-    """Check that required external tools are available.
+def check_tools_available() -> tuple[list[str], list[str]]:
+    """Check that required and optional external tools are available.
 
     Returns:
-        List of missing tool names (empty if all present).
+        Tuple of (missing_required, missing_optional).
+        Required: shntool, metaflac (needed for all splitting and tagging).
+        Optional: ffmpeg (needed for APE/WV fallback splitting).
     """
-    missing = []
+    missing_required = []
     for tool in ("shntool", "metaflac"):
         if shutil.which(tool) is None:
-            missing.append(tool)
-    return missing
+            missing_required.append(tool)
+    missing_optional = []
+    if shutil.which("ffmpeg") is None:
+        missing_optional.append("ffmpeg")
+    return missing_required, missing_optional
 
 
 def track_output_filename(track: CueTrack) -> str:

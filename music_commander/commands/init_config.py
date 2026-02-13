@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+from importlib import resources
 from pathlib import Path
 
 import click
 
 from music_commander.cli import Context, pass_context
 from music_commander.config import get_default_config_path
+from music_commander.utils.fileops import secure_mkdir
 from music_commander.utils.output import error, info, success
+
+
+def _load_example_config() -> str:
+    """Load the example configuration from package data."""
+    return resources.files("music_commander").joinpath("config.example.toml").read_text()
 
 
 @click.command("init-config")
@@ -63,33 +70,15 @@ def cli(ctx: Context, force: bool, output: Path | None) -> None:
         )
         raise SystemExit(1)
 
-    # Ensure parent directory exists
-    config_path.parent.mkdir(parents=True, exist_ok=True)
+    # Ensure parent directory exists with secure permissions
+    secure_mkdir(config_path.parent)
 
-    # Write default config with comments
-    config_content = """\
-# music-commander configuration
-# Documentation: https://github.com/poelzi/musicCommander
-
-[paths]
-# Path to your Mixxx SQLite database
-mixxx_db = "~/.mixxx/mixxxdb.sqlite"
-
-# Path to your git-annex music repository
-music_repo = "~/Music"
-
-[display]
-# Enable colored terminal output
-colored_output = true
-
-[git_annex]
-# Default remote for git-annex operations (optional)
-# Uncomment and set to your preferred remote name
-# default_remote = "nas"
-"""
+    # Load config content from the package example (single source of truth)
+    config_content = _load_example_config()
 
     try:
         config_path.write_text(config_content)
+        config_path.chmod(0o600)
     except OSError as e:
         error(f"Failed to write config file: {e}")
         raise SystemExit(1)

@@ -334,6 +334,16 @@ class ReportServer:
         self._start_auto_shutdown()
         self._server.serve_forever()
 
+    def wait(self) -> None:
+        """Block until the server thread exits.
+
+        Polls the server thread with a 1-second join timeout so that
+        signal handlers (e.g. for SIGINT) can trigger shutdown.
+        """
+        if self._thread is not None:
+            while self._thread.is_alive():
+                self._thread.join(timeout=1)
+
 
 # ---------------------------------------------------------------------------
 # T035 – Report CLI subcommand
@@ -464,8 +474,7 @@ def report(
 
                 # Block until server stops
                 try:
-                    while server._thread and server._thread.is_alive():
-                        server._thread.join(timeout=1)
+                    server.wait()
                 except KeyboardInterrupt:
                     server.shutdown()
 

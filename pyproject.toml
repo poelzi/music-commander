@@ -57,6 +57,9 @@ music-commander = "music_commander.cli:cli"
 where = ["."]
 include = ["music_commander*"]
 
+[tool.setuptools.package-data]
+music_commander = ["config.example.toml", "search/grammar.lark"]
+
 [tool.ruff]
 target-version = "py313"
 line-length = 100
@@ -69,3 +72,28 @@ python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "aiohttp",
+    "bs4",
+    "chardet",
+    "fabric",
+    "lark",
+    "lark.*",
+    "mutagen",
+    "mutagen.*",
+    "platformdirs",
+    "rapidfuzz",
+    "rapidfuzz.*",
+    "requests",
+    "requests.*",
+    "rich",
+    "rich.*",
+    "rookiepy",
+    "sqlalchemy",
+    "sqlalchemy.*",
+    "toml",
+    "xxhash",
+]
+ignore_missing_imports = true

@@ -7,9 +7,10 @@ to a dedicated credentials file at ~/.config/music-commander/bandcamp-credential
 from __future__ import annotations
 
 import json
-import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+from music_commander.utils.fileops import secure_atomic_write
 
 CREDENTIALS_FILENAME = "bandcamp-credentials.json"
 
@@ -67,19 +68,9 @@ def save_credentials(creds: BandcampCredentials, config_dir: Path | None = None)
     """Save credentials to the JSON file atomically.
 
     Uses a temporary file and rename to avoid partial writes.
+    The file is created with 0o600 permissions (owner-only read/write)
+    inside a 0o700 directory.
     """
     path = get_credentials_path(config_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    data = asdict(creds)
-    content = json.dumps(data, indent=2) + "\n"
-
-    # Atomic write: write to temp file in same directory, then rename
-    fd, tmp_path = tempfile.mkstemp(dir=path.parent, prefix=".bandcamp-creds-", suffix=".tmp")
-    try:
-        with open(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        Path(tmp_path).replace(path)
-    except BaseException:
-        Path(tmp_path).unlink(missing_ok=True)
-        raise
+    content = json.dumps(asdict(creds), indent=2) + "\n"
+    secure_atomic_write(path, content)

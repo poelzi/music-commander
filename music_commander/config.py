@@ -13,6 +13,7 @@ from music_commander.exceptions import (
     ConfigParseError,
     ConfigValidationError,
 )
+from music_commander.utils.fileops import secure_mkdir
 
 
 def get_default_config_path() -> Path:
@@ -274,8 +275,8 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     config_path = config_path.expanduser().resolve()
 
-    # Ensure directory exists
-    config_path.parent.mkdir(parents=True, exist_ok=True)
+    # Ensure directory exists with secure permissions
+    secure_mkdir(config_path.parent)
 
     # Build TOML structure
     data: dict[str, Any] = {
@@ -326,3 +327,4 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     with open(config_path, "wb") as f:
         tomli_w.dump(data, f)
+    config_path.chmod(0o600)

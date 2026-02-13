@@ -178,6 +178,24 @@ class BandcampClient:
         # Should not reach here, but satisfy type checker
         raise BandcampError(f"Request to {url} failed after {_MAX_RETRIES} attempts")
 
+    def stream_get(self, url: str, **kwargs: Any) -> requests.Response:
+        """Make a streaming GET request through the authenticated session.
+
+        Uses the shared session (with auth cookies) and rate limiter,
+        providing retry and backoff logic consistent with all other
+        Bandcamp API calls. Suitable for large file downloads where the
+        response body should be consumed incrementally.
+
+        Args:
+            url: Request URL.
+            **kwargs: Additional arguments passed to requests (e.g. timeout).
+
+        Returns:
+            The HTTP response with streaming enabled.
+        """
+        kwargs["stream"] = True
+        return self._request("GET", url, **kwargs)
+
     def fetch_collection_summary(self) -> dict[str, Any]:
         """Fetch collection summary including username and item count.
 

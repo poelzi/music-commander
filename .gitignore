@@ -12,6 +12,7 @@
 .amazonq/
 .github/copilot/
 tmp
+# Personal TODO scratch file (not project documentation)
 TODOs
 .worktrees/
 

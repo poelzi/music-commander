@@ -4,7 +4,7 @@ Manage git-annex based music collections with [Mixxx](https://mixxx.org/) DJ sof
 
 A command-line tool for managing large music collections stored in git-annex, with special integration for Mixxx DJ software, Bandcamp purchase management, and audio file processing. Fetch files from commits, query your Mixxx database, sync metadata, manage Bandcamp purchases, split cue sheets, and keep your music organized across multiple storage locations.
 
-If used correctly, you will never loose music or metadata again.
+If used correctly, you will never lose music or metadata again.
 
 ## Features
 

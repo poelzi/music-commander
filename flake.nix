@@ -126,7 +126,7 @@
           # Install default config file
           postInstall = ''
             mkdir -p $out/share/music-commander
-            cp ${./config.example.toml} $out/share/music-commander/config.example.toml
+            cp ${./music_commander/config.example.toml} $out/share/music-commander/config.example.toml
           '';
         };
 
@@ -155,9 +155,14 @@
         checks.default =
           pkgs.runCommand "pytest"
             {
-              buildInputs = [ pythonEnv ];
+              buildInputs = [
+                pythonEnv
+                pkgs.git
+                pkgs.git-annex
+              ];
             }
             ''
+              export HOME=$(mktemp -d)
               cd ${./.}
               pytest --tb=short
               touch $out

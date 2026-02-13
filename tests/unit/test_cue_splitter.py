@@ -226,8 +226,9 @@ def test_build_tag_args_empty_title_included() -> None:
 @patch("music_commander.cue.splitter.shutil.which")
 def test_check_tools_all_present(mock_which: MagicMock) -> None:
     mock_which.return_value = "/usr/bin/tool"
-    missing = check_tools_available()
-    assert missing == []
+    missing_required, missing_optional = check_tools_available()
+    assert missing_required == []
+    assert missing_optional == []
 
 
 @patch("music_commander.cue.splitter.shutil.which")
@@ -238,17 +239,31 @@ def test_check_tools_shntool_missing(mock_which: MagicMock) -> None:
         return f"/usr/bin/{name}"
 
     mock_which.side_effect = side_effect
-    missing = check_tools_available()
-    assert "shntool" in missing
-    assert "metaflac" not in missing
+    missing_required, missing_optional = check_tools_available()
+    assert "shntool" in missing_required
+    assert "metaflac" not in missing_required
 
 
 @patch("music_commander.cue.splitter.shutil.which")
-def test_check_tools_both_missing(mock_which: MagicMock) -> None:
+def test_check_tools_both_required_missing(mock_which: MagicMock) -> None:
     mock_which.return_value = None
-    missing = check_tools_available()
-    assert "shntool" in missing
-    assert "metaflac" in missing
+    missing_required, missing_optional = check_tools_available()
+    assert "shntool" in missing_required
+    assert "metaflac" in missing_required
+    assert "ffmpeg" in missing_optional
+
+
+@patch("music_commander.cue.splitter.shutil.which")
+def test_check_tools_ffmpeg_missing(mock_which: MagicMock) -> None:
+    def side_effect(name: str) -> str | None:
+        if name == "ffmpeg":
+            return None
+        return f"/usr/bin/{name}"
+
+    mock_which.side_effect = side_effect
+    missing_required, missing_optional = check_tools_available()
+    assert missing_required == []
+    assert "ffmpeg" in missing_optional
 
 
 # --- SplitResult ---

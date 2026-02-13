@@ -93,6 +93,9 @@ class CheckerGroup:
 
 _tool_cache: dict[str, bool] = {}
 
+# Timeout for external checker subprocesses (seconds).
+_CHECKER_TIMEOUT = 600
+
 
 def check_tool_available(tool_name: str) -> bool:
     """Check if a tool is available on PATH, with caching."""
@@ -619,7 +622,7 @@ def check_file(
                 capture_output=True,
                 text=True,
                 cwd=repo_path,
-                timeout=600,
+                timeout=_CHECKER_TIMEOUT,
             )
             if verbose_output:
                 output_text = (
@@ -641,7 +644,7 @@ def check_file(
                 tool=spec.name,
                 success=False,
                 exit_code=-1,
-                output="Checker timed out after 300 seconds",
+                output=f"Checker timed out after {_CHECKER_TIMEOUT} seconds",
             )
             tools_used.append(spec.name)
             all_results.append(result)
